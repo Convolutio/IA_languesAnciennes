@@ -1,0 +1,968 @@
+[
+  {
+    "symbol": "ɑ\t",
+    "decimal": "593 ",
+    "hex": "0251\t",
+    "value": "open back unrounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɐ\t",
+    "decimal": "592 ",
+    "hex": "0250\t",
+    "value": "open-mid schwa\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɒ\t",
+    "decimal": "594 ",
+    "hex": "0252\t",
+    "value": "open back rounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "æ\t",
+    "decimal": "230\t",
+    "hex": "00E6\t",
+    "value": "raised open front unrounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɓ\t",
+    "decimal": "595\t",
+    "hex": "0253\t",
+    "value": "vd bilabial implosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʙ\t",
+    "decimal": "665 ",
+    "hex": "0299\t",
+    "value": "vd bilabial trill\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "β\t",
+    "decimal": "946\t",
+    "hex": "03B2\t",
+    "value": "vd bilabial fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɔ\t",
+    "decimal": "596\t",
+    "hex": "0254\t",
+    "value": "open-mid back rounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɕ\t",
+    "decimal": "597\t",
+    "hex": "0255\t",
+    "value": "vl alveolopalatal fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ç\t",
+    "decimal": "231\t",
+    "hex": "00E7\t",
+    "value": "vl palatal fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɗ\t",
+    "decimal": "599\t",
+    "hex": "0257\t",
+    "value": "vd alveolar implosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɖ\t",
+    "decimal": "598\t",
+    "hex": "0256\t",
+    "value": "vd retroflex plosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ð\t",
+    "decimal": "240\t",
+    "hex": "00F0\t",
+    "value": "vd dental fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʤ\t",
+    "decimal": "676\t",
+    "hex": "02A4\t",
+    "value": "vd postalveolar affricate\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ə\t",
+    "decimal": "601\t",
+    "hex": "0259\t",
+    "value": "schwa\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɘ\t",
+    "decimal": "600\t",
+    "hex": "0258\t",
+    "value": "close-mid schwa\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɚ\t",
+    "decimal": "602\t",
+    "hex": "025A\t",
+    "value": "rhotacized schwa\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɛ\t",
+    "decimal": "603\t",
+    "hex": "025B\t",
+    "value": "open-mid front unrounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɜ\t",
+    "decimal": "604\t",
+    "hex": "025C\t",
+    "value": "open-mid central\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɝ\t",
+    "decimal": "605\t",
+    "hex": "025D\t",
+    "value": "rhotacized open-mid central\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɞ\t",
+    "decimal": "606\t",
+    "hex": "025E\t",
+    "value": "open-mid central rounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɟ\t",
+    "decimal": "607\t",
+    "hex": "025F\t",
+    "value": "vd palatal plosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʄ\t",
+    "decimal": "644\t",
+    "hex": "0284\t",
+    "value": "vd palatal implosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɡ\t",
+    "decimal": "609\t",
+    "hex": "0261\t",
+    "value": "vd velar plosive(but the IPA decided that an ordinary g is also acceptable)\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɠ\t",
+    "decimal": "608\t",
+    "hex": "0260\t",
+    "value": "vd velar implosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɢ\t",
+    "decimal": "610\t",
+    "hex": "0262\t",
+    "value": "vd uvular plosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʛ\t",
+    "decimal": "667\t",
+    "hex": "029B\t",
+    "value": "vd uvular implosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɦ\t",
+    "decimal": "614\t",
+    "hex": "0266\t",
+    "value": "vd glottal fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɧ\t",
+    "decimal": "615\t",
+    "hex": "0267\t",
+    "value": "vl multiple-place fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ħ\t",
+    "decimal": "295\t",
+    "hex": "0127\t",
+    "value": "vl pharyngeal fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɥ\t",
+    "decimal": "613\t",
+    "hex": "0265\t",
+    "value": "labial-palatal approximant\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʜ\t",
+    "decimal": "668\t",
+    "hex": "029C\t",
+    "value": "vl epiglottal fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɨ\t",
+    "decimal": "616\t",
+    "hex": "0268\t",
+    "value": "close central unrounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɪ\t",
+    "decimal": "618\t",
+    "hex": "026A\t",
+    "value": "lax close front unrounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʝ\t",
+    "decimal": "669\t",
+    "hex": "029D\t",
+    "value": "vd palatal fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɭ\t",
+    "decimal": "621\t",
+    "hex": "026D\t",
+    "value": "vd retroflex lateral\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɬ\t",
+    "decimal": "620\t",
+    "hex": "026C\t",
+    "value": "vl alveolar lateral fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɫ\t",
+    "decimal": "619\t",
+    "hex": "026B\t",
+    "value": "velarized vd alveolar lateral\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɮ\t",
+    "decimal": "622\t",
+    "hex": "026E\t",
+    "value": "vd alveolar lateral fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʟ\t",
+    "decimal": "671 ",
+    "hex": "029F\t",
+    "value": "vd velar lateral\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɱ\t",
+    "decimal": "625\t",
+    "hex": "0271\t",
+    "value": "vd labiodental nasal\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɯ\t",
+    "decimal": "623\t",
+    "hex": "026F\t",
+    "value": "close back unrounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɰ\t",
+    "decimal": "624 ",
+    "hex": "0270\t",
+    "value": "velar approximant\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ŋ\t",
+    "decimal": "331\t",
+    "hex": "014B\t",
+    "value": "vd velar nasal\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɳ\t",
+    "decimal": "627\t",
+    "hex": "0273\t",
+    "value": "vd retroflex nasal\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɲ\t",
+    "decimal": "626  ",
+    "hex": "0272\t",
+    "value": "vd palatal nasal\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɴ\t",
+    "decimal": "628\t",
+    "hex": "0274\t",
+    "value": "vd uvular nasal\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ø",
+    "decimal": "248\t",
+    "hex": "00F8\t",
+    "value": "front close-mid rounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɵ\t",
+    "decimal": "629 ",
+    "hex": "0275\t",
+    "value": "rounded schwa\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɸ\t",
+    "decimal": "632\t",
+    "hex": "0278\t",
+    "value": "vl bilabial fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "θ\t",
+    "decimal": "952\t",
+    "hex": "03B8\t",
+    "value": "vl dental fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "œ\t",
+    "decimal": "339 ",
+    "hex": "0153\t",
+    "value": "front open-mid rounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɶ\t",
+    "decimal": "630\t",
+    "hex": "0276\t",
+    "value": "front open rounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʘ\t",
+    "decimal": "664\t",
+    "hex": "0298\t",
+    "value": "bilabial click\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɹ\t",
+    "decimal": "633\t",
+    "hex": "0279\t",
+    "value": "vd (post)alveolar approximant\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɺ\t",
+    "decimal": "634\t",
+    "hex": "027A\t",
+    "value": "vd alveolar lateral flap\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɾ\t",
+    "decimal": "638\t",
+    "hex": "027E\t",
+    "value": "vd alveolar tap\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɻ\t",
+    "decimal": "635\t",
+    "hex": "027B\t",
+    "value": "vd retroflex approximant\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʀ\t",
+    "decimal": "640\t",
+    "hex": "0280\t",
+    "value": "vd uvular trill\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʁ\t",
+    "decimal": "641\t",
+    "hex": "0281\t",
+    "value": "vd uvular fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɽ\t",
+    "decimal": "637 ",
+    "hex": "027D\t",
+    "value": "vd retroflex flap\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʂ\t",
+    "decimal": "642\t",
+    "hex": "0282\t",
+    "value": "vl retroflex fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʃ\t",
+    "decimal": "643\t",
+    "hex": "0283\t",
+    "value": "vl postalveolar fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʈ\t",
+    "decimal": "648\t",
+    "hex": "0288\t",
+    "value": "vl retroflex plosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʧ\t",
+    "decimal": "679\t",
+    "hex": "02A7\t",
+    "value": "vl postalveolar affricate\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʉ\t",
+    "decimal": "649\t",
+    "hex": "0289\t",
+    "value": "close central rounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʊ\t",
+    "decimal": "650\t",
+    "hex": "028A\t",
+    "value": "lax close back rounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʋ\t",
+    "decimal": "651\t",
+    "hex": "028B\t",
+    "value": "vd labiodental approximant\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ⱱ\t",
+    "decimal": "11377\t",
+    "hex": "2C71\t",
+    "value": "voiced labiodental flap\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʌ\t",
+    "decimal": "652\t",
+    "hex": "028C\t",
+    "value": "open-mid back unrounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɣ\t",
+    "decimal": "611\t",
+    "hex": "0263\t",
+    "value": "vd velar fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ɤ\t",
+    "decimal": "612\t",
+    "hex": "0264\t",
+    "value": "close-mid back unrounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʍ\t",
+    "decimal": "653\t",
+    "hex": "028D\t",
+    "value": "vl labial-velar fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "χ\t",
+    "decimal": "967\t",
+    "hex": "03C7\t",
+    "value": "vl uvular fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʎ\t",
+    "decimal": "654\t",
+    "hex": "028E\t",
+    "value": "vd palatal lateral\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʏ\t",
+    "decimal": "655\t",
+    "hex": "028F\t",
+    "value": "lax close front rounded\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʑ\t",
+    "decimal": "657\t",
+    "hex": "0291\t",
+    "value": "vd alveolopalatal fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʐ\t",
+    "decimal": "656\t",
+    "hex": "0290\t",
+    "value": "vd retroflex fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʒ\t",
+    "decimal": "658\t",
+    "hex": "0292\t",
+    "value": "vd postalveolar fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʔ\t",
+    "decimal": "660\t",
+    "hex": "0294\t",
+    "value": "glottal plosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʡ\t",
+    "decimal": "673\t",
+    "hex": "02A1\t",
+    "value": "vd epiglottal plosive\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʕ\t",
+    "decimal": "661\t",
+    "hex": "0295\t",
+    "value": "vd pharyngeal fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ʢ\t",
+    "decimal": "674\t",
+    "hex": "02A2\t",
+    "value": "vd epiglottal fricative\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ǀ\t",
+    "decimal": "448\t",
+    "hex": "01C0\t",
+    "value": "dental click\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ǁ\t",
+    "decimal": "449\t",
+    "hex": "01C1\t",
+    "value": "alveolar lateral click\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ǂ\t",
+    "decimal": "450 ",
+    "hex": "01C2\t",
+    "value": "alveolar click\n",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ǃ\t",
+    "decimal": "451 ",
+    "hex": "01C3\t",
+    "value": "retroflex click",
+    "type": "Alphabetic"
+  },
+  {
+    "symbol": "ˈ",
+    "decimal": "712 \t",
+    "hex": "02C8\t",
+    "value": "(primary) stress mark\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ˌ",
+    "decimal": "716\t",
+    "hex": "02CC\t",
+    "value": "secondary stress\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ː",
+    "decimal": "720 ",
+    "hex": "02D0\t",
+    "value": "length mark NB: Some versions of Internet Explorer have a problem that cause this character not to display correctly or at all. A colon can be used instead.\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ˑ",
+    "decimal": "721\t",
+    "hex": "02D1\t",
+    "value": "half-length\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ʼ",
+    "decimal": "700\t",
+    "hex": "02BC\t",
+    "value": "ejective\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ʴ",
+    "decimal": "692\t",
+    "hex": "02B4\t",
+    "value": "rhotacized\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ʰ",
+    "decimal": "688\t",
+    "hex": "02B0\t",
+    "value": "aspirated\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ʱ",
+    "decimal": "689\t",
+    "hex": "02B1\t",
+    "value": "breathy-voice-aspirated\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ʲ",
+    "decimal": "690\t",
+    "hex": "02B2\t",
+    "value": "palatalized\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ʷ",
+    "decimal": "695\t",
+    "hex": "02B7\t",
+    "value": "labialized\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ˠ",
+    "decimal": "736\t",
+    "hex": "02E0\t",
+    "value": "velarized\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ˤ",
+    "decimal": "740 ",
+    "hex": "02E4\t",
+    "value": "pharyngealized\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "˞",
+    "decimal": "734\t",
+    "hex": "02DE\t",
+    "value": "rhotacized\n",
+    "type": "Spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "n̥ d̥",
+    "decimal": "805\t",
+    "hex": "0325\t",
+    "value": "voiceless\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ŋ̊",
+    "decimal": "778 ",
+    "hex": "030A\t",
+    "value": "voiceless (use if character has descender)\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "b̤ a̤",
+    "decimal": "804\t",
+    "hex": "0324 \t",
+    "value": "breathy voiced\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "t̪ d̪",
+    "decimal": "810 ",
+    "hex": "032A\t",
+    "value": "dental\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "s̬ t̬",
+    "decimal": "812 ",
+    "hex": "032C\t",
+    "value": "voiced\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "b̰ a̰",
+    "decimal": "816\t",
+    "hex": "0330\t",
+    "value": "creaky voiced\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "t̺ d̺",
+    "decimal": "826\t",
+    "hex": "033A\t",
+    "value": "apical\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "t̼ d̼",
+    "decimal": "828\t",
+    "hex": "033C\t",
+    "value": "linguolabial\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "t̻ d̻",
+    "decimal": "827\t",
+    "hex": "033B\t",
+    "value": "laminal\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "t̚",
+    "decimal": "794\t",
+    "hex": "031A\t",
+    "value": "not audibly released\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ɔ̹",
+    "decimal": "825\t",
+    "hex": "0339\t",
+    "value": "more rounded\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ẽ",
+    "decimal": "771\t",
+    "hex": "0303\t",
+    "value": "nasalized\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ɔ̜",
+    "decimal": "796\t",
+    "hex": "031C\t",
+    "value": "less rounded\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "u̟",
+    "decimal": "799\t",
+    "hex": "031F\t",
+    "value": "advanced\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "e̠",
+    "decimal": "800\t",
+    "hex": "0320\t",
+    "value": "retracted\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ë",
+    "decimal": "776\t",
+    "hex": "0308\t",
+    "value": "centralized\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "l̴ n̴",
+    "decimal": "820\t",
+    "hex": "0334\t",
+    "value": "velarized or pharyngealized\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ɫ",
+    "decimal": "619\t",
+    "hex": "026B\t",
+    "value": "(ready-made combination, dark l)\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "e̽",
+    "decimal": "829\t",
+    "hex": "033D\t",
+    "value": "mid-centralized\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "e̝ ɹ̝",
+    "decimal": "797\t",
+    "hex": "031D\t",
+    "value": "raised\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "m̩ n̩ l",
+    "decimal": "809\t",
+    "hex": "0329\t",
+    "value": "syllabic\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "e̞ β̞",
+    "decimal": "798\t",
+    "hex": "031E\t",
+    "value": "lowered\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "e̯",
+    "decimal": "815\t",
+    "hex": "032F\t",
+    "value": "non-syllabic\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "e̘",
+    "decimal": "792\t",
+    "hex": "0318\t",
+    "value": "advanced tongue root\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "e̙",
+    "decimal": "793\t",
+    "hex": "0319\t",
+    "value": "retracted tongue root\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ĕ",
+    "decimal": "774\t",
+    "hex": "0306\t",
+    "value": "extra-short\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "e̋",
+    "decimal": "779\t",
+    "hex": "030B\t",
+    "value": "extra high tone\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "é",
+    "decimal": "769\t",
+    "hex": "0301\t",
+    "value": "high tone\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ē",
+    "decimal": "772\t",
+    "hex": "0304\t",
+    "value": "mid tone\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "è",
+    "decimal": "768\t",
+    "hex": "0300\t",
+    "value": "low tone\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "ȅ",
+    "decimal": "783\t",
+    "hex": "030F\t",
+    "value": "extra low tone\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "x͜",
+    "decimal": "860 ",
+    "hex": "035C ",
+    "value": "tie bar below\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "x͡",
+    "decimal": "865 ",
+    "hex": "0361 ",
+    "value": "tie bar above\n",
+    "type": "Non-spacing diacritics and suprasegmentals"
+  },
+  {
+    "symbol": "↓",
+    "decimal": "8595\t",
+    "hex": "2193\t",
+    "value": "downstep\n",
+    "type": "Arrow"
+  },
+  {
+    "symbol": "↑",
+    "decimal": "8593\t",
+    "hex": "2191\t",
+    "value": "upstep\n",
+    "type": "Arrow"
+  },
+  {
+    "symbol": "→",
+    "decimal": "8594\t",
+    "hex": "2192\t",
+    "value": "(becomes, is realized as — not recognized by the IPA)\n",
+    "type": "Arrow"
+  },
+  {
+    "symbol": "",
+    "decimal": "8599\t",
+    "hex": "2197\t",
+    "value": "global rise\n",
+    "type": "Arrow"
+  },
+  {
+    "symbol": "",
+    "decimal": "8600 \t",
+    "hex": "2198\t",
+    "value": "global fall\n",
+    "type": "Arrow"
+  }
+]

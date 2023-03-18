@@ -16,6 +16,9 @@ def generateCsv_toScrap():
             writer.writeheader()
             writer.writerows(IPA)
 
-with open('IPA_extraction\\scraped_IPA.json', 'r', encoding="utf-8") as file:
-    IPA:list[dict[str, str]] = load(file)
-    print(len(IPA))
+def IPA_charactersNumber():
+    with open('IPA_extraction\\scraped_IPA.json', 'r', encoding="utf-8") as file:
+        IPA:list[dict[str, str]] = load(file)
+        print(len(IPA))
+
+generateCsv_toScrap()

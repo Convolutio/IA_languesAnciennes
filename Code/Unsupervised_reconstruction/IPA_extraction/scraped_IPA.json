@@ -952,14 +952,14 @@
     "type": "Arrow"
   },
   {
-    "symbol": "",
+    "symbol": "↗",
     "decimal": "8599\t",
     "hex": "2197\t",
     "value": "global rise\n",
     "type": "Arrow"
   },
   {
-    "symbol": "",
+    "symbol": "↘",
     "decimal": "8600 \t",
     "hex": "2198\t",
     "value": "global fall\n",

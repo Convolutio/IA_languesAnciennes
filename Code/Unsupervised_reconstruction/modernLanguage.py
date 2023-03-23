@@ -26,14 +26,38 @@ class EditModel(nn.Module):
     and edit function specific to the 
     modern Language
     """
-    def __init__(self, languages:Languages, emb_dim: int, hidden_dim: int, output_dim: int):
+    def __init__(self, languages:Languages, input_dim: int, hidden_dim: int, output_dim: int):
         super(EditModel, self).__init__()
         self.languages = languages
 
-        self.input_encoder = nn.LSTM(input_size = emb_dim, hidden_size = hidden_dim, bidirectional = True)
-        self.output_encoder = nn.LSTM(input_size = emb_dim, hidden_size = hidden_dim)
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.output_dim = output_dim
+        
+        self.encoder = nn.LSTM(input_dim, hidden_dim, bidirectional=True)
+        self.decoder = nn.LSTM(input_dim, hidden_dim)
 
-    def forward(self):
+        self.sub_head = nn.Linear(hidden_dim, output_dim)
+        self.ins_head = nn.Linear(hidden_dim, output_dim)
+        
+    def forward(self, x, y0):
+        encoder_output, _ = self.encoder(x)
+        h_x = encoder_output[:, -1, :]
+        
+        decoder_output, _ = self.decoder(y0)
+        g_y0 = decoder_output[-1, :]
+        
+        context = h_x + g_y0
+        
+        qsub = self.sub_head(context)
+        qins = self.ins_head(context)
+        
+        return qsub, qins
+    
+    def training(self):
+        pass
+
+    def evaluation(self):
         pass
 
     def edit(self, x: Form) -> tuple[Form, list[Edition]]:
@@ -63,8 +87,3 @@ class EditModel(nn.Module):
                     canInsert = omega!="<end>"
         return (y_temp.copy(), delta)
     
-    def training(self):
-        pass
-
-    def evaluation(self):
-        pass

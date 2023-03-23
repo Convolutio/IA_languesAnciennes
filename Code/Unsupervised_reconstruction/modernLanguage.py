@@ -69,21 +69,21 @@ class EditModel(nn.Module):
             y : a list of tokens representing a modern form 
             delta: lists of edits
         """
-        y_temp: Form = [] # it is represented as y' in the figure 2 of the paper
+        y0: Form = [] # it is represented as y' in the figure 2 of the paper
         delta: list[Edition] = []
         for i in range(len(x)):
-            omega:IPA_char = self.q_sub.sample(x, i, y_temp)
+            omega:IPA_char = self.q_sub.sample(x, i, y0)
             delta.append(
-                (op.sub, omega, x.copy(), i, y_temp.copy())
+                (op.sub, omega, x.copy(), i, y0.copy())
                 )
             if omega!='<del>':
                 canInsert:bool = True
                 while canInsert:
-                    y_temp.append(omega)
-                    omega = self.q_ins.sample(x, i, y_temp)
+                    y0.append(omega)
+                    omega = self.q_ins.sample(x, i, y0)
                     delta.append(
-                        (op.ins, omega, x.copy(), i, y_temp.copy())
+                        (op.ins, omega, x.copy(), i, y0.copy())
                     )
                     canInsert = omega!="<end>"
-        return (y_temp.copy(), delta)
+        return (y0.copy(), delta)
     

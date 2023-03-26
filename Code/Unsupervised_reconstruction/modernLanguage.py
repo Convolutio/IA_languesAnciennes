@@ -2,6 +2,7 @@ from enum import Enum
 
 import torch
 import torch.nn as nn
+import torch.optim as optim  
 
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 print(f"Using {device} device")
@@ -82,11 +83,36 @@ class EditModel(nn.Module):
         context = self.__encode_context(x, i, y0)
         return self.sub_ins(context)
     
-    def training(self):
-        pass
+    def training(self, train_loader, test_loader, epochs=5, learning_rate=0.01):
+        optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        
+        # for epoch in range(epochs):
+        #     running_loss = 0.0
+        #     for inputs in train_loader:
+        #         optimizer.zero_grad()         
+        #         outputs = self(inputs)
+        #         loss = outputs.loss
+        #         loss.backward()
+        #         optimizer.step()
+        #         running_loss += loss.item()
+                
+        #     print(f'Epoch {epoch+1}, Loss: {running_loss/len(train_loader)}')
+        #     self.evaluation(test_loader)
 
-    def evaluation(self):
-        pass
+    def evaluation(self, test_loader):
+        """
+        Evaluate the performance of our model by computing the average edit distance between its outputs
+        and gold Latin reconstructions.
+        """
+        correct = 0
+        total = 0
+        # with torch.no_grad():
+        #     for data in test_loader:
+        #         outputs = self(data)
+        #         _, predicted = torch.max(outputs.data, 1)
+        #         # edit distance
+        
+        # print(f'Test Accuracy: {100 * correct / total}%')
 
     def edit(self, x: Form) -> tuple[Form, list[Edition]]:
         """

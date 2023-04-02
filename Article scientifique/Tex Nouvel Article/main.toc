@@ -1,0 +1,11 @@
+\babel@toc {english}{}\relax 
+\babel@toc {french}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {french}{}\relax 
+\contentsline {section}{\numberline {1}Observation}{2}{}%
+\contentsline {section}{\numberline {2}Problématique}{2}{}%
+\contentsline {section}{\numberline {3}Hypothèses}{2}{}%
+\contentsline {section}{\numberline {4}Expérience}{2}{}%
+\contentsline {section}{\numberline {5}Résultats}{2}{}%
+\contentsline {section}{\numberline {6}Interprétation}{2}{}%
+\contentsline {section}{\numberline {7}Conclusion}{2}{}%

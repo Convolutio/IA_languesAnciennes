@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1680428329 "c:/Users/thoma/OneDrive/UNIVERSITÉ/MATIÈRES/Projet/IA_languesAnciennes/Article scientifique/Tex Nouvel Article/main.tex" "main.pdf" "main" 1680428334 0
-  "c:/Users/thoma/OneDrive/UNIVERSITÉ/MATIÈRES/Projet/IA_languesAnciennes/Article scientifique/Tex Nouvel Article/main.tex" 1680428328 2565 58556582580013e277759abeae5de42c ""
+["pdflatex"] 1680428403 "c:/Users/thoma/OneDrive/UNIVERSITÉ/MATIÈRES/Projet/IA_languesAnciennes/Article scientifique/Tex Nouvel Article/main.tex" "main.pdf" "main" 1680428407 0
+  "c:/Users/thoma/OneDrive/UNIVERSITÉ/MATIÈRES/Projet/IA_languesAnciennes/Article scientifique/Tex Nouvel Article/main.tex" 1680428401 2603 bad2b50d40f8ebbbdc3d3843a1ba45fd ""
   "c:/texlive/2022/texmf-dist/fonts/enc/dvips/base/8r.enc" 1677519306 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "c:/texlive/2022/texmf-dist/fonts/map/fontname/texfonts.map" 1677519996 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "c:/texlive/2022/texmf-dist/fonts/tfm/adobe/helvetic/phvr8t.tfm" 1677520550 7040 b2bd27e2bfe6f6948cbc3239cae7444f ""
@@ -174,9 +174,9 @@
   "c:/texlive/2022/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1677529173 4586365 69786505b9fe090077cfdcab6ed9ff3f ""
   "c:/texlive/2022/texmf-var/web2c/pdftex/pdflatex.fmt" 1677529278 6536044 54638bbcd6b4eb7d6a0d98960d9217cb ""
   "c:/texlive/2022/texmf.cnf" 1677525554 713 e69b156964470283e0530f5060668171 ""
-  "main.aux" 1680428333 954 c1687fafdc7372a88db54d55d529f316 "pdflatex"
-  "main.tex" 1680428328 2565 58556582580013e277759abeae5de42c ""
-  "main.toc" 1680428333 529 84d3095ed7c61d576755eb0b7d3d585d "pdflatex"
+  "main.aux" 1680428407 954 c1687fafdc7372a88db54d55d529f316 "pdflatex"
+  "main.tex" 1680428401 2603 bad2b50d40f8ebbbdc3d3843a1ba45fd ""
+  "main.toc" 1680428407 529 84d3095ed7c61d576755eb0b7d3d585d "pdflatex"
   (generated)
   "main.aux"
   "main.log"

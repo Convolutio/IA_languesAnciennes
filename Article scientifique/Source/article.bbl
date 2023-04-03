@@ -1,0 +1,61 @@
+\begin{thebibliography}{8}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Alexandre Bouchard-Côté and Klein(2013)]{bouchard_austro}
+Thomas L.~Griffiths Alexandre Bouchard-Côté, David~Hall and Dan Klein.
+\newblock Automated reconstruction of ancient languages using probabilistic
+  models of sound change, 2013.
+\newblock URL \url{https://www.pnas.org/doi/full/10.1073/pnas.1204678110}.
+
+\bibitem[Bouchard-C\^{o}t\'{e} et~al.(2009)Bouchard-C\^{o}t\'{e}, Griffiths,
+  and Klein]{bouchard}
+Alexandre Bouchard-C\^{o}t\'{e}, Thomas~L. Griffiths, and Dan Klein.
+\newblock Improved reconstruction of protolanguage word forms.
+\newblock In \emph{Proceedings of the North American Chapter of the Association
+  for Computational Linguistics (NAACL09)}, volume~7, pages 65--73, 2009.
+
+\bibitem[Campbell(2004)]{campbell}
+Lyle Campbell.
+\newblock \emph{Historical Linguistics: An Introduction}.
+\newblock Edinburgh University Press, 2004.
+
+\bibitem[Fourrier(2022)]{fourier}
+Clémentine Fourrier.
+\newblock \emph{Approches neuronales pour la reconstruction de mots
+  historiques}.
+\newblock PhD thesis, École Pratique des Hautes Études, PSL, Paris, Septembre
+  2022.
+\newblock URL \url{https://hal.inria.fr/tel-03793299v2}.
+
+\bibitem[He et~al.(2022)He, Tomlin, and Klein]{andre}
+Andre He, Nicholas Tomlin, and Dan Klein.
+\newblock Neural unsupervised reconstruction of protolanguage word forms, 2022.
+\newblock URL \url{https://arxiv.org/abs/2211.08684}.
+
+\bibitem[Jurafsky and Martin()]{jurafsky_ngram}
+Dan Jurafsky and James~H. Martin.
+\newblock N-gram language models.
+\newblock In \emph{Speech and Language Processing}.
+\newblock URL \url{https://web.stanford.edu/~jurafsky/slp3/3.pdf}.
+
+\bibitem[Meloni et~al.(2021)Meloni, Ravfogel, and Goldberg]{meloni}
+Carlo Meloni, Shauli Ravfogel, and Yoav Goldberg.
+\newblock Ab antiquo: Neural proto-language reconstruction.
+\newblock In \emph{Proceedings of the 2021 Conference of the North American
+  Chapter of the Association for Computational Linguistics: Human Language
+  Technologies}, pages 4460--4473. Association for Computational Linguistics,
+  June 2021.
+\newblock URL \url{https://aclanthology.org/2021.naacl-main.353}.
+
+\bibitem[Simon J.~Greenhill(2008)]{greenville}
+Russell D~Gray Simon J.~Greenhill, Robert~Blust.
+\newblock The austronesian basic vocabulary database: from bioinformatics to
+  lexomics.
+\newblock page 271–283. Evolutionary bioinformatics online, November 2008.
+\newblock URL \url{https://pubmed.ncbi.nlm.nih.gov/19204825/}.
+
+\end{thebibliography}

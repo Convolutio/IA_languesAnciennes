@@ -1,0 +1,50 @@
+This is BibTeX, Version 0.99d (TeX Live 2022)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: article.aux
+The style file: plainnat.bst
+Database file #1: biblio.bib
+Warning--empty year in jurafsky_ngram
+Warning--empty year in jurafsky_ngram
+Warning--empty booktitle in greenville
+You've used 8 entries,
+            2773 wiz_defined-function locations,
+            641 strings with 6473 characters,
+and the built_in function-call counts, 3642 in all, are:
+= -- 339
+> -- 162
+< -- 9
++ -- 56
+- -- 48
+* -- 247
+:= -- 528
+add.period$ -- 30
+call.type$ -- 8
+change.case$ -- 38
+chr.to.int$ -- 8
+cite$ -- 19
+duplicate$ -- 197
+empty$ -- 316
+format.name$ -- 60
+if$ -- 801
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 6
+newline$ -- 52
+num.names$ -- 32
+pop$ -- 100
+preamble$ -- 1
+purify$ -- 32
+quote$ -- 0
+skip$ -- 163
+stack$ -- 0
+substring$ -- 98
+swap$ -- 52
+text.length$ -- 4
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 83
+warning$ -- 3
+while$ -- 31
+width$ -- 0
+write$ -- 117
+(There were 3 warnings)

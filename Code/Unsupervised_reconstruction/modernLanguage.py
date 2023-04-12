@@ -1,5 +1,4 @@
-from enum import Enum
-
+#Using python 3.9.6 for torch support
 import torch
 import torch.nn as nn
 import torch.optim as optim  
@@ -7,28 +6,7 @@ import torch.optim as optim
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 print(f"Using {device} device")
 
-class Languages(Enum):
-    FRENCH="french"
-    SPANISH="spanish"
-    ITALIAN="italian"
-    PORTUGUESE="portuguese"
-    LATIN="latin"
 
-class op(Enum):
-    sub='sub'
-    ins='ins'
-
-IPA_char = str
-sub_char = str
-ins_char = str
-SIGMA:list[IPA_char] = [] #list of IPA tokens
-SIGMA_SUB:list[sub_char] = SIGMA + ["<del>"]
-SIGMA_INS:list[ins_char] = SIGMA + ["<end>"]
-
-
-Form = list[IPA_char]
-
-Edition = tuple[op, sub_char|ins_char, Form, int, Form]
 class EditModel(nn.Module):
     """
     This class gather the edit models

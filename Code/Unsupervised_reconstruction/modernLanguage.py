@@ -1,4 +1,4 @@
-#Using python 3.9.6 for torch support
+#!/usr/local/bin/python3.9.10
 import torch
 import torch.nn as nn
 import torch.optim as optim  
@@ -119,4 +119,3 @@ class EditModel(nn.Module):
                     )
                     canInsert = omega!="<end>"
         return (y0.copy(), delta)
-    

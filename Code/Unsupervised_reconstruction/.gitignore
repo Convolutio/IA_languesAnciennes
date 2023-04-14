@@ -1,4 +1,5 @@
 .vscode
 # Exclude these files which are not from us
 recons_data
-dp.py
+.env
+.python-version

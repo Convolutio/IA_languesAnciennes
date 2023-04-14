@@ -1,4 +1,4 @@
-#Using python 3.9.6 for torch support
+#Using python 3.9.10 for torch support
 import torch
 import torch.nn as nn
 import torch.optim as optim  

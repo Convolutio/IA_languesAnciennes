@@ -1,12 +1,12 @@
-from json import load
+import json
 import csv
-from os import chdir, path
-chdir(path.dirname(__file__))
+import os
+os.chdir(os.path.dirname(__file__))
 
 #Creating a csv file from the json one
-def generateCsv_toScrap():
+def generateCsvFrom_Scrap():
     with open('scraped_IPA.json', 'r', encoding="utf-8") as file:
-        IPA:list[dict[str, str]] = load(file)
+        IPA:list[dict[str, str]] = json.load(file)
         for i in range(len(IPA)):
             for key in IPA[i]:
                 value = IPA[i][key]
@@ -18,13 +18,26 @@ def generateCsv_toScrap():
             writer.writeheader()
             writer.writerows(IPA)
 
+def extractIPAFrom_Scrap():
+    with open('scraped_IPA.json', 'r', encoding="utf-8") as file:
+        IPA:list[dict[str, str]] = json.load(file)
+        IPA_list = set[str]()
+        for i in range(len(IPA)):
+            for key in IPA[i]:
+                value = IPA[i][key]
+                if value.endswith('\t') or value.endswith('\n'):
+                    value = value[:-1]
+                IPA[i][key]=value
+            IPA_list.add(IPA[i]['symbol'])
+    return IPA_list
+
 def IPA_charactersNumber():
     with open('scraped_IPA.json', 'r', encoding="utf-8") as file:
-        IPA:list[dict[str, str]] = load(file)
+        IPA:list[dict[str, str]] = json.load(file)
         print(len(IPA))
 
-def extractIPAFromDatabase():
-    IPA_lst = set()
+def extractIPAFrom_MeloniDatabase():
+    IPA_lst = set[str]()
     with open('./../romance-ipa.txt', 'r', encoding='utf-8') as file:
         SEP = '\t'
         lines = file.readlines()
@@ -35,13 +48,27 @@ def extractIPAFromDatabase():
                 for char in word:
                     IPA_lst.add(char)
     IPA_lst.remove('\n')
-    with open('IPA_characters.txt', 'w', encoding='utf-8') as file2write:
-        content = ""
-        for elt in IPA_lst:
-            content += elt + ', '
-        file2write.write(content[:-2])
     return IPA_lst
 
-print(extractIPAFromDatabase())
+def generateVocabularyFile(IPA_charsList:list[str]):
+    with open('IPA_characters.txt', 'w', encoding='utf-8') as file2write:
+        content = ""
+        for IPA_char in IPA_charsList:
+            content += IPA_char + ', '
+        file2write.write(content[:-2])
 
-#generateCsv_toScrap()
+def extractIPAFrom_HeDatabase():
+    # extract IPA from _ipa.txt files in the recons_data folder
+    IPA_lst = set[str]()
+    for filename in os.listdir('./../recons_data/data')+[f'../iteration3_{str(i)}' for i in range(1,5)]:
+        if filename.endswith('_ipa.txt'):
+            with open('./../recons_data/data/'+filename, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+                for line in lines:
+                    for char in line:
+                        IPA_lst.add(char)
+    IPA_lst.remove(' ')
+    IPA_lst.remove('\n')
+    return IPA_lst
+
+generateVocabularyFile(list(extractIPAFrom_HeDatabase()))

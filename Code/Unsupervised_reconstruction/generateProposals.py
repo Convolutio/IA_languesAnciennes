@@ -28,4 +28,7 @@ def computeMinEditDistanceMatrix(x:Form, y:Form):
                 D[i, j] = min(editCosts)
     return D
 
+def getMinEditPaths(minEditDistanceMatrix):
+    pass
+
 print(computeMinEditDistanceMatrix(list("absɛns"), list("assɛnte")))

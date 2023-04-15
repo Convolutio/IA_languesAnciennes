@@ -1,10 +1,11 @@
 #!/usr/local/bin/python3.9.10
 import torch
 import torch.nn as nn
-import torch.optim as optim  
+import torch.optim as optim
+from torch.backends import mps
 from Models.articleModels import *
 
-device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "mps" if mps.is_available() else "cpu"
 print(f"Using {device} device")
 
 
@@ -42,6 +43,13 @@ class EditModel(nn.Module):
         encoder_modern__output, _ = self.encoder_modern(y0)
         g_y0 = encoder_modern__output[-1, :]
         return h_xi + g_y0
+    
+    def cache_probs(self, sources:list[Form], targets:list[Form]):
+        """
+        Arguments:
+            sources (list[Form]): the list of proto-forms
+            targets (list[Form]): the list of their targets
+        """
     
     def q_sub(self, x:Form, i:int, y0:Form):
         """

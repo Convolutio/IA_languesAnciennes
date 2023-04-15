@@ -2,10 +2,20 @@ import numpy as np
 from data import vocab
 import torch 
 from models import ProbCache
+from Models.articleModels import FormsSet
+from modernLanguage import EditModel
 
 BIG_NEG = -1e9
 
-def compute_mutation_prob(model, sources, targets, return_posteriors=False):
+def compute_mutation_prob(model:EditModel, sources:FormsSet, targets:FormsSet, return_posteriors=False):
+    """
+    Arguments:
+        model (EditModel) : the model predicting an edition from a reconstruction to its cognate in a given\
+              modern language
+        sources (list[Form]): the list of x reconstructions
+        targets (list[Form]): the list of y_c associated cognates in a given language
+    Compute p(x | y) 
+    """
     raw_sources, raw_targets = sources, targets
     sources = vocab.make_tensor(sources, add_boundaries=True).numpy()   # faster in numpy
     targets = vocab.make_tensor(targets, add_boundaries=True).numpy()

@@ -3,7 +3,7 @@ from data import vocab
 import torch 
 from models import ProbCache
 from Types.articleModels import FormsSet
-from modernLanguage import EditModel
+from editModel import EditModel
 
 BIG_NEG = -1e9
 

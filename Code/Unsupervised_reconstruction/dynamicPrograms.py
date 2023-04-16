@@ -2,23 +2,23 @@ import numpy as np
 from data import vocab
 import torch 
 from models import ProbCache
-from Models.articleModels import FormsSet
+from Types.articleModels import FormsSet
 from modernLanguage import EditModel
 
 BIG_NEG = -1e9
 
-def compute_mutation_prob(model:EditModel, sources:FormsSet, targets:FormsSet, return_posteriors=False):
+def compute_mutation_prob(model:EditModel, raw_sources:list[str], raw_targets:list[str], return_posteriors=False):
     """
     Arguments:
         model (EditModel) : the model predicting an edition from a reconstruction to its cognate in a given\
               modern language
-        sources (list[Form]): the list of x reconstructions
-        targets (list[Form]): the list of y_c associated cognates in a given language
-    Compute p(x | y) 
+        raw_sources (list[str]): the list of x_c reconstructions (length = |C|)
+        raw_targets (list[str]): the list of y_c associated cognates in a given language (length = |C|)
+        return_posteriors (bool): if True, the function returns log(p(x|y)) or log(?)
+    Computes log(p(x|y)) for each cognate pair or log(?).
     """
-    raw_sources, raw_targets = sources, targets
-    sources = vocab.make_tensor(sources, add_boundaries=True).numpy()   # faster in numpy
-    targets = vocab.make_tensor(targets, add_boundaries=True).numpy()
+    sources = vocab.make_tensor(raw_sources, add_boundaries=True).numpy()   # faster in numpy
+    targets = vocab.make_tensor(raw_targets, add_boundaries=True).numpy()
     batch_size = sources.shape[1]
     
     model.cache_probs(sources, targets)
@@ -26,7 +26,7 @@ def compute_mutation_prob(model:EditModel, sources:FormsSet, targets:FormsSet, r
     f_sub = np.full((len(sources), len(targets), batch_size), fill_value=BIG_NEG)
     f_ins = np.full((len(sources), len(targets), batch_size), fill_value=BIG_NEG)
     # start by subbing ( with (. Now in insertion mode
-    f_ins[0, 0] = 0.0 
+    f_ins[0, 0] = 0.0
     
     for i in range(len(sources)):   # start at i=0, might insert after (
         for j in range(len(targets)):

@@ -1,0 +1,7 @@
+.vscode
+.env
+.python-version
+__pycache__
+
+# Exclude these files which are not from us
+recons_data

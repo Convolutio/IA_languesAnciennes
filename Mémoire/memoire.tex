@@ -1,4 +1,4 @@
-\documentclass[12pt, letterpaper, french]{report}
+\documentclass[12pt, a4, french]{report}
 \usepackage[total={6.5in,10in}, top=0.8in, left=1in, includefoot]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -73,30 +73,23 @@ une place centrale pour sa capacité à effectuer des approximations améliorabl
 \subsection{Les pré-traitements nécessaires du texte.}
 \textit{tokenisation + normalisation des données\\
     Vectorisation sémantique des mots (embeddings)\\
-    Encodage d'embeddings}
+    Encodage d'embeddings (statique ou contextuelle)}
 
 \subsection{Architectures neuronales utiles au TAL}
-
 \textit{Quels sont les différents outils ?}\\
-\textit{Suivant, comment les parties précédentes ont été traités, ou comment les parties futures seront discutées, cette partie pourrait ne pas être nécessaire. Sinon, elle regroupera l'idée de comment on passe de notre langue naturelle à celle de la machine, de passer aux mots à des vecteurs ? Quels traitements théoriques (théoriques pour ce distinguer de la pratique dans la partie future) doient être effectués sur les mots ? En fait cette partie fait référence aux chapitres 2 et 6 de Jurasky. Voir même le chapitre 9, en supprimant la sous partie précendente pour pouvoir parler directement des réseaux de neurones appliqués à la linguistique, en d'autres termes, des réseaux récurrents, des modèles séquentielles (encodeurs-décodeurs) avec l'attention, et des Transformers.}
+\textit{Suivant, comment les parties précédentes ont été traités, ou comment les parties futures seront discutées, cette partie pourrait ne pas être nécessaire. Sinon, elle regroupera l'idée de comment on passe de notre langue naturelle à celle de la machine, de passer aux mots à des vecteurs ? Quels traitements théoriques (théoriques pour ce distinguer de la pratique dans la partie future) doient être effectués sur les mots ? En fait cette partie fait référence aux chapitres 2 et 6 de Jurasky. Voir même le chapitre 9, en supprimant la sous partie précendente pour pouvoir parler directement des réseaux de neurones appliqués à la linguistique, en d'autres termes, des réseaux récurrents, des modèles séquentielles (encodeurs-décodeurs) avec l'attention, et des Transformers.}\\
 
-\subsection{Tâches fondamentales de TAL réalisées par l'IA}
-\textit{blablabla}\\
+\subsubsection{Réseaux de neurones récurrents}
+
+\subsubsection{Transformeurs}
+
 
 \chapter{Les contributions de l'IA dans la linguistique historique}
 \textit{C'est la partie 'Related Work', elle discute des différents aspects où la linguistique historique s'applique, à travers différents modèles.}
-\section{Traitement de texte}
-\subsection{Numérisation de textes historiques}
-\subsection{Complétion de ces textes}
-\section{Analyse de document}
-\subsection{Extraction de données linguistiques}
-\subsection{Identification de motifs}
-\subsection{Classification de ces documents}
-\section{Modélisation linguistique}
-\subsection{Conception d'un modèle de langue}
-\subsection{Simulation vers l'évolution d'une langue}
+\section{Restoration de documents anciens}
+\section{Déchiffrement de langues anciennes}
 
-\chapter{Utilisation de l'IA pour la reconstruction de la proto-forme d'une langue au travers d'une expérience}
+\chapter{Application expérimentale de l'IA pour reconstruire les proto-formes d'une langue}
 \textit{Ici, on se place dans un cas concret, pour montrer que ce n'est pas que de la théorie. En proposant une expérience.}
 \section{Mise en place de l'expérience}
 \subsection{Conceptualisation du problème}
@@ -105,10 +98,6 @@ une place centrale pour sa capacité à effectuer des approximations améliorabl
 \textit{Il est fort possible que cette partie se regroupe avec la partie suivante, car il n'y aura pas grand chose à dire.}
 \subsection{Potabiliser les données}
 \textit{Le choix de "potabiliser", et non pas normaliser, est volontaire. En effet, la normalisation de nos données s'effectura dans un second temps dans les différentes démarches.}
-\section{Démarche statistique}
-\subsection{Méthode}
-\subsection{Analyse}
-\subsection{Critiques}
 \textit{Il reste ici quelques sous parties à détailler.}
 \section{Démarche neuronale}
 \subsection{Méthode}

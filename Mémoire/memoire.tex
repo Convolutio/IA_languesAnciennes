@@ -1,9 +1,13 @@
-\documentclass[12pt, letterpaper]{report}
+\documentclass[12pt, letterpaper, french]{report}
 \usepackage[total={6.5in,10in}, top=0.8in, left=1in, includefoot]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[french]{babel}
-
+\usepackage{babel, csquotes, xpatch}
+% to install csquotes, xpatch and biblatex, download their zips on ctan.org
+% and after (excepted for xpatch) copy the unzipped folders witht the .sty files
+% in the <texmf-dist>/tex/latex/ repository (see tex-workshop logs to figure out
+% the path of <texmf-dist>).
+% For xpatch, read the README of its zip.
 \usepackage[
     backend=biber,
     style=numeric
@@ -43,14 +47,37 @@
 \textit{Évidemment cette science repose sur des concepts, allant des propriétés synchoniques des mots aux à leurs aspects diachroniques.}
 \subsection{Les atouts de l'Intelligence Artificielle dans ce domaine}
 \textit{La linguistique historique fait face à de nombreux problèmes récurrents (traiter une grande quantité de textes pour l'homme, remarquer des motifs dans ces documents historiques). Alors que ce travail pourrait être effectué par une machine, grâce à sa capacité à traiter un grand nombres de données, et à chercher des similarités dans ces données. Avant, de voir les tâches où l'Intelligence Artificielle peut intervenir, il est d'abord nécessaire de voir en détail la conception des ces IA.}
+
+Résoudre des problèmes de Linguistique Historique avec un ordinateur nécessite de lui faire traiter
+du contenu textuel devant être abstrait sur des terrains parmi ceux de la \textbf{phonétique}, de la
+\textbf{sémantique}, de la \textbf{morphologie} ou encore de la \textbf{syntaxe}.\\
+\textbf{\textit{Développper un exemple pour illustrer ces 4 niveaux d'abstractions}}
+
+La réalisation de ces abstractions s'inscrit dans le Traitement Automatisé du Langage Naturel (TAL),
+un domaine à cheval entre la Linguistique et l'Informatique. L'Intelligence Artificielle y occupe
+une place centrale pour sa capacité à effectuer des approximations améliorables avec de l'entraînement.
+
+
 \section{L'IA dans le Traitement Automatisé du Langage Naturel}
-\subsection{Définitions}
-\textit{Qu'est ce qu'une intelligence artificielle ? Qu'est ce qu'un réseau de neurones ?}
-\subsection{Les architectures utiles au TAL}
-\textit{Dans la vie suivant les informations qu'on possède, on ne traite pas cela de la même façons, il en va de même pour les réseaux de neurones. En effet, parfois on applique simplement quelque chose, d'autres fois on prend en compte nos expériences, et certaines fois notre attention se porte sur des objets particuliers. A la différence de notre grande capacité à traiter tout cela, l'IA, elle, a encore besoin de changer de réseaux de neurones faces à ces différentes situations. Respectivement, du réseaux de neurones "à propagation avant", à celui "récurrent", ou encore "séquentielle" (avec attention).}
-\subsection{Le traitement automatisé du langage - Optionnel}
+\subsection{Introduction à l'apprentissage automatique}
+\textit{Qu'est ce qu'une intelligence artificielle ?\\
+    Qu'est ce qu'un réseau de neurones ?\\
+    Quel est le principe derrière l'apprentissage automatique ?\\
+    Définition des apprentissages supervisés/non supervisés}
+
+
+\subsection{Les pré-traitements nécessaires du texte.}
+\textit{tokenisation + normalisation des données\\
+    Vectorisation sémantique des mots (embeddings)\\
+    Encodage d'embeddings}
+
+\subsection{Architectures neuronales utiles au TAL}
+
 \textit{Quels sont les différents outils ?}\\
 \textit{Suivant, comment les parties précédentes ont été traités, ou comment les parties futures seront discutées, cette partie pourrait ne pas être nécessaire. Sinon, elle regroupera l'idée de comment on passe de notre langue naturelle à celle de la machine, de passer aux mots à des vecteurs ? Quels traitements théoriques (théoriques pour ce distinguer de la pratique dans la partie future) doient être effectués sur les mots ? En fait cette partie fait référence aux chapitres 2 et 6 de Jurasky. Voir même le chapitre 9, en supprimant la sous partie précendente pour pouvoir parler directement des réseaux de neurones appliqués à la linguistique, en d'autres termes, des réseaux récurrents, des modèles séquentielles (encodeurs-décodeurs) avec l'attention, et des Transformers.}
+
+\subsection{Tâches fondamentales de TAL réalisées par l'IA}
+\textit{blablabla}\\
 
 \chapter{Les contributions de l'IA dans la linguistique historique}
 \textit{C'est la partie 'Related Work', elle discute des différents aspects où la linguistique historique s'applique, à travers différents modèles.}
@@ -96,5 +123,6 @@
 \chapter{Références}
 \section{Bibliographie}
 
+\printbibliography
 
 \end{document}

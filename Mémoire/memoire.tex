@@ -1,7 +1,7 @@
 \documentclass[12pt, french]{report}
 %\usepackage[total={6.5in,10in}, top=0.8in, left=1in, includefoot]{geometry}
 \usepackage[a4paper, total={6.5in, 10in}, top=0.8in, left=1in,
-    headheight=50pt,
+    headheight=48pt,
     includefoot, includehead]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -27,7 +27,8 @@
 \fancyhead{}
 \fancyhead[R]{\nouppercase{\hfill\leftmark}\\}
 \fancyhead[L]{\nouppercase{\rightmark\hfill}}
-\fancyfoot[L]{Mémoire CPBx, 2023}
+\fancyfoot[L]{Mémoire CPBx}
+\fancyfoot[R]{2023}
 \begin{titlepage}
     \centering
     \vspace*{\fill}
@@ -124,12 +125,34 @@ l'entraînement\\ décrire l'entraînement (régression logistique+fct perte) \\
 Exemple de la tâche de classification (connotation textuelle)\\
 dire que $\sigma$ est un paramètre du réseau\\
 on peut empiler plusieurs réseaux de neurones et plusieurs couches (paramètre
-architecturale)}
+architecturale)}\\
 
-\subsection{Les pré-traitements nécessaires du texte.}
-\textit{tokenisation + normalisation des données\\
-    Vectorisation sémantique des mots (embeddings)\\
-    Encodage d'embeddings (statique ou contextuelle)}
+\subsection{Traitement des donnnées}
+
+Avant de donner à un réseau de neurones quelconque données récupérées pour son entraînement, il est nécessaire de préparer ces données. Le but étant de rendre ces données d'entrées correctes et compréhensibles pour notre intelligence artificielle. Cet préparation s'effectue suivant le type de tâche souhaité. Néanmoins, dans sa généralité, les étapes de préparation de données en TAL restent les mêmes.\\
+
+$-$ Normalisation (Nettoyage)\\
+    % \footnote{À noter que nous parlons ici de « grandes » quantités de données à analyser, mais ce mot est relatif à un être humain, et encore, il arrive que ce nombre soit restreint, seulement, pour une IA c'est le contraire, nous parlerons plutôt de d'IA à « basses ressources » car ce nombre de données est très petits face à ce qu'elle peut gérer dans le monde moderne et la quantités de textes disponibles sur la toile.}
+    Tout d'abord, il faut nettoyer notre base de données qui peut être, par exemple, un corpus de textes, une liste de mots, provenant de la toile, ou d'un système de transcription audio-visuelle \footnote{Dans le cadre de ce mémoire, le but n'est pas de savoir comment parvient-on à extraire du texte à partir de ces sources, mais plutôt de savoir comment rendre ce texte compréhensible à une l'intelligence artificielle choisi.}
+    Dans ces données se trouvent évidemment des mots, avec des « caractéristiques » de la  langue \footnote{Pour simplifier, nous avons pris l'exemple d'une base de données  monolingue, mais il est possible qu'elle comporte plusieurs langues. Dans tout les cas, le procédé sera le même, si ce n'est qu'il faut s'adapter à chaque langue.} tel que les ponctuations, les lettres en capitales, les chiffres, ou bien les caractères spéciaux (comme le dièse que l'on retrouve souvent dans les \textit{tweets}). Seulement, il arrive parfois que certains de ces éléments rajoutent inutilement de la complexité pour une machine, sans que cela apporte plus de sens, ou bien sont non-désirées (voir incorrectes), ainsi on décide de les supprimer (ou les remplacer) pour ne garder que ce qui nous intéresse. [Exemple]\\
+
+$-$ Tokeniser\\ %[lib nltk]
+    Après avoir nettoyé notre base de données, il faut segmenter notre texte en mots ou sous-mots, autrement dit, il faut tokeniser notre texte. La tokenisation correspond à la segmentation de  chaînes de caractères (comme notre texte) en tokens (mots, sous-mots, ponctuations).
+    % Nous pourrions discuter longuement de ce qui devrait être pris comme tokens ou non. Par exemple, si nous devons prendre en compte la ponctuation en tant que token. Mais aussi les clitiques si elles doivent être pris en compte, ou si elles doivent être développées. Pour cela, nous vous renvoyons au Chapitre 2 de « Speech and Language Processing » de Jurasky.
+    Une approche naïve est de tokeniser notre texte en mots suivant les espaces
+    % Il est intéressant d’évoquer que suivant les différents niveaux de tokenisations (partant du caractères, au sous-mots, jusqu’au mots entier) aide à mieux respectivement à comprendre la morphologie, la sémantique (suivant les sous-mots des algorithmes statistiques), et la syntaxe (suivant les sous-mots basé sur les règles). Et il a été montré qu’il était suffisant de segmenter des phrases en sous-mots pour analyser le langage de manière pertinente. (Thèse Fourrier)
+    \footnote{Vous remarquerez déjà que ce processus ne s'applique pas au langue comme le Japonais, ou le Chinois.}. Prenons un exemple « J'aime les bananes. » tokenisé cela donne [« J'aime », « les », « bananes. »]. Cependant, cette approche pose des problèmes, en commençant par le token « bananes. » qui a la même signification avec ou sans point, mais qui sera considéré comme différent pour une IA. Nous pourrions ajouter la séparation 
+    suivant la ponctuation, mais alors nous obtiendrons pour « J'aime » les tokens [« J », « ' », « aime »] qui est une forme tout aussi problématique. Et il existe encore de nombreux cas où ce type de tokenisation pose problème (les abréviations, les points de suspension, etc.). Une approche alternative est de tokeniser suivant des règles définis, qui est une méthode beaucoup plus efficace que la première approche, mais montrera des limites face à des mots rares, ou alors il faudrait spécifier de nouvelles règles pour gérer ces cas. Ainsi, la solution proposé est une approche statistique, consistant à décomposer un mot de plus en plus en sous-mots \footnote{Remarquez que le terme \textit{mot} a un sens différent que celui qui le précède.} au fil que sa fréquence diminue. [Exemple].\\
+    % Traduction de Jurasky
+    Les trois algorithmes de tokenisation en sous-mots les plus utilisées sont : le \textit{Byte-Pair Encoding} (Sennrich et al., 2016), l'\textit{unigram language modeling} (Kudo, 2018), et le \textit{WordPiece} (Schuster and Nakajima, 2012) ; par ailleurs on retrouve aussi le \textit{SentencePiece} (Kudo and Richardson, 2018) qui est une implémentation des deux premiers.\\
+
+$-$ Encodage\\
+    Pour la tâche de classification, vous avez vu que les mots d'entrées, [exemple], étaient convertis en une liste de nombre, autrement dit un vecteur, sur lequel il a été effectué des calculs afin d'obtenir un résultat (un nouveau vecteur), [exemple]. Une machine, un réseau de neurones, ne comprend que des nombres et ne sait procéder qu'à des calculs. Il existe différentes façons de convertir une chaîne de caractères (mots, tokens) en un vecteur, mais on retiendra deux méthodes l'encodage 1 parmi n et le plongement lexical (respectivement et plus communément appelés en anglais le \textit{one-hot encoding} et le \textit{word embedding}).\\
+
+    Discuter rapidement du one hot encoding, puis du word embedding (statique et contextuel)\\
+    
+    \textit{Data splitting and batching}
+
 
 \subsection{Architectures neuronales utiles au TAL}
 \textit{Quels sont les différents outils ?}
@@ -137,8 +160,11 @@ architecturale)}
 
 \subsubsection{Réseaux de neurones récurrents}
 
+...
+
 \subsubsection{Transformeurs}
 
+...
 
 \chapter{Les contributions de l'IA dans la linguistique historique}
 \textit{C'est la partie 'Related Work', elle discute des différents aspects où la linguistique historique s'applique, à travers différents modèles.}
@@ -155,18 +181,15 @@ architecturale)}
 \textit{Solution supervisée + non supervisée}
 
 \subsection{Limites d'applicabilité}
-\textit{Expliquer en quoi le non-supervisé donne plus d'espoir
-que le supervisé mais en quoi même cette approche présente des
-limites.\\
-Transition avec la problématique de l'article scientifique}
+\textit{Expliquer en quoi le non-supervisé donne plus d'espoir que le supervisé mais en quoi même cette approche présente des limites.}\\
+\textit{Transition avec la problématique de l'article scientifique}\\
+
 \section{Observation expériementale d'une limite d'applicabilité d'une approche}
 \subsection{Méthode}
 \subsection{Récupération de la base de données}
 \textit{Il est fort possible que cette partie se regroupe avec la partie suivante, car il n'y aura pas grand chose à dire.}
 
-\subsection{Potabiliser les données}
-\textit{Le choix de "potabiliser", et non pas normaliser, est volontaire. En effet, la normalisation de nos données s'effectura dans un second temps dans les différentes démarches.}
-\textit{Il reste ici quelques sous parties à détailler.}
+\subsection{Normaliser les données}
 
 \subsection{Analyse}
 \subsection{Critiques}

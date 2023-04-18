@@ -88,7 +88,7 @@ d'une fonction mathématique $f$ d'un $\mathbb{K}$-espace vectoriel $E$ vers un
 $\mathbb{K}$-espace $F$ (avec $\mathbb{K}$ correspondant à $\mathbb{R}$ ou
 $\mathbb{C}$).\\
 Ainsi, lorsqu'une fonction informatique conventionnelle effectue un traitement sur
-une chaîne de caractères, une fonction $f$ a déjà implicitement été déterminée pour
+une chaîne de caractères, une fonction $f$ a déjà été implicitement déterminée pour
 réaliser la tâche.
 La séquence de $n$ caractères encodés sous forme de bits forme un vecteur de l'espace
 $\mathbb{R}^n$ et la chaîne renvoyée par $f$ est bien un élément d'un espace
@@ -103,10 +103,28 @@ $\{(x_k, y_k=f(x_k)), k \in S\}$.
 
 \vspace{12pt}
 Les \textbf{réseaux de neurones} sont d'excellents outils pour établir des modèles.
-Mathématiquement, ce sont des composés d'applications non-linéaires et linéaires
+Mathématiquement, ce sont des compositions d'applications non-linéaires et linéaires
 recevant un vecteur d'entrée représentant une donnée et sortant un vecteur de sortie
 représentant un résultat dans un format cohérent avec le problème.\\
-Le neurone artificiel le plus élémentaire effectue la \textbf{somme pondérée}
+Le neurone artificiel le plus élémentaire effectue la \textbf{somme pondérée} des 
+coefficients du vecteur d'entrée, puis calcule l'image de cette somme à travers
+une \textbf{fonction d'activation}. La sortie du neurone est donc un réel ou un
+complexe. Si on la note $y_j$, qu'on note $x$ le vecteur d'entrée dans $\mathbb{K}^n$,
+$w_j$ le vecteur de \textbf{poids} associé au neurone et $\sigma$ sa fonction d'activation,
+on a :
+\begin{equation}
+    y_j = \sigma(\sum_{i=0}^{n} w_{ij}x_i) = \sigma(<w_j, x>)
+\end{equation}
+
+\textit{introduire la matrice $W$ pour le calcul d'une couche\\
+dire que les informations dans chaque coeff du vecteur x sont 
+souvent abstraites et n'ont de sens que pour la machine (teaser vers sous-
+section suivante) + leur importance est déterminée par les poids avec
+l'entraînement\\ décrire l'entraînement (régression logistique+fct perte) \\
+Exemple de la tâche de classification (connotation textuelle)\\
+dire que $\sigma$ est un paramètre du réseau\\
+on peut empiler plusieurs réseaux de neurones et plusieurs couches (paramètre
+architecturale)}
 
 \subsection{Les pré-traitements nécessaires du texte.}
 \textit{tokenisation + normalisation des données\\

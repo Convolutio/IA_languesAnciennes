@@ -1,5 +1,8 @@
 \documentclass[12pt, french]{report}
-\usepackage[total={6.5in,10in}, top=0.8in, left=1in, includefoot]{geometry}
+%\usepackage[total={6.5in,10in}, top=0.8in, left=1in, includefoot]{geometry}
+\usepackage[a4paper, total={6.5in, 10in}, top=0.8in, left=1in,
+    headheight=50pt,
+    includefoot, includehead]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{mathptmx} %Times font (contraint par le CPBx)
@@ -17,8 +20,14 @@
 \addbibresource{biblio.bib}
 
 \usepackage{amsfonts}
+\usepackage{fancyhdr} % Pour la mise en page des en-têtes
 
 \begin{document}
+\pagestyle{fancy}
+\fancyhead{}
+\fancyhead[R]{\nouppercase{\hfill\leftmark}\\}
+\fancyhead[L]{\nouppercase{\rightmark\hfill}}
+\fancyfoot[L]{Mémoire CPBx, 2023}
 \begin{titlepage}
     \centering
     \vspace*{\fill}
@@ -97,7 +106,7 @@ Les \textbf{réseaux de neurones} sont d'excellents outils pour établir des mod
 Mathématiquement, ce sont des composés d'applications non-linéaires et linéaires
 recevant un vecteur d'entrée représentant une donnée et sortant un vecteur de sortie
 représentant un résultat dans un format cohérent avec le problème.\\
-Le neurone artificiel le plus élémentaire   
+Le neurone artificiel le plus élémentaire effectue la \textbf{somme pondérée}
 
 \subsection{Les pré-traitements nécessaires du texte.}
 \textit{tokenisation + normalisation des données\\

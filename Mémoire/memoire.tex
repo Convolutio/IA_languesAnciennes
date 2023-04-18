@@ -1,7 +1,9 @@
-\documentclass[12pt, a4, french]{report}
+\documentclass[12pt, french]{report}
 \usepackage[total={6.5in,10in}, top=0.8in, left=1in, includefoot]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage{mathptmx} %Times font (contraint par le CPBx)
+
 \usepackage{babel, csquotes, xpatch}
 % to install csquotes, xpatch and biblatex, download their zips on ctan.org
 % and after (excepted for xpatch) copy the unzipped folders witht the .sty files
@@ -13,6 +15,8 @@
     style=numeric
 ]{biblatex}
 \addbibresource{biblio.bib}
+
+\usepackage{amsfonts}
 
 \begin{document}
 \begin{titlepage}
@@ -28,6 +32,8 @@
     \vspace*{\fill}
 \end{titlepage}
 
+\null
+\newpage % Première page blanche pour la numérotation (contrainte de mise en page)
 \section{Résumé}
 \section{Abstract}
 \section{Remerciements}
@@ -68,7 +74,30 @@ une place centrale pour sa capacité à effectuer des approximations améliorabl
     Définition rétro-propagation du gradient.
     Exemple de FFNN pour tâche de classification}
 
+De nombreux problèmes informatiques peuvent être résolus à travers la détermination
+d'une fonction mathématique $f$ d'un $\mathbb{K}$-espace vectoriel $E$ vers un 
+$\mathbb{K}$-espace $F$ (avec $\mathbb{K}$ correspondant à $\mathbb{R}$ ou
+$\mathbb{C}$).\\
+Ainsi, lorsqu'une fonction informatique conventionnelle effectue un traitement sur
+une chaîne de caractères, une fonction $f$ a déjà implicitement été déterminée pour
+réaliser la tâche.
+La séquence de $n$ caractères encodés sous forme de bits forme un vecteur de l'espace
+$\mathbb{R}^n$ et la chaîne renvoyée par $f$ est bien un élément d'un espace
+$\mathbb{R}^{n'}$.
 
+Il est aussi très fréquemment difficile -- voire impossible --
+de poser une expression mathématique ou un algorithme pour répondre à certains 
+problèmes. Dans ce cas là, $f$ est considérée comme hypothétique et on cherche à
+l'approcher à partir d'un \textbf{modèle}, qu'on construit à partir des informations
+qu'on dispose sur $f$, comme un ensemble de ses points 
+$\{(x_k, y_k=f(x_k)), k \in S\}$.
+
+\vspace{12pt}
+Les \textbf{réseaux de neurones} sont d'excellents outils pour établir des modèles.
+Mathématiquement, ce sont des composés d'applications non-linéaires et linéaires
+recevant un vecteur d'entrée représentant une donnée et sortant un vecteur de sortie
+représentant un résultat dans un format cohérent avec le problème.\\
+Le neurone artificiel le plus élémentaire   
 
 \subsection{Les pré-traitements nécessaires du texte.}
 \textit{tokenisation + normalisation des données\\
@@ -76,7 +105,7 @@ une place centrale pour sa capacité à effectuer des approximations améliorabl
     Encodage d'embeddings (statique ou contextuelle)}
 
 \subsection{Architectures neuronales utiles au TAL}
-\textit{Quels sont les différents outils ?}\\
+\textit{Quels sont les différents outils ?}
 \textit{Suivant, comment les parties précédentes ont été traités, ou comment les parties futures seront discutées, cette partie pourrait ne pas être nécessaire. Sinon, elle regroupera l'idée de comment on passe de notre langue naturelle à celle de la machine, de passer aux mots à des vecteurs ? Quels traitements théoriques (théoriques pour ce distinguer de la pratique dans la partie future) doient être effectués sur les mots ? En fait cette partie fait référence aux chapitres 2 et 6 de Jurasky. Voir même le chapitre 9, en supprimant la sous partie précendente pour pouvoir parler directement des réseaux de neurones appliqués à la linguistique, en d'autres termes, des réseaux récurrents, des modèles séquentielles (encodeurs-décodeurs) avec l'attention, et des Transformers.}\\
 
 \subsubsection{Réseaux de neurones récurrents}
@@ -103,7 +132,7 @@ une place centrale pour sa capacité à effectuer des approximations améliorabl
 que le supervisé mais en quoi même cette approche présente des
 limites.\\
 Transition avec la problématique de l'article scientifique}
-\section{Observation expériementale d'un limite d'applicabilité d'une approche}
+\section{Observation expériementale d'une limite d'applicabilité d'une approche}
 \subsection{Méthode}
 \subsection{Récupération de la base de données}
 \textit{Il est fort possible que cette partie se regroupe avec la partie suivante, car il n'y aura pas grand chose à dire.}

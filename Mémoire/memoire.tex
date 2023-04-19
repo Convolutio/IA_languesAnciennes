@@ -6,6 +6,10 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{mathptmx} %Times font (contraint par le CPBx)
+\usepackage{amsmath} % for matrices print
+
+%glossaire auto, on peut s'y référer dans le latex avec \Gls{maRef}
+\usepackage{glossaries}
 
 \usepackage{babel, csquotes, xpatch}
 % to install csquotes, xpatch and biblatex, download their zips on ctan.org
@@ -43,12 +47,28 @@
 \end{titlepage}
 
 \null
+\thispagestyle{empty}
 \newpage % Première page blanche pour la numérotation (contrainte de mise en page)
 \section{Résumé}
 \section{Abstract}
 \section{Remerciements}
 
 \tableofcontents
+\listoffigures
+\listoftables %si inutile, on le virera
+\makeglossary
+
+%ici c'est un exemple
+\newglossaryentry{formula}
+{
+        name=formula,
+        description={A mathematical expression}
+}
+
+\newacronym{gcd}{GCD}{Greatest Common Divisor}
+
+\newacronym{lcm}{LCM}{Least Common Multiple}
+
 \section{Table des figures}
 \section{Notations}
 
@@ -84,23 +104,9 @@ une place centrale pour sa capacité à effectuer des approximations améliorabl
     Définition rétro-propagation du gradient.
     Exemple de FFNN pour tâche de classification}
 
-De nombreux problèmes informatiques peuvent être résolus à travers la détermination
-d'une fonction mathématique $f$ d'un $\mathbb{K}$-espace vectoriel $E$ vers un 
-$\mathbb{K}$-espace $F$ (avec $\mathbb{K}$ correspondant à $\mathbb{R}$ ou
-$\mathbb{C}$).\\
-Ainsi, lorsqu'une fonction informatique conventionnelle effectue un traitement sur
-une chaîne de caractères, une fonction $f$ a déjà été implicitement déterminée pour
-réaliser la tâche.
-La séquence de $n$ caractères encodés sous forme de bits forme un vecteur de l'espace
-$\mathbb{R}^n$ et la chaîne renvoyée par $f$ est bien un élément d'un espace
-$\mathbb{R}^{n'}$.
-
-Il est aussi très fréquemment difficile -- voire impossible --
-de poser une expression mathématique ou un algorithme pour répondre à certains 
-problèmes. Dans ce cas là, $f$ est considérée comme hypothétique et on cherche à
-l'approcher à partir d'un \textbf{modèle}, qu'on construit à partir des informations
-qu'on dispose sur $f$, comme un ensemble de ses points 
-$\{(x_k, y_k=f(x_k)), k \in S\}$.
+Un important nombre de problèmes informatiques peut être résolu à travers la détermination d'une fonction mathématique $f$ d'un espace vectoriel $\mathbb{K}^n$ vers un espace vectoriel $\mathbb{K}^{n'}$ (avec $\mathbb{K}$ correspondant à $\mathbb{R}$ ou $\mathbb{C}$).\\
+Lorsqu'un algorithme conventionnel est développé pour réaliser un tâche, $f$ a déjà implicitement été trouvé. Par exemple, derrière un traitement opéré sur une chaîne de caractères, elle existe bien, avec pour entrée une séquence de $n$ caractères encodés sous forme de bits qui forme un vecteur de l'espace $\mathbb{R}^n$ et pour sortie un élément d'un espace $\mathbb{R}^{n'}$ représentant la chaîne de sortie.\\
+En revanche, de nombreux cas demeurent où il est difficile -- voire impossible -- de poser une expression mathématique ou un algorithme pour répondre à certains problèmes. On considère alors $f$ comme hypothétique et on cherche à l'approcher à partir d'un \textbf{modèle}, qu'on construit à partir des informations qu'on dispose sur $f$, comme un ensemble de ses points $\{(x_k, y_k=f(x_k)), k \in S\}$, à travers une tâche dite de \textbf{régression}.
 
 \vspace{12pt}
 Les \textbf{réseaux de neurones} sont d'excellents outils pour établir des modèles.
@@ -109,16 +115,57 @@ recevant un vecteur d'entrée représentant une donnée et sortant un vecteur de
 représentant un résultat dans un format cohérent avec le problème.\\
 Le neurone artificiel le plus élémentaire effectue la \textbf{somme pondérée} des 
 coefficients du vecteur d'entrée, puis calcule l'image de cette somme à travers
-une \textbf{fonction d'activation}. La sortie du neurone est donc un réel ou un
-complexe. Si on la note $y_j$, qu'on note $x$ le vecteur d'entrée dans $\mathbb{K}^n$,
-$w_j$ le vecteur de \textbf{poids} associé au neurone et $\sigma$ sa fonction d'activation,
+une fonction non-linéaire dite \textbf{d'activation}. La sortie du neurone est donc un réel ou un
+complexe. Si on la note $y_i$, qu'on note $x$ le vecteur d'entrée dans $\mathbb{K}^n$,
+$w_i$ le vecteur de \textbf{poids} associé au neurone et $\sigma$ sa fonction d'activation,
 on a :
 \begin{equation}
-    y_j = \sigma(\sum_{i=0}^{n} w_{ij}x_i) = \sigma(<w_j, x>)
+    y_i = \sigma(\sum_{j=0}^{n} w_{ij}x_j) = \sigma(<w_i, x>)
 \end{equation}
 
-\textit{introduire la matrice $W$ pour le calcul d'une couche\\
-dire que les informations dans chaque coeff du vecteur x sont 
+Une \textbf{couche de neurones} est la mise en commun d'un nombre abritraire $N$ de neurones devant prédire des sorties $y_i$ différentes. Leurs vecteurs de poids $w_i$ diffèreront donc. En revanche, leur fonction d'activation est identique. La sortie d'une couche est donc un vecteur $y$ pouvant s'écrire comme dans l'équation \ref{def_couche}.
+
+\begin{equation} \label{def_couche}
+    \begin{split}
+        y & =
+        \left(\begin{matrix}
+            \sigma(<w_1, x>) \\
+            \sigma(<w_2, x>) \\
+            \vdots \\
+            \sigma(<w_i, x>) \\
+            \vdots \\
+            \sigma(<w_N, x>)
+        \end{matrix}\right)
+        =
+        \sigma\left(\begin{matrix}
+            \sum_{j=0}^{n} w_{1j}x_j \\
+            \sum_{j=0}^{n} w_{2j}x_j \\
+            \vdots \\
+            \sum_{j=0}^{n} w_{ij}x_j \\
+            \vdots \\
+            \sum_{j=0}^{n} w_{Nj}x_j
+        \end{matrix}\right)
+        = \sigma\left(
+            \left(\begin{matrix}
+                w_{11} & w_{12} & \hdots & w_{1j} & \hdots & w_{1n} \\
+                w_{21} & w_{22} & \hdots & w_{2j} & \hdots & w_{2n} \\
+                \vdots & \vdots & \ddots & \vdots & \ddots & \vdots \\
+                w_{i1} & w_{i2} & \hdots & w_{ij} & \hdots & w_{in} \\
+                \vdots & \vdots & \ddots & \vdots & \ddots & \vdots \\
+                w_{N1} & w_{N2} & \hdots & w_{Nj} & \hdots & w_{Nn} \\
+            \end{matrix}\right)
+            \left(\begin{matrix}
+                x_1 \\ x_2 \\ \vdots \\ x_j \\ \vdots \\ x_n
+            \end{matrix}\right)
+        \right) \\
+        & = \sigma(Wx)
+    \end{split}
+\end{equation}
+
+Un réseau neuronal est ainsi formé à partir de la mobilisation d'une ou plusieurs couches. L'intuition derrière l'utilisation de couches intermédiaires est que la machine puisse être capable d'apprendre à construire des \textbf{représentations adéquates} des données pour effecuter la prédiction finalement voulue avec pertinence. On parle alors d'\textbf{apprentissage profond} et cette technique offre des réponses face aux difficultés d'abstraction soulevées par les problèmes de TAL.\cite{jurafsky_ffnn}
+
+
+\textit{dire que les informations dans chaque coeff du vecteur x sont 
 souvent abstraites et n'ont de sens que pour la machine (teaser vers sous-
 section suivante) + leur importance est déterminée par les poids avec
 l'entraînement\\ décrire l'entraînement (régression logistique+fct perte) \\
@@ -132,7 +179,7 @@ architecturale)}\\
 Avant de donner à un réseau de neurones quelconque données récupérées pour son entraînement, il est nécessaire de préparer ces données. Le but étant de rendre ces données d'entrées correctes et compréhensibles pour notre intelligence artificielle. Cet préparation s'effectue suivant le type de tâche souhaité. Néanmoins, dans sa généralité, les étapes de préparation de données en TAL restent les mêmes.\\
 
 % \footnote{À noter que nous parlons ici de « grandes » quantités de données à analyser, mais ce mot est relatif à un être humain, et encore, il arrive que ce nombre soit restreint, seulement, pour une IA c'est le contraire, nous parlerons plutôt de d'IA à « basses ressources » car ce nombre de données est très petits face à ce qu'elle peut gérer dans le monde moderne et la quantités de textes disponibles sur la toile.}
-Tout d'abord, il faut normaliser (nettoyer) notre base de données qui peut être, par exemple, un corpus de textes, une liste de mots, provenant de la toile, ou d'un système de transcription audio-visuelle \footnote{Dans le cadre de ce mémoire, le but n'est pas de savoir comment parvient-on à extraire du texte à partir de ces sources, mais plutôt de savoir comment rendre ce texte compréhensible à une l'intelligence artificielle choisi.}
+Tout d'abord, il faut normaliser (nettoyer) notre base de données qui peut être, par exemple, un corpus de textes, une liste de mots, provenant de la toile, ou d'un système de transcription audio-visuelle \footnote{Dans le cadre de ce mémoire, le but n'est pas de savoir comment on parvient à extraire du texte à partir de ces sources, mais plutôt de savoir comment rendre ce texte compréhensible à une intelligence artificielle choisie.}
 Dans ces données se trouvent évidemment des mots, avec des « caractéristiques » de la  langue \footnote{Pour simplifier, nous avons pris l'exemple d'une base de données  monolingue, mais il est possible qu'elle comporte plusieurs langues. Dans tout les cas, le procédé sera le même, si ce n'est qu'il faut s'adapter à chaque langue.} tel que les ponctuations, les lettres en capitales, les chiffres, ou bien les caractères spéciaux (comme le dièse que l'on retrouve souvent dans les \textit{tweets}). Seulement, il arrive parfois que certains de ces éléments rajoutent inutilement de la complexité pour une machine, sans que cela apporte plus de sens, ou bien sont non-désirées (voir incorrectes), ainsi on décide de les supprimer (ou les remplacer) pour ne garder que ce qui nous intéresse. [Exemple]\\
 
 %[lib nltk]

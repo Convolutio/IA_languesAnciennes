@@ -1,4 +1,4 @@
-\documentclass[12pt, french]{report}
+\documentclass[12pt, french, twoside]{report}
 %\usepackage[total={6.5in,10in}, top=0.8in, left=1in, includefoot]{geometry}
 \usepackage[a4paper, total={6.5in, 10in}, top=0.8in, left=1in,
     headheight=48pt,
@@ -15,7 +15,8 @@
 \addbibresource{biblio.bib}
 
 \usepackage{amsfonts}
-\usepackage{fancyhdr} % Pour la mise en page des en-têtes
+\usepackage{fancyhdr} % Pour la mise en page des en-têtes + pieds de page
+\usepackage{lastpage} % pour avoir accès à la dernière page
 \usepackage[toc]{glossaries} % glossaire auto, on peut s'y référer dans le latex avec \Gls{maRef}
 
 % mettre les éléments du glossaire ici
@@ -24,14 +25,15 @@
         description={C'est le nombre minimal de modifications (insertion, substitution, suppression) à appliquer à une chaîne de caractères $a$ pour obtenir la chaîne de caractères $b$.}
 }
 \makeglossaries
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[RO]{\nouppercase{\hfill\leftmark}}
+\fancyhead[LE]{\nouppercase{\rightmark\hfill}}
+\fancyfoot[L]{Mémoire CPBx}
+\fancyfoot[C]{\thepage/\pageref{LastPage}}
+\fancyfoot[R]{2023}
 
 \begin{document}
-\pagestyle{fancy}
-\fancyhead{}
-\fancyhead[R]{\nouppercase{\hfill\leftmark}\\}
-\fancyhead[L]{\nouppercase{\rightmark\hfill}}
-\fancyfoot[L]{Mémoire CPBx}
-\fancyfoot[R]{2023}
 \begin{titlepage}
     \centering
     \vspace*{\fill}
@@ -46,6 +48,7 @@
 \end{titlepage}
 
 \null
+\setcounter{page}{1}
 \thispagestyle{empty}
 \newpage % Première page blanche pour la numérotation (contrainte de mise en page)
 \section{Résumé}
@@ -96,12 +99,13 @@ Lorsqu'un algorithme conventionnel est développé pour réaliser un tâche, $f$
 En revanche, de nombreux cas demeurent où il est difficile -- voire impossible -- de poser une expression mathématique ou un algorithme pour répondre à certains problèmes. On considère alors $f$ comme hypothétique et on cherche à l'approcher à partir d'un \textbf{modèle}, qu'on construit à partir des informations qu'on dispose sur $f$, comme un ensemble de ses points $\{(x_k, y_k=f(x_k)), k \in S\}$, à travers une tâche dite de \textbf{régression}.
 
 \vspace{12pt}
-Les \textbf{réseaux de neurones} sont des outils performants pour établir des modèles.
-Mathématiquement, ce sont des compositions d'applications non-linéaires et linéaires recevant un vecteur d'entrée représentant une donnée et sortant un vecteur de sortie représentant un résultat dans un format cohérent avec le problème.\\
+Les \textbf{réseaux de neurones} sont des outils performants pour établir des modèles. Mathématiquement, ce sont des compositions d'applications non-linéaires et linéaires recevant un vecteur d'entrée représentant une donnée et sortant un vecteur de sortie représentant un résultat dans un format cohérent avec le problème.
+
+\subsubsection{Définitions, du neurone au réseau}
 Le neurone artificiel le plus élémentaire effectue la \textbf{somme pondérée} des coefficients du vecteur d'entrée, à laquelle il ajoute une valeur de \textbf{biais} pour enfin calculer l'image de la somme à travers une fonction non-linéaire dite \textbf{d'activation}. La sortie du neurone est donc un réel ou un complexe. Si on la note $y_i$, qu'on note $x$ le vecteur d'entrée dans $\mathbb{K}^n$, $w_i$ le vecteur de \textbf{poids} associé au neurone, $b_i$ son biais et $\sigma$ sa fonction d'activation, on a :
 \begin{equation}
     y_i = \sigma(b_i + \sum_{j=0}^{n} w_{ij}x_j) = \sigma(b_i + <w_i, x>)
-\end{equation}
+\end{equation}\cite[section 1]{jurafsky_ffnn}
 
 Une \textbf{couche de neurones} est la mise en commun d'un nombre abritraire $N$ de neurones devant prédire des sorties $y_i$ différentes. Leurs vecteurs de poids $w_i$ diffèreront donc. En revanche, leur fonction d'activation est identique. La sortie d'une couche est donc un vecteur $y$ pouvant s'écrire comme dans l'équation \ref{def_couche}\footnote{On y confond la fonction d'activation avec la fonction vectorielle $\sigma$ s'appliquant indépendamment à chaque coefficient.}.
 
@@ -146,21 +150,28 @@ Une \textbf{couche de neurones} est la mise en commun d'un nombre abritraire $N$
     \end{split}
 \end{equation}
 
-Un réseau neuronal est ainsi formé à partir de la mobilisation d'une ou plusieurs couches. L'intuition derrière l'utilisation de couches intermédiaires, qu'on nomme des \textbf{couches cachées}, est que la machine puisse être capable d'apprendre à construire des \textbf{représentations adéquates} des données pour effecuter la prédiction finalement voulue avec pertinence. On parle alors d'\textbf{apprentissage profond} et cette technique offre des réponses face aux difficultés d'abstraction soulevées par les problèmes de TAL.\cite{jurafsky_ffnn}
+Un réseau neuronal est ainsi formé à partir de la mobilisation d'une ou plusieurs couches. L'intuition derrière l'utilisation de couches intermédiaires, qu'on nomme des \textbf{couches cachées}, est que la machine puisse être capable d'apprendre à construire des \textbf{représentations adéquates} des données pour effecuter la prédiction finalement voulue avec pertinence. On parle alors d'\textbf{apprentissage profond} et cette technique offre des réponses face aux difficultés d'abstraction soulevées par les problèmes de TAL.
 
-L'agencement des couches et la manière de calculer la sortie finale à partir de chacune d'elles, qu'on peut rassembler sous le terme de "mode de \textbf{propagation}", est un \textbf{paramètre architecturale} à part entière qu'il faut judicieusement définir en fonction de la tâche à réaliser. Pour comprendre l'utilisation de l'IA dans le TAL, au moins deux principaux types de réseaux de neurones devront être introduits au cours de ce chapitre, différant par la nature cyclique ou non de l'enchaînement des couches internes.
+L'agencement des couches et la manière de calculer la sortie finale à partir de chacune d'elles, qu'on peut rassembler sous le terme de "mode de \textbf{propagation}", est un \textbf{paramètre architecturale} à part entière qu'il faut judicieusement définir en fonction de la tâche à réaliser. Pour traiter de l'utilisation de l'IA dans le TAL, au moins deux principaux types de réseaux de neurones seront introduits au cours de ce chapitre, différant par la nature cyclique ou non de l'enchaînement de leurs couches internes.\cite[introduction + section 3]{jurafsky_ffnn} [\textit{ajouter illustration}]
 
-L'entraînement d'un réseau de neurones s'effectue à travers des \textbf{ajustements des poids et des biais dans chaque couche}, dans le cadre d'une \textbf{minimisation de fonctions de perte}, déterminée par les sorties temporairement prédites par le réseau. 
+\subsubsection{Processus d'apprentissage}
+L'entraînement d'un réseau de neurones s'effectue à travers des \textbf{ajustements des poids et des biais dans chaque couche}, dans le cadre d'une \textbf{minimisation de fonctions de perte}, déterminée par les sorties temporairement prédites par le réseau. Ceci s'effectue par un algorithme de \textbf{descente du gradient}. Le calcul du gradient de la fonction de perte selon tous les poids du réseau s'effectue avec un algorithme de \textbf{rétropropagation de l'erreur}, une adaptation pour les réseaux de neurones de celui de la discrimination rétropropagative sur des graphes d'exécution.\cite[section 6]{jurafsky_ffnn}.
 
-\textit{dire que les informations dans chaque coeff du vecteur x sont 
-souvent abstraites et n'ont de sens que pour la machine (teaser vers sous-
-section suivante) + leur importance est déterminée par les poids avec
-l'entraînement\\ décrire l'entraînement (régression logistique+fct perte) \\
-Exemple de la tâche de classification (connotation textuelle)\\
-dire que $\sigma$ est un paramètre du réseau\\
-on peut empiler plusieurs réseaux de neurones et plusieurs couches (paramètre
-architecturale)}\\
+\textit{
+    expliquer la diff entre le supervisé et le non-supervisé\\
+    expliquer les choix à faire sur l'entraînement (optimiseurs, taille de batch et parallélisation, nombre d'époques)\\
+}\cite[section 2.1.2]{fourrier}
 
+\subsubsection{Concevoir correctement}
+
+\textit{dresser une liste récapitulant les configurations à effectuer sur un réseau (topologie + paramètres d'entraînement) et introduire le paramètre d'initialisation}
+
+\textit{expliquer que le choix des paramètres se fait expérimentalement, à partir d'intuitions basées sur des travaux antérieurs sur de la conception de réseaux}
+
+\textit{expliquer comment évaluer un réseau}
+
+\subsubsection{Exemple de la tâche de classification}
+\textit{expliquer}
 \subsection{Traitement des donnnées}
 
 Avant de donner à un réseau de neurones quelconque données récupérées pour son entraînement, il est nécessaire de préparer ces données. Le but étant de rendre ces données d'entrées correctes et compréhensibles pour notre intelligence artificielle. Cet préparation s'effectue suivant le type de tâche souhaité. Néanmoins, dans sa généralité, les étapes de préparation de données en TAL restent les mêmes.\\

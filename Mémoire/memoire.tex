@@ -3,28 +3,27 @@
 \usepackage[a4paper, total={6.5in, 10in}, top=0.8in, left=1in,
     headheight=48pt,
     includefoot, includehead]{geometry}
+\usepackage{hyperref} % les hyperliens !!!
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{mathptmx} %Times font (contraint par le CPBx)
 \usepackage{amsmath} % for matrices print
 
-%glossaire auto, on peut s'y référer dans le latex avec \Gls{maRef}
-\usepackage{glossaries}
-
 \usepackage{babel, csquotes, xpatch}
-% to install csquotes, xpatch and biblatex, download their zips on ctan.org
-% and after (excepted for xpatch) copy the unzipped folders witht the .sty files
-% in the <texmf-dist>/tex/latex/ repository (see tex-workshop logs to figure out
-% the path of <texmf-dist>).
-% For xpatch, read the README of its zip.
-\usepackage[
-    backend=biber,
-    style=numeric
-]{biblatex}
+%\usepackage{polyglossia}
+\usepackage[backend=biber, style=numeric]{biblatex}
 \addbibresource{biblio.bib}
 
 \usepackage{amsfonts}
 \usepackage{fancyhdr} % Pour la mise en page des en-têtes
+\usepackage[toc]{glossaries} % glossaire auto, on peut s'y référer dans le latex avec \Gls{maRef}
+
+% mettre les éléments du glossaire ici
+\newglossaryentry{edit_dist}{
+        name={distance},
+        description={C'est le nombre minimal de modifications (insertion, substitution, suppression) à appliquer à une chaîne de caractères $a$ pour obtenir la chaîne de caractères $b$.}
+}
+\makeglossaries
 
 \begin{document}
 \pagestyle{fancy}
@@ -53,27 +52,15 @@
 \section{Abstract}
 \section{Remerciements}
 
+
 \tableofcontents
 \listoffigures
 \listoftables %si inutile, on le virera
-\makeglossary
 
-%ici c'est un exemple
-\newglossaryentry{formula}
-{
-        name=formula,
-        description={A mathematical expression}
-}
-
-\newacronym{gcd}{GCD}{Greatest Common Divisor}
-
-\newacronym{lcm}{LCM}{Least Common Multiple}
-
-\section{Table des figures}
-\section{Notations}
+\printglossary % TODO: faire marcher ça
 
 \chapter{Introduction}
-\textit{Mise en contexte pour arriver à la problématique, quel est le potentiel de l'intelligence artificielle dans la linguistique historique ? ... ?}
+\textit{Mise en contexte pour arriver à la problématique, quel est le potentiel de l'intelligence artificielle dans la linguistique historique ? ... ?}\Gls{edit_dist}
 
 \chapter{La linguistique historique et l'Intelligence Artificielle}
 \section{La linguistique historique}
@@ -109,43 +96,40 @@ Lorsqu'un algorithme conventionnel est développé pour réaliser un tâche, $f$
 En revanche, de nombreux cas demeurent où il est difficile -- voire impossible -- de poser une expression mathématique ou un algorithme pour répondre à certains problèmes. On considère alors $f$ comme hypothétique et on cherche à l'approcher à partir d'un \textbf{modèle}, qu'on construit à partir des informations qu'on dispose sur $f$, comme un ensemble de ses points $\{(x_k, y_k=f(x_k)), k \in S\}$, à travers une tâche dite de \textbf{régression}.
 
 \vspace{12pt}
-Les \textbf{réseaux de neurones} sont d'excellents outils pour établir des modèles.
-Mathématiquement, ce sont des compositions d'applications non-linéaires et linéaires
-recevant un vecteur d'entrée représentant une donnée et sortant un vecteur de sortie
-représentant un résultat dans un format cohérent avec le problème.\\
-Le neurone artificiel le plus élémentaire effectue la \textbf{somme pondérée} des 
-coefficients du vecteur d'entrée, puis calcule l'image de cette somme à travers
-une fonction non-linéaire dite \textbf{d'activation}. La sortie du neurone est donc un réel ou un
-complexe. Si on la note $y_i$, qu'on note $x$ le vecteur d'entrée dans $\mathbb{K}^n$,
-$w_i$ le vecteur de \textbf{poids} associé au neurone et $\sigma$ sa fonction d'activation,
-on a :
+Les \textbf{réseaux de neurones} sont des outils performants pour établir des modèles.
+Mathématiquement, ce sont des compositions d'applications non-linéaires et linéaires recevant un vecteur d'entrée représentant une donnée et sortant un vecteur de sortie représentant un résultat dans un format cohérent avec le problème.\\
+Le neurone artificiel le plus élémentaire effectue la \textbf{somme pondérée} des coefficients du vecteur d'entrée, à laquelle il ajoute une valeur de \textbf{biais} pour enfin calculer l'image de la somme à travers une fonction non-linéaire dite \textbf{d'activation}. La sortie du neurone est donc un réel ou un complexe. Si on la note $y_i$, qu'on note $x$ le vecteur d'entrée dans $\mathbb{K}^n$, $w_i$ le vecteur de \textbf{poids} associé au neurone, $b_i$ son biais et $\sigma$ sa fonction d'activation, on a :
 \begin{equation}
-    y_i = \sigma(\sum_{j=0}^{n} w_{ij}x_j) = \sigma(<w_i, x>)
+    y_i = \sigma(b_i + \sum_{j=0}^{n} w_{ij}x_j) = \sigma(b_i + <w_i, x>)
 \end{equation}
 
-Une \textbf{couche de neurones} est la mise en commun d'un nombre abritraire $N$ de neurones devant prédire des sorties $y_i$ différentes. Leurs vecteurs de poids $w_i$ diffèreront donc. En revanche, leur fonction d'activation est identique. La sortie d'une couche est donc un vecteur $y$ pouvant s'écrire comme dans l'équation \ref{def_couche}.
+Une \textbf{couche de neurones} est la mise en commun d'un nombre abritraire $N$ de neurones devant prédire des sorties $y_i$ différentes. Leurs vecteurs de poids $w_i$ diffèreront donc. En revanche, leur fonction d'activation est identique. La sortie d'une couche est donc un vecteur $y$ pouvant s'écrire comme dans l'équation \ref{def_couche}\footnote{On y confond la fonction d'activation avec la fonction vectorielle $\sigma$ s'appliquant indépendamment à chaque coefficient.}.
 
 \begin{equation} \label{def_couche}
     \begin{split}
         y & =
         \left(\begin{matrix}
-            \sigma(<w_1, x>) \\
-            \sigma(<w_2, x>) \\
+            \sigma(b_1 + <w_1, x>) \\
+            \sigma(b_2 + <w_2, x>) \\
             \vdots \\
-            \sigma(<w_i, x>) \\
+            \sigma(b_i + <w_i, x>) \\
             \vdots \\
-            \sigma(<w_N, x>)
+            \sigma(b_N + <w_N, x>)
         \end{matrix}\right)
         =
         \sigma\left(\begin{matrix}
-            \sum_{j=0}^{n} w_{1j}x_j \\
-            \sum_{j=0}^{n} w_{2j}x_j \\
+            b_1 + \sum_{j=0}^{n} w_{1j}x_j \\
+            b_2 + \sum_{j=0}^{n} w_{2j}x_j \\
             \vdots \\
-            \sum_{j=0}^{n} w_{ij}x_j \\
+            b_i + \sum_{j=0}^{n} w_{ij}x_j \\
             \vdots \\
-            \sum_{j=0}^{n} w_{Nj}x_j
-        \end{matrix}\right)
-        = \sigma\left(
+            b_N + \sum_{j=0}^{n} w_{Nj}x_j
+        \end{matrix}\right)\\
+        & = \sigma\left(
+            \left(\begin{matrix}
+                b_1 \\ b_2 \\ \vdots \\ b_i \\ \vdots \\ b_N
+            \end{matrix}\right)
+            +
             \left(\begin{matrix}
                 w_{11} & w_{12} & \hdots & w_{1j} & \hdots & w_{1n} \\
                 w_{21} & w_{22} & \hdots & w_{2j} & \hdots & w_{2n} \\
@@ -157,13 +141,16 @@ Une \textbf{couche de neurones} est la mise en commun d'un nombre abritraire $N$
             \left(\begin{matrix}
                 x_1 \\ x_2 \\ \vdots \\ x_j \\ \vdots \\ x_n
             \end{matrix}\right)
-        \right) \\
-        & = \sigma(Wx)
+        \right)
+        = \sigma(b + Wx)
     \end{split}
 \end{equation}
 
-Un réseau neuronal est ainsi formé à partir de la mobilisation d'une ou plusieurs couches. L'intuition derrière l'utilisation de couches intermédiaires est que la machine puisse être capable d'apprendre à construire des \textbf{représentations adéquates} des données pour effecuter la prédiction finalement voulue avec pertinence. On parle alors d'\textbf{apprentissage profond} et cette technique offre des réponses face aux difficultés d'abstraction soulevées par les problèmes de TAL.\cite{jurafsky_ffnn}
+Un réseau neuronal est ainsi formé à partir de la mobilisation d'une ou plusieurs couches. L'intuition derrière l'utilisation de couches intermédiaires, qu'on nomme des \textbf{couches cachées}, est que la machine puisse être capable d'apprendre à construire des \textbf{représentations adéquates} des données pour effecuter la prédiction finalement voulue avec pertinence. On parle alors d'\textbf{apprentissage profond} et cette technique offre des réponses face aux difficultés d'abstraction soulevées par les problèmes de TAL.\cite{jurafsky_ffnn}
 
+L'agencement des couches et la manière de calculer la sortie finale à partir de chacune d'elles, qu'on peut rassembler sous le terme de "mode de \textbf{propagation}", est un \textbf{paramètre architecturale} à part entière qu'il faut judicieusement définir en fonction de la tâche à réaliser. Pour comprendre l'utilisation de l'IA dans le TAL, au moins deux principaux types de réseaux de neurones devront être introduits au cours de ce chapitre, différant par la nature cyclique ou non de l'enchaînement des couches internes.
+
+L'entraînement d'un réseau de neurones s'effectue à travers des \textbf{ajustements des poids et des biais dans chaque couche}, dans le cadre d'une \textbf{minimisation de fonctions de perte}, déterminée par les sorties temporairement prédites par le réseau. 
 
 \textit{dire que les informations dans chaque coeff du vecteur x sont 
 souvent abstraites et n'ont de sens que pour la machine (teaser vers sous-

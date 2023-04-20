@@ -165,22 +165,22 @@ architecturale)}\\
 
 Avant de donner à un réseau de neurones quelconque données récupérées pour son entraînement, il est nécessaire de préparer ces données. Le but étant de rendre ces données d'entrées correctes et compréhensibles pour notre intelligence artificielle. Cet préparation s'effectue suivant le type de tâche souhaité. Néanmoins, dans sa généralité, les étapes de préparation de données en TAL restent les mêmes.\\
 
-% \footnote{À noter que nous parlons ici de « grandes » quantités de données à analyser, mais ce mot est relatif à un être humain, et encore, il arrive que ce nombre soit restreint, seulement, pour une IA c'est le contraire, nous parlerons plutôt de d'IA à « basses ressources » car ce nombre de données est très petits face à ce qu'elle peut gérer dans le monde moderne et la quantités de textes disponibles sur la toile.}
-Tout d'abord, il faut normaliser (nettoyer) notre base de données qui peut être, par exemple, un corpus de textes, une liste de mots, provenant de la toile, ou d'un système de transcription audio-visuelle \footnote{Dans le cadre de ce mémoire, le but n'est pas de savoir comment on parvient à extraire du texte à partir de ces sources, mais plutôt de savoir comment rendre ce texte compréhensible à une intelligence artificielle choisie.}
-Dans ces données se trouvent évidemment des mots, avec des « caractéristiques » de la  langue \footnote{Pour simplifier, nous avons pris l'exemple d'une base de données  monolingue, mais il est possible qu'elle comporte plusieurs langues. Dans tout les cas, le procédé sera le même, si ce n'est qu'il faut s'adapter à chaque langue.} tel que les ponctuations, les lettres en capitales, les chiffres, ou bien les caractères spéciaux (comme le dièse que l'on retrouve souvent dans les \textit{tweets}). Seulement, il arrive parfois que certains de ces éléments rajoutent inutilement de la complexité pour une machine, sans que cela apporte plus de sens, ou bien sont non-désirées (voir incorrectes), ainsi on décide de les supprimer (ou les remplacer) pour ne garder que ce qui nous intéresse. [Exemple]\\
+% \footnote{À noter que nous parlons ici de \og grandes \fg quantités de données à analyser, mais ce mot est relatif à un être humain, et encore, il arrive que ce nombre soit restreint, seulement, pour une IA c'est le contraire, nous parlerons plutôt de d'IA à \og basses ressources \fg car ce nombre de données est très petits face à ce qu'elle peut gérer dans le monde moderne et la quantités de textes disponibles sur la toile.}
+Tout d'abord, il faut normaliser (nettoyer) notre base de données qui peut être, par exemple, un corpus de textes, une liste de mots, provenant de la toile, ou d'un système de transcription audio-visuelle \footnote{Dans le cadre de ce mémoire, le but n'est pas de savoir comment parvient-on à extraire du texte à partir de ces sources, mais plutôt de savoir comment rendre ce texte compréhensible à une l'intelligence artificielle choisie.}
+Dans ces données se trouvent évidemment des mots, avec des \og caractéristiques \fg de la  langue \footnote{Pour simplifier, nous avons pris l'exemple d'une base de données  monolingue, mais il est possible qu'elle comporte plusieurs langues. Dans tout les cas, le procédé sera le même, si ce n'est qu'il faut s'adapter à chaque langue.} tel que les ponctuations, les lettres en capitales, les chiffres, ou bien les caractères spéciaux (comme le dièse que l'on retrouve souvent dans les \textit{tweets}). Seulement, il arrive parfois que certains de ces éléments rajoutent inutilement de la complexité pour une machine, sans que cela apporte plus de sens, ou bien sont non-désirées (voir incorrectes), ainsi on décide de les supprimer (ou les remplacer) pour ne garder que ce qui nous intéresse. [Exemple]\\
 
 %[lib nltk]
 Après avoir nettoyé notre base de données, il faut segmenter notre texte en mots ou sous-mots, autrement dit, il faut tokeniser notre texte. La tokenisation correspond à la segmentation de  chaînes de caractères (comme notre texte) en tokens (mots, sous-mots, ponctuations).
-% Nous pourrions discuter longuement de ce qui devrait être pris comme tokens ou non. Par exemple, si nous devons prendre en compte la ponctuation en tant que token. Mais aussi les clitiques si elles doivent être pris en compte, ou si elles doivent être développées. Pour cela, nous vous renvoyons au Chapitre 2 de « Speech and Language Processing » de Jurasky.
+% Nous pourrions discuter longuement de ce qui devrait être pris comme tokens ou non. Par exemple, si nous devons prendre en compte la ponctuation en tant que token. Mais aussi les clitiques si elles doivent être pris en compte, ou si elles doivent être développées. Pour cela, nous vous renvoyons au Chapitre 2 de \og Speech and Language Processing \fg de Jurasky.
 Une approche naïve est de tokeniser notre texte en mots suivant les espaces
 % Il est intéressant d’évoquer que suivant les différents niveaux de tokenisations (partant du caractères, au sous-mots, jusqu’au mots entier) aide à mieux respectivement à comprendre la morphologie, la sémantique (suivant les sous-mots des algorithmes statistiques), et la syntaxe (suivant les sous-mots basé sur les règles). Et il a été montré qu’il était suffisant de segmenter des phrases en sous-mots pour analyser le langage de manière pertinente. (Thèse Fourrier)
-\footnote{Vous remarquerez déjà que ce processus ne s'applique pas au langue comme le Japonais, ou le Chinois.}. Prenons un exemple « J'aime les bananes. » tokenisé cela donne [« J'aime », « les », « bananes. »]. Cependant, cette approche pose des problèmes, en commençant par le token « bananes. » qui a la même signification avec ou sans point, mais qui sera considéré comme différent pour une IA. Nous pourrions ajouter la séparation suivant la ponctuation, mais alors nous obtiendrons pour « J'aime » les tokens [« J », « ' », « aime »] qui est une forme tout aussi problématique. Et il existe encore de nombreux cas (les abréviations, les points de suspension, etc.) où ce type de tokenisation pose problème. Une approche alternative est de tokeniser suivant des règles définis (par exemple, de prendre en compte les contractions comme « J'aime » et de le transformer en deux tokens [« Je », « aime »]), qui est une méthode beaucoup plus efficace que la première approche, mais montrera des limites face à des situations (ou mots) rares, ou alors il faudrait spécifier de nouvelles règles pour gérer ces cas. Ainsi, la solution proposée est une approche statistique, consistant à décomposer de plus en plus un mot en sous-mots \footnote{Remarquez que le terme \textit{mot} a un sens différent que celui qui le précède.} au fil que sa fréquence diminue. [Exemple]. Les quatres algorithmes de tokenisation en sous-mots les plus utilisées sont le \textit{Byte-Pair Encoding} (Sennrich et al., 2016), l'\textit{unigram language modeling} (Kudo, 2018), le \textit{WordPiece} (Schuster et Nakajima, 2012), et le \textit{SentencePiece}\footnote{Cet algorithme est une implémentation des deux premiers.} (Kudo et Richardson, 2018).\\
+\footnote{Vous remarquerez déjà que ce processus ne s'applique pas au langue comme le Japonais, ou le Chinois.}. Prenons un exemple \og J'aime les bananes. \fg tokenisé cela donne [\og J'aime \fg, \og les \fg, \og bananes. \fg]. Cependant, cette approche pose des problèmes, en commençant par le token \og bananes. \fg qui a la même signification avec ou sans point, mais qui sera considéré comme différent pour une IA. Nous pourrions ajouter la séparation suivant la ponctuation, mais alors nous obtiendrons pour \og J'aime \fg les tokens [\og J \fg, \og ' \fg, \og aime \fg] qui est une forme tout aussi problématique. Et il existe encore de nombreux cas (les abréviations, les points de suspension, etc.) où ce type de tokenisation pose problème. Une approche alternative est de tokeniser suivant des règles définis (par exemple, de prendre en compte les contractions comme \og J'aime \fg et de le transformer en deux tokens [\og Je \fg, \og aime \fg]), qui est une méthode beaucoup plus efficace que la première approche, mais montrera des limites face à des situations (ou mots) rares, ou alors il faudrait spécifier de nouvelles règles pour gérer ces cas. Ainsi, la solution proposée est une approche statistique, consistant à décomposer de plus en plus un mot en sous-mots \footnote{Remarquez que le terme \textit{mot} a un sens différent que celui qui le précède.} au fil que sa fréquence diminue. [Exemple]. Les quatres algorithmes de tokenisation en sous-mots les plus utilisées sont le \textit{Byte-Pair Encoding} (Sennrich et al., 2016), l'\textit{unigram language modeling} (Kudo, 2018), le \textit{WordPiece} (Schuster et Nakajima, 2012), et le \textit{SentencePiece}\footnote{Cet algorithme est une implémentation des deux premiers.} (Kudo et Richardson, 2018).\\
 
 Pour la tâche de classification, vous avez vu que les mots d'entrées, [exemple], étaient convertis en une liste de nombre, autrement dit un vecteur, sur lequel il a été effectué des calculs afin d'obtenir un résultat (un nouveau vecteur), [exemple]. Une machine, un réseau de neurones, ne comprend que des nombres et ne sait procéder qu'à des calculs. Il existe différentes façons de convertir une chaîne de caractères (mots, tokens) en un vecteur, mais on retiendra deux méthodes l'encodage 1 parmi n et le plongement lexical (respectivement et plus communément appelés en anglais le \textit{one-hot encoding} et le \textit{word embedding}).\\
 
 Discuter rapidement du one hot encoding, puis du word embedding (statique et contextuel)\\
-    
-\textit{Data splitting and batching}
+
+% Data splitting and batching
 
 
 \subsection{Architectures neuronales utiles au TAL}
@@ -191,14 +191,45 @@ Discuter rapidement du one hot encoding, puis du word embedding (statique et con
 
 ...
 
+% Transition vers les Transformeurs, discuter des problèmes que pose les RNN. 
+
 \subsubsection{Transformeurs}
 
-...
+Précédemment, avec les RNN et les LTSM, nous avons introduit le mécanisme d'attention, permettant au réseau de se focaliser sur la manière dont les mots (éloignés) sont reliées les uns aux autres. Seulement, comme nous l'avons vu aussi, ces réseaux se basent sur des connexions récurrentes, rendant le calcul coûteux et la parallélisation difficile. Ainsi, pour pallier ce problème et gagner en performance, un nouveau modèle de réseau de neurones apparait sous le nom de \textit{Transformers} (Transformeurs en français) dans le papier \og Attention Is All You Need \fg\; de Vaswani et al. (2017). Ce modèle de type encodeur-décodeur se base sur l'attention multi-têtes, l'innovation majeure des \textit{Transformers}\footnote{Par simplification, nos efforts se concentrerons sur l'attention multi-têtes. Mais si nous devions détailler, un \textit{Transformers} se décompose en blocs de \textit{transformer}, dont chaque bloc contient une unité d'attention multi-têtes (masqué ou non) et un FFNN, accompagné de connexions résiduelles et des couches de normalisation. Pour plus de détails, nous vous invitons à regarder le papier de Vaswani et al. (2017).}.\\
+
+L'attention multi-têtes permet d'étudier tous les vecteurs d'entrées, comme des mots, en même temps (de façon parallèle), et dont chaque tête qui la compose se focalise sur un aspect des \textit{interactions} entre les différents éléments de la séquence, [exemple].\\ 
+
+Chaque tête contient un module d'auto attention (\textit{self-attention} en anglais) qui est utilisé pour permettre à chaque tokens $x_i$ de pouvoir \textit{intéragir} avec tous les autres tokens de la séquence $X$, en combinant trois vecteurs : un vecteur requête $q_i$, un vecteur clé $k_i$, un vecteur valeur $v_i$. Le vecteur requête (\textit{query}) correspondant au vecteur sur lequel on porte notre attention et qui sera comparé à tous les autres vecteurs, nommés les vecteurs de clés (\textit{keys}). Puis, nous avons le vecteur valeur(\textit{value}) qui sera utilisé pour représenter la \og valeur sémantique (du mot)\fg\; et sera multiplié par le poids d'attention calculé avec les autres vecteurs (requêtes et clés). [Figure : Exemple de la formation des différents vecteurs $q_i$, $k_i$, $v_i$ suivant une phrase X $[x_1, x_2, \dots, x_i, \dots, x_n]$]. Pour créer ces vecteurs, les vecteurs $x_i$ sont multipliés avec les matrices d'enchassement ($W^Q$, $W^K$, $W^V$)\footnote{Ces matrices sont obtenus à l'entrainement.} : 
+\[ q_i = W^Q x_i \,;\; k_i = W^K x_i \,;\; v_i = W^V x_i\]
+
+% Obtention des matrices Q, K, V respectivement l'ensemble des vecteurs $q_i$, $k_i$, $v_i$.
+
+Ensuite, ... (calcule score d'attention)
+\[SelfAttention(Q, K, V)\; =\; softmax(\frac{QK^T}{\sqrt{d_k}})V\]
+
+%Puis on effectue les calculs d'attention en obtenant la matrice Z.
+% Inspiré des notations de l’article de Jay Alammar : The illustrated transformer.
+
+Enfin, ... (addition et concaténation)
+% On concatène les matrices $Z_h$ (h étant [[1, nombre de tête]]) puis on les multiplie par une matrice de poids $W_O$ (également généré par l'entrainement) 
+
+Il existe une variation, parfois, un masque est utilisé... (masque)
+% Préciser qu'on peut limiter le "champ de vision" du modèle, [exemple, pour la génération on ne veut pas que le modèle compare/étudie les mots futures mais uniquement avec les précédents]  
+
+Au tout début, nous avons évoqué que le modèle étudié tout les tokens en même temps (sans réccurence), mais alors comment le modèle connait la position de chaque élément de la séquence d'entrée ? Les RNN connaissaient la position des tokens de par leur structure, c'est à dire, de part le fait que chaque token passé séquentiellement dans le modèle. Contrairement, dans les Transformers nous devons indiquer la position de chaque token, la solution proposé dans le papier Vaswani et al. (2017) est d'encodé la position de chaque token par des fonctions sinus et cosinus\footnote{Nous invitons le lecteur à regarder le papier de Vaswani et al. (2017) pour se convaincre de la pertinence de ce choix d'encodage de position. Simplement, retenez que cela permet au modèle de s'entrainer avec la position relative des tokens, plutôt que la position absolue.}. Concrètement pour 
+
+[Exemple]
 
 \chapter{Les contributions de l'IA dans la linguistique historique}
-\textit{C'est la partie 'Related Work', elle discute des différents aspects où la linguistique historique s'applique, à travers différents modèles.}
+\textit{Petite introduction avant de passer au papiers.}
+
 \section{Restoration de documents anciens}
+% Ithaca
+...
+
 \section{Déchiffrement de langues anciennes}
+% MIT
+Une autre tâche possible par l'intelligence artificielle est le déchiffrement de langue anciennes...
 
 \chapter{Étude du cas de l'application de l'IA pour la reconstruction des proto-formes d'une langue}
 \textit{Ici, on se place dans un cas concret, pour montrer que ce n'est pas que de la théorie. En proposant une expérience.}

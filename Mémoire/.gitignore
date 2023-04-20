@@ -1,6 +1,4 @@
-memoire.aux
-memoire.log
-memoire.synctex.gz
-memoire.toc
-memoire.bcf
-memoire.run.xml
+*
+!biblio.bib
+!memoire.pdf
+!memoire.tex

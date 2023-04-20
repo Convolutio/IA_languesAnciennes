@@ -189,7 +189,7 @@ L'entraînement d'un réseau de neurones s'effectue à travers des \textbf{ajust
 
 \textit{
     expliquer la diff entre le supervisé et le non-supervisé\\
-    expliquer les choix à faire sur l'entraînement (optimiseurs, taille de batch et parallélisation, nombre d'époques)\\
+    expliquer les choix à faire sur l'entraînement (optimiseurs, taille de batch et parallélisation, nombre d'époques, teacher forcing)\\
 }\cite[section 2.1.2]{fourrier}
 
 \subsubsection{Concevoir correctement}
@@ -207,10 +207,10 @@ L'entraînement d'un réseau de neurones s'effectue à travers des \textbf{ajust
     }
 \subsection{Traitement des donnnées}
 
-Avant de donner à un réseau de neurones, quelconque données récupérées pour son entraînement, il est nécessaire de préparer ces données. Le but étant de rendre ces données d'entrées correctes et compréhensibles pour notre intelligence artificielle. Cet préparation s'effectue suivant le type de tâche souhaité. Néanmoins, dans sa généralité, les étapes de préparation de données en TAL restent les mêmes.\\
+Avant de donner à un réseau de neurones des données au format quelconque récupérées pour son entraînement, il est nécessaire d'effectuer un pré-traitement dessus. Le but est de les rendre correctes et compréhensibles pour l'intelligence artificielle. Cette préparation s'effectue selon le type de tâche souhaité. Néanmoins, dans sa généralité, les étapes de préparation des données en TAL restent les mêmes.\\
 
 % \footnote{À noter que nous parlons ici de \og grandes \fg quantités de données à analyser, mais ce mot est relatif à un être humain, et encore, il arrive que ce nombre soit restreint, seulement, pour une IA c'est le contraire, nous parlerons plutôt de d'IA à \og basses ressources \fg car ce nombre de données est très petits face à ce qu'elle peut gérer dans le monde moderne et la quantités de textes disponibles sur la toile.}
-Tout d'abord, il faut normaliser (nettoyer) notre base de données qui peut être, par exemple, un corpus de textes, une liste de mots, provenant de la toile, ou d'un système de transcription audio-visuelle \footnote{Dans le cadre de ce mémoire, le but n'est pas de savoir comment parvient-on à extraire du texte à partir de ces sources, mais plutôt de savoir comment rendre ce texte compréhensible à une l'intelligence artificielle choisie.}
+Tout d'abord, il faut normaliser (nettoyer) la base de données qui peut être, par exemple, un corpus de textes, une liste de mots, provenant de la toile, ou d'un système de transcription audio-visuelle \footnote{Dans le cadre de ce mémoire, le but n'est pas de savoir comment on parvient à extraire du texte à partir de ces sources, mais plutôt de savoir comment on peut rendre ce texte compréhensible à une l'intelligence artificielle choisie.}
 Dans ces données se trouvent évidemment des mots, avec des \og caractéristiques \fg de la  langue \footnote{Pour simplifier, nous avons pris l'exemple d'une base de données  monolingue, mais il est possible qu'elle comporte plusieurs langues. Dans tout les cas, le procédé sera le même, si ce n'est qu'il faut s'adapter à chaque langue.} tel que les ponctuations, les lettres en capitales, les chiffres, ou bien les caractères spéciaux (comme le dièse que l'on retrouve souvent dans les \textit{tweets}). Seulement, il arrive parfois que certains de ces éléments rajoutent inutilement de la complexité pour une machine, sans que cela apporte plus de sens, ou bien sont non-désirées (voir incorrectes), ainsi on décide de les supprimer (ou les remplacer) pour ne garder que ce qui nous intéresse. [Exemple]\\
 
 %[lib nltk]

@@ -186,20 +186,24 @@ Un réseau neuronal est ainsi formé à partir de la mobilisation d'une ou plusi
 L'agencement des couches et la manière de calculer la sortie finale à partir de chacune d'elles, qu'on peut rassembler sous le terme de "mode de \textbf{propagation}", est un \textbf{paramètre architecturale} à part entière qu'il faut judicieusement définir en fonction de la tâche à réaliser. Pour traiter de l'utilisation de l'IA dans le TAL, au moins deux principaux types de réseaux de neurones seront introduits au cours de ce chapitre, différant par la nature cyclique ou non de l'enchaînement de leurs couches internes.\cite[introduction + section 3]{jurafsky_ffnn} [\textit{ajouter illustration}]
 
 \subsubsection{Processus d'apprentissage}
-L'entraînement d'un réseau de neurones s'effectue à travers des \textbf{ajustements des poids et des biais dans chaque couche}, dans le cadre d'une \textbf{minimisation de fonctions de perte}, déterminée par les sorties temporairement prédites par le réseau. Ceci s'effectue par un algorithme de \textbf{descente du gradient}. Le calcul du gradient de la fonction de perte selon tous les poids du réseau s'effectue avec un algorithme de \textbf{rétropropagation de l'erreur}, une adaptation pour les réseaux de neurones de celui de la discrimination rétropropagative sur des graphes d'exécution.\cite[section 6]{jurafsky_ffnn}.
+L'entraînement d'un réseau de neurones s'effectue à travers des \textbf{ajustements des poids et des biais dans chaque couche}, dans le cadre d'une \textbf{minimisation d'une fonction de perte}. Cette fonction doit être choisie judicieusement selon le problème puisqu'elle exprime l'écart entre les sorties prédites et les sorties ciblées au passage de données d'entrée d'entraînement. Sa minimisation est réalisée par un algorithme de \textbf{descente du gradient}, avec le gradient de la fonction de perte selon tous les poids du réseau qui est calculé grâce à un procédé de \textbf{rétropropagation de l'erreur}, une adaptation pour les réseaux de neurones de celui de la discrimination rétropropagative pour des graphes d'exécution quelconques. Plusieurs implémentations de cet algorithme, qu'on nomme des \textbf{optimiseurs}\footnote{Adam\cite{kingma2017adam} en est un assez connu et est celui qui était prévu d'être utilisé pour le codage de l'expérience.}, existent et la nature de l'optimiseur dans un modèle fait partie de ses paramètres d'entraînement.
 
-\textit{
-    expliquer la diff entre le supervisé et le non-supervisé\\
-    expliquer les choix à faire sur l'entraînement (optimiseurs, taille de batch et parallélisation, nombre d'époques, teacher forcing)\\
-}\cite[section 2.1.2]{fourrier}
+Des hyperparamètres pour l'entraînement sont également amenés à être définis en pratique, tels que le \textbf{taux d'apprentissage}, fixant la valeur maximale de variation qu'un poids ou biais peut subir au cours d'une rétropropagation, le nombre d'\textbf{époques}, i.e. de balayages de l'ensemble des données du set d'entraînement pour l'exécution des descentes, et enfin la taille des \textbf{lots (\textit{batchs})}, i.e. des groupes de données d'entraînement à envoyer au modèle en une fois\footnote{Cette quantité est pensée pour prévenir les problèmes de saturation de la mémoire des ordinateurs, qui sont favorisés par les ordres de grandeur souvent importante des tailles des sets d'entraînement.}.\cite[17-23]{jurafsky_ffnn}.\cite[21]{fourrier}
+
+\textit{ajouter la nécessité d'initialiser aléatoirement les poids}
 
 \subsubsection{Concevoir correctement}
 
-\textit{dresser une liste récapitulant les configurations à effectuer sur un réseau (topologie + paramètres d'entraînement) et introduire le paramètre d'initialisation}
-
-\textit{expliquer que le choix des paramètres se fait expérimentalement, à partir d'intuitions basées sur des travaux antérieurs sur de la conception de réseaux}
-
-\textit{expliquer comment évaluer un réseau}
+\textit{
+    La phase d'entraînement du réseau s'arrête lorsque le gradient cesse de décroître.\\
+    Les hyperparamètres ainsi que certains paramètres architecturaux (nombre de couches, leur dimension) ont le mérite d'être réglés dans des configurations différentes afin de s'assurer d'une convergence optimale du gradient (qui des fois n'arrive pas ; cf. overfitting + vanishing gradient -> évoquer plus tard pour introduire les LSTM)\\
+    \\
+    La phase d'évaluation du modèle se fait à partir de comparaisons des résultats sortis avec des résultats ciblés pour un set de données dit d'évaluation. Plus particulièrement en TAL, on cherche à trouver des exemples afin de déterminer les cas qu'il a su apprendre à correctement gérer ou non.\\
+    On peut également établir des métriques pour quantifier le taux de pertinence du modèle.
+    Par exemple la distance d'édition entre les mots sortis et les mots ciblés, dans le cas de la prédiction de mots.\\
+    \\
+    Quoiqu'il en soit, le choix de tous les paramètres se fait expérimentalement, à partir d'intuitions basées sur des observations lors de travaux antérieurs sur de la conception de réseaux. Pas de démonstrations mathématiques (que statistiques).\\
+    Transition vers la section suivante}
 
 \subsubsection{Exemple de la tâche de classification}
 \textit{introduire le réseau FFNN\\

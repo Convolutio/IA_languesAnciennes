@@ -279,7 +279,7 @@ Dans certaines situations, notamment dans la tâche de modélisation de langue e
 \chapter{Les contributions de l'IA dans la linguistique historique}
 \textit{Petite introduction avant de passer au papiers.}
 
-\section{Restoration de documents anciens}
+\section{Restauration de documents anciens}
 % Ithaca
 La restauration d'inscriptions endommagées nécessite que les épigraphistes s'appuient sur de vastes bases de données pour trouver des parallèles textuels et contextuels. Ces référentiels sont principalement constitués du répertoire mnémotechnique des parallèles d'un chercheur et, plus récemment, de corpus numériques permettant d'effectuer des recherches par \og correspondance de chaînes de caractères\fg. Cependant, des différences dans la requête de recherche peuvent exclure ou obscurcir des résultats pertinents, et il est presque impossible d'estimer la véritable distribution de probabilité des restaurations possibles. L'attribution d'une inscription est tout aussi problématique : si elle a été déplacée ou si des éléments de datation internes utiles manquent, les historiens doivent trouver d'autres critères pour attribuer le lieu et la date de l'écriture (formes de lettres, dialectes, etc). Et cela implique inévitablement, un niveau élevé de généralisation, les intervalles d'attribution chronologique pouvant être très longs. \\
 
@@ -320,8 +320,8 @@ Des solutions informatiques ont été développées pour appliquer cette méthod
 \subsection{Conceptualisation du problème}
 \textit{Définir clairement le problème du titre, énoncer et justifier le choix de notre modèle réseaux de neurones et des différents outils appliqués. Voir s'il est possible de faire apparaitre plusieurs démarches, c'est à dire, une approche statistique et une approche neuronale (toujours pour renforcer et montrer le potentiel de l'IA).}
 
-Le problème que cette tâche doit résoudre est de prédire la proto-forme la plus probable d'ascendre à un ensemble donné de cognats. Les indices à suivre pour effectuer la reconstruction sont ici les règles de variations phonétiques de la linguistique diachronique.\\
-Puisque ces variations sont supposées régulières, il est possible de déployer des réseaux de neurones pour les apprendre à partir d'un grand nombre de données, qui sont des paires composées d'un groupe de cognats dans des langues s\oe{}urs et de la proto-forme supposée lui être correctement associée. Toutes les chaînes de caractères sont converties sous forme phonétique à partir de l'Alphabet Phonétique International (IPA) et les tokens à manipuler sont les caractères phonétiques.
+Le problème que cette tâche doit résoudre est de prédire la proto-forme la plus probable d'ascendre à un ensemble donné de cognats. Les indices à suivre pour recontruire sont ici les règles de variations phonétiques de la linguistique diachronique.\\
+Les approches neuronales se veulent d'apprendre ces règles à partir d'un grand nombre de données, qui sont des paires composées d'un groupe de cognats dans des langues s\oe{}urs et de la proto-forme supposée lui être correctement associée. Toutes les chaînes de caractères sont converties sous forme phonétique à partir de l'Alphabet Phonétique International (IPA) et les tokens à manipuler sont les caractères phonétiques.
 
 \subsection{Dernières solutions neuronales}
 \textit{Solution supervisée + non supervisée}
@@ -331,7 +331,7 @@ Puisque ces variations sont supposées régulières, il est possible de déploye
 \textit{Expliquer en quoi le non-supervisé donne plus d'espoir que le supervisé mais en quoi même cette approche présente des limites.}\\
 \textit{Transition avec la problématique de l'article scientifique}\\
 
-\section{Expérience sur une approche non-superivsée}
+\section{Observation expériementale d'une limite d'applicabilité d'une approche}
 \subsection{Méthode}
 \subsection{Récupération de la base de données}
 \textit{Il est fort possible que cette partie se regroupe avec la partie suivante, car il n'y aura pas grand chose à dire.}

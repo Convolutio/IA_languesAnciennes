@@ -236,7 +236,7 @@ L'encodage 1 parmi n consiste à créer un vecteur binaire de la taille du vocab
     1 & 2 & 3 & 4 & \dots & |V|
     \end{matrix}
 \end{align*}
-\hfill (Chap 7, Jurasky)\cite{jurafsky_ffnn}\\
+\hfill \cite[(Chap 7, Jurasky)]{jurafsky_ffnn}\\
 
 Comme vous pouvez le voir l'avantage de cet encodage est sa simplicité de mise en oeuvre. Mais le problème survient quand le vocabulaire devient très grand, les vecteurs générés, par définition, deviennent à leurs tours très grands et très dispersés (beaucoup de 0 et peu de 1), ce qui entraine une augmentation de la complexité du modèle (le nombre de dimension pour décrire les données) et des temps de calcul. De plus, cet encodage ne prend pas en compte les relations sémantiques entre les mots, la similarité entre deux mots ne peut être mesuré,  car ils sont encodés de façon indépendante les uns des autres, ce qui peut être particulièrement problématique pour les nombreuses tâches de TAL tel que la compréhension ou traduction d'une langue.
 
@@ -298,16 +298,22 @@ Précédemment, avec les RNN et les LTSM, nous avons introduit le mécanisme d'a
 
 L'attention multi-têtes permet d'étudier tous les vecteurs d'entrées, comme des mots, en même temps (de façon parallèle), et dont chaque tête qui la compose se focalise sur un aspect des \textit{interactions} entre les différents éléments de la séquence, [exemple].\\ 
 
-Chaque tête contient un module d'auto-attention qui est utilisé pour permettre à chaque tokens $x_i$ de pouvoir \textit{intéragir} avec tous les autres tokens de la séquence $X$. Pour cela est extrait, pour chaque $x_i$, un trio de vecteurs : un vecteur requête (\textit{query}) $q_i$, un vecteur clé (\textit{key}) $k_i$, un vecteur valeur (\textit{value}) $v_i$. Le vecteur requête correspondant au vecteur sur lequel on porte notre attention et qui sera comparé à tous les autres vecteurs, nommés les vecteurs clés. Puis, le vecteur valeur représentant la \og valeur sémantique (du mot)\fg\; qui sera multiplié par le poids d'attention calculé avec les autres vecteurs (requêtes et clés). [Figure : Exemple de la formation des différents vecteurs $q_i$, $k_i$, $v_i$ suivant une phrase $X = [x_1, x_2, \dots, x_i, \dots, x_n]$]. Pour créer ces vecteurs, les vecteurs $x_i$ sont multipliés avec les matrices de poids ($W^Q$, $W^K$, $W^V$) qui sont obtenus à l'entrainement du modèle : 
-\[ q_i = W^Q x_i \,;\; k_i = W^K x_i \,;\; v_i = W^V x_i\]
+Chaque tête contient un module d'auto-attention qui est utilisé pour permettre à chaque tokens $x_i$ de pouvoir \textit{intéragir} avec tous les autres tokens de la séquence $X=(x_1, x_2, \dots, x_n)$. Pour cela est extrait, pour chaque $x_i$, un trio de vecteurs : un vecteur requête (\textit{query}) $q_i$, un vecteur clé (\textit{key}) $k_i$, un vecteur valeur (\textit{value}) $v_i$. Le vecteur requête correspondant au vecteur sur lequel on porte notre attention et qui sera comparé à tous les autres vecteurs, nommés les vecteurs clés. Puis, le vecteur valeur qui sera multiplié par le poids d'attention calculé avec les autres vecteurs (requêtes et clés). [Figure : Exemple de la formation des différents vecteurs $q_i$, $k_i$, $v_i$ suivant une phrase $X$]. Pour créer ces vecteurs, les vecteurs $x_i$ sont multipliés avec les matrices de poids ($W^Q$, $W^K$, $W^V$) qui sont obtenus à l'entrainement du modèle :
+\begin{equation}
+    q_i = W^Q x_i \,;\; k_i = W^K x_i \,;\; v_i = W^V x_i
+\end{equation}
 On pose les matrices $Q$, $K$, $V$ respectivement l'ensemble des vecteurs $q_i$, $k_i$, $v_i$.\\
 
 Ensuite, le calcule d'auto-attention pour une tête s'effectue par la multiplication du score d'attention $(QK^T)$, normalisé par la racine carré de la dimension $d_k$ de la matrice $Q$ et $K$, et par la fonction \textit{softmax}, avec la matrice des valeurs $V$ :
-\[Attention(Q, K, V)\; =\; softmax(\frac{QK^T}{\sqrt{d_k}})V\]
+\begin{equation}
+    Attention(Q, K, V)\; =\; softmax(\frac{QK^T}{\sqrt{d_k}})V
+\end{equation}
 
 Enfin, la matrice d'auto-attention de toutes les têtes sont concaténées en une unique matrice qui est multipliée par une matrice de poids $W^O$ (également obtenus à l'entrainement) pour former la matrice résultante de l'attention multi-têtes : [Figure : résumant toute les étapes.]
-\[MultiHeadAttention(X)\;=\;Concat(head_1, head_2, ...)W^O\]
-\hfill $head_i = Attention(Q_i, K_i, V_i)$\\
+\begin{equation}
+    MultiHeadAttention(X)\;=\;Concat(head_1, head_2, ...)W^O
+\end{equation}
+\hfill où $head_i = Attention(Q_i, K_i, V_i)$\\
 \vspace{2pt}
 \hfill avec $Q_i = XW^Q_i$ ; $K_i = XW^K_i$ ; $V_i = XW^V_i$\\
 \vspace{2pt}
@@ -315,9 +321,9 @@ Enfin, la matrice d'auto-attention de toutes les têtes sont concaténées en un
 
 [Prenons un exemple : ...]\\
 
-Cependant, au tout début, nous avons évoqué que le modèle étudié tout les tokens $x_i$ en même temps, entrainant que le modèle ne tient pas compte de l'ordre des tokens, une information pourtant capitale. Par conséquent, pour injecter l'information de la position de nos tokens dans les vecteurs d'entrées, le papier Vaswani et al. (2017)\cite{transformer} propose une solution en additionnant, à nos tokens plongés lexicalement, des vecteurs positions créent à base de fonction sinus et cosinus \footnote{Nous invitons le lecteur à regarder le papier de Vaswani et al. (2017)\cite{transformer} pour se convaincre de la pertinence de ce choix d'encodage de position. Simplement, retenez que cela permet au modèle de s'entrainer avec la position relative des tokens, plutôt que la position absolue.}. Ainsi, cette méthode permet à notre modèle de travailler avec tous les tokens $x_i$, de notre séquence $X$, en même temps, tout en ayant l'information de leur position (dans la séquence) dans leur vecteur.\\
+Cependant, au tout début, nous avons évoqué que le modèle étudié tout les tokens $x_i$ en même temps, entrainant que le modèle ne tient pas compte de l'ordre des tokens, une information pourtant capitale. Par conséquent, pour injecter l'information de la position de nos tokens dans les vecteurs d'entrées, le papier Vaswani et al. (2017)\cite{transformer} propose une solution en additionnant, à nos tokens plongés (vectorisés), des vecteurs positions créent à base de fonction sinus et cosinus \footnote{Nous invitons le lecteur à regarder le papier de Vaswani et al. (2017)\cite{transformer} pour se convaincre de la pertinence de ce choix d'encodage de position. Simplement, retenez que cela permet au modèle de s'entrainer avec la position relative des tokens, plutôt que la position absolue.}. Ainsi, cette méthode permet à notre modèle de travailler avec tous les tokens $x_i$, de notre séquence $X$, en même temps, tout en ayant l'information de leur position (dans la séquence) dans leur vecteur.\\
 
-Dans certaines situations, notamment dans la tâche de modélisation de langue en TAL, où le but est de prédire le prochain mot d'une phrase, l'entrainement avec ce type de Transformeur est assez innaproprié, car vous connaissez déjà le prochain mot de votre phrase vu que vous étudiez tous les mots en même temps. Pour résoudre ce problème, on applique un masque tel que les valeurs de la partie triangulaire supérieure de la matrice $QK^T$ sont remplacés par des $-\infty$ (qui seront transformés en 0 par la fonction \textit{softmax}). Cette variante se nomme l'auto-attention masquée, proposée par les chercheurs eux-mêmes\footnote{Ils ont proposé cette variante car leur modèle de \textit{base} répondait aux problématiques des réseaux récurrents pour la traduction machine.}. De ce fait, le champ de visibilité de notre modèle sera réduit au mot qu'il est en train de voir et à ceux qu'il a déjà vu, et pourra prédire de façon plus correcte (sans triche) les prochains mots de nos phrases. [Figure : montrant la matrice réduite]
+Dans certaines situations, notamment dans la tâche de modélisation de langue en TAL, où le but est de prédire le prochain mot d'une phrase, l'entrainement avec ce type de Transformeur est assez innaproprié, car vous connaissez déjà le prochain mot de votre phrase vu que vous étudiez tous les mots en même temps. Le modèle apprendra juste, à son entrainement, de renvoyer en sortie les tokens d'entrées. Pour résoudre ce problème, les chercheurs\footnote{Ils ont proposé cette variante car leur modèle de \textit{base} répondait aux problématiques des réseaux récurrents pour la traduction machine.} propose d'appliquer un masque tel que les valeurs de la partie triangulaire supérieure de la matrice $QK^T$ (le score d'attention) sont remplacés par des $-\infty$ (qui seront transformés en 0 par la fonction \textit{softmax}). Cette variante se nomme l'auto-attention masquée. De ce fait, le champ de visibilité de notre modèle sera réduit au mot qu'il est en train de voir et à ceux qu'il a déjà vu, et pourra prédire de façon plus correcte (sans triche) les prochains mots de nos phrases. [Figure : montrant la matrice réduite]
 
 \chapter{Les contributions de l'IA dans la linguistique historique}
 \textit{Petite introduction avant de passer au papiers.}
@@ -370,14 +376,10 @@ Puisque ces variations sont supposées régulières, il est possible de déploye
 
 \section{Expérience sur une approche non-superivsée}
 \subsection{Méthode}
-\subsection{Récupération de la base de données}
-\textit{Il est fort possible que cette partie se regroupe avec la partie suivante, car il n'y aura pas grand chose à dire.}
-
-\subsection{Normaliser les données}
+\subsection{Mise en place}
 
 \subsection{Analyse}
 \subsection{Critiques}
-\textit{Il reste ici quelques sous parties à détailler.}
 
 \chapter{Conclusion}
 \section{Synthèse}

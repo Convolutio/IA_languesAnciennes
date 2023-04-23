@@ -69,7 +69,7 @@
     
     \vspace*{1.5cm}
     \large Thomas HORRUT,\; Eliott CAMOU,\; Benjamin BADOUAILLE\\
-    Étudiants de la Classe Préparatoire de Bordeaux (CPBx) 
+    Étudiants au Cycle Préparatoire de Bordeaux (CPBx) 
     
     \vspace*{\fill}
 \end{titlepage}
@@ -383,22 +383,26 @@ Cependant, cet algorithme est uniquement basé sur des caractères phonétiques 
 L'article abordé propose un modèle de déchiffrement pour extraire les cognats des textes non-segmentés (ou sous-segmentés), sans supposer une proximité entre les langues perdues et les langues connues, comparé à leur papier précédent\cite{ugaritic-and-linear-B}. Les propriétés linguistiques de chaque langue ont été incorporées dans la conception du modèle, telles que la plausibilité phonétique du changement de son et la préservation des sons. Les résultats de l'étude sur le gothique, l'ougaritique et l'ibérique montrent que leur modèle peut traiter efficacement les textes sous-segmentés, même lorsque les langues source et cible ne sont pas apparentées. En outre, ils introduisent une méthode d'identification des langues proches qui trouve correctement les langues apparentées pour le gothique et l'ougaritique. Pour l'ibérique, la méthode n'apporte pas de preuves solides en faveur du basque comme langue apparentée, ce qui correspond à la position privilégiée par les chercheurs actuels \cite{deepmind2022}. Les applications potentielles de leur méthode ne se limitent pas au déchiffrement. Les valeurs phonétiques des caractères perdus peuvent être déduites en les mettant en correspondance avec les caractères apparentés connus. Ces valeurs peuvent servir de point de départ à la reconstruction des sons perdus et des recherches supplémentaires sont nécessaires pour établir leur efficacité. En outre, l'efficacité de l'intégration des caractéristiques phonologiques ouvre la voie à de futures améliorations pour la détection des cognats dans la linguistique historique computationnelle. Actuellement, la méthode fonctionne sur une paire de langues. Pour traiter simultanément plusieurs langues, comme c'est souvent le cas dans la tâche de détection de cognats, des travaux supplémentaires sont nécessaires pour modifier ce modèle actuel et sa procédure d'inférence. \\
 
 \chapter{Étude du cas de l'application de l'IA pour la reconstruction des proto-formes}
-La méthode comparative décrite en section \ref{principesLinguistique} permet de comprendre le sens et la prononciation de mots dans une langue à partir de comparaisons avec d'autres langues apparentées dont on dispose de plus de connaissances. Ce problème a de l'importance pour la construction de lexiques et pour la traduction de documents dans des langues déjà déchiffrées. Le cas de l'Étrusque l'illustre bien puisque, bien que déchiffré (on sait comment prononcer les symboles étrusques), les linguistes ignorent encore à quelles langues le comparer pour comprendre le sens d'un grand nombre de ses mots.\cite{bnf_etrusque}.
+La méthode comparative décrite en section \ref{principesLinguistique} permet de comprendre le sens et la prononciation de mots dans une langue disparue à partir de comparaisons avec d'autres langues apparentées dont on dispose de plus de connaissances. Ce problème a de l'importance pour la construction de lexiques et pour la traduction de documents dans des langues déjà déchiffrées. Le cas de l'Étrusque l'illustre bien puisque, bien que déchiffré (des informations sur la phonétique et la syntaxe ont été trouvées), les linguistes ignorent encore à quelles langues le comparer pour comprendre le sens d'un grand nombre de ses mots.\cite{bnf_etrusque}.
 
-Des solutions informatiques ont été développées pour appliquer cette méthode-là dans des directions différentes. Par exemple, l'identification des cognats dans des langues aux origines communes est une tâche pour laquelle de nombreux travaux de recherche ont été entrepris et à l'issue desquels de performantes solutions sont sorties.\cite{fourrier} \textit{[Ciobannu en parle aussi; le citer]} Cependant, notre projet s'est focalisé sur celle de la reconstruction des proto-formes, dont de récentes solutions neuronales sont apparues. Puisqu'une d'entre-elles a fait l'objet de la rédaction d'un article scientifique et de la mise en place d'une expérience, cet exemple d'application de l'IA va être étudié en détail dans ce chapitre.
+Des solutions informatiques ont été développées pour appliquer cette méthode-là dans des directions différentes. Par exemple, l'identification des cognats dans des langues aux origines communes est une tâche pour laquelle de nombreux travaux de recherche ont été entrepris et à l'issue desquels de performantes solutions sont sorties.\cite{fourrier}\cite[2: Related Works]{meloni-etal-2021-ab} Cependant, notre projet s'est focalisé sur celle de la reconstruction des proto-formes, dont de récentes solutions neuronales sont apparues. Puisqu'une d'entre-elles a fait l'objet de la rédaction de notre article scientifique et de la mise en place d'une expérience, cet exemple d'application de l'IA va être étudié en détail dans ce chapitre.
 \section{État de l'art}
 \subsection{Conceptualisation du problème}
 \textit{Définir clairement le problème du titre, énoncer et justifier le choix de notre modèle réseaux de neurones et des différents outils appliqués. Voir s'il est possible de faire apparaitre plusieurs démarches, c'est à dire, une approche statistique et une approche neuronale (toujours pour renforcer et montrer le potentiel de l'IA).}
 
 Le problème que cette tâche doit résoudre est de prédire la proto-forme la plus probable d'ascendre à un ensemble donné de cognats. Les indices à suivre pour effectuer la reconstruction sont ici les règles de variations phonétiques de la linguistique diachronique.\\
-Puisque ces variations sont supposées régulières, il est possible de déployer des réseaux de neurones pour les apprendre à partir d'un grand nombre de données, qui sont des paires composées d'un groupe de cognats dans des langues s\oe{}urs et de la proto-forme supposée lui être correctement associée. Toutes les chaînes de caractères sont converties sous forme phonétique à partir de l'Alphabet Phonétique International (IPA) et les tokens à manipuler sont les caractères phonétiques.
-\subsection{Dernières solutions neuronales}
-\textit{Solution supervisée + non supervisée}
+Puisque ces variations sont supposées régulières, il est possible de déployer des réseaux de neurones pour les apprendre à partir d'un grand nombre de données, qui sont des paires composées d'un groupe de cognats dans des langues s\oe{}urs et de la proto-forme supposée leut être correctement associée. Toutes les chaînes de caractères sont converties sous forme phonétique à partir de l'Alphabet Phonétique International (\textit{International Phonetic Alphabet} (IPA)) afin que les tokens à manipuler ne soient que des caractères phonétiques, représentant des sons.
 
+
+\subsection{Dernières solutions neuronales}
+\subsubsection{Approche supervisée}
+En disposant des données décrites plus tôt, la dernière démarche supervisée développée ces dernières années s'est directement inspirée des celles mobilisées usuellement dans les problèmes de traduction automatique. Le modèle neuronal est alors doté de l'architecture \textbf{encodeur-décodeur}. L'encodeur reçoit les séquences d'\textit{embeddings} associés aux caractères de chaque cognats et doit apprendre à porter son attention sur \dots
+
+\subsubsection{Approche non-supervisée}
 
 \subsection{Limites d'applicabilité}
-\textit{Expliquer en quoi le non-supervisé donne plus d'espoir que le supervisé mais en quoi même cette approche présente des limites.}\\
-\textit{Transition avec la problématique de l'article scientifique}\\
+\textit{[Expliquer en quoi le non-supervisé donne plus d'espoir que le supervisé mais en quoi même cette approche présente des limites.]}\\
+\textit{[Transition avec la problématique de l'article scientifique]}\\
 
 \section{Expérience sur une approche non-superivsée}
 \subsection{Méthode}

@@ -26,12 +26,18 @@
 \usepackage{lastpage} % pour avoir accès à la dernière page
 \usepackage[toc]{glossaries} % glossaire auto, on peut s'y référer dans le latex avec \Gls{maRef}
 
+\makeglossaries
+
 % mettre les éléments du glossaire ici
 \newglossaryentry{edit_dist}{
-        name={distance},
-        description={C'est le nombre minimal de modifications (insertion, substitution, suppression) à appliquer à une chaîne de caractères $a$ pour obtenir la chaîne de caractères $b$.}
+        name={distance d'édition},
+        description={C'est le nombre minimal d'opérations (insertion, substitution, suppression) à appliquer à une chaîne de caractères $a$ pour obtenir la chaîne de caractères $b$}
 }
-\makeglossaries
+
+\newglossaryentry{ipa}{
+        name={IPA},
+        description={Alphabet Phonétique International}
+}
 
 % Custom header and footer for normal pages
 \fancypagestyle{normal}{
@@ -227,7 +233,7 @@ Des hyperparamètres pour l'entraînement sont également amenés à être défi
     \\
     La phase d'évaluation du modèle se fait à partir de comparaisons des résultats sortis avec des résultats ciblés pour un set de données dit d'évaluation. Plus particulièrement en TAL, on cherche à trouver des exemples afin de déterminer les cas qu'il a su apprendre à correctement gérer ou non.\\
     On peut également établir des métriques pour quantifier le taux de pertinence du modèle.
-    Par exemple la distance d'édition entre les mots sortis et les mots ciblés, dans le cas de la prédiction de mots.\\
+    Par exemple la \gls{edit_dist} entre les mots sortis et les mots ciblés, dans le cas de la prédiction de mots.\\
     \\
     Quoiqu'il en soit, le choix de tous les paramètres se fait expérimentalement, à partir d'intuitions basées sur des observations lors de travaux antérieurs sur de la conception de réseaux. Pas de démonstrations mathématiques (que statistiques).\\
     Transition vers la section suivante
@@ -246,7 +252,7 @@ Avant de donner à un réseau de neurones des données au format quelconque réc
 Tout d'abord, il faut normaliser (nettoyer) la base de données qui peut être, par exemple, un corpus de textes, une liste de mots, provenant de la toile, ou d'un système de transcription audio-visuelle. Dans ces données se trouvent évidemment des mots, avec des \og caractéristiques \fg de la langue \footnote{Pour simplifier, nous avons pris l'exemple d'une base de données monolingue, mais il est possible d'effectuer le processus avec plusieurs langues, si ce n'est qu'il faut s'adapter à chaque langue.} tel que les ponctuations, les lettres en capitales, les chiffres, ou bien les caractères spéciaux (comme le dièse que l'on retrouve souvent dans les \textit{tweets}). Seulement, il arrive parfois que certains de ces éléments rajoutent inutilement de la complexité pour une machine, sans que cela apporte plus de sens, ou bien sont non-désirées (voir incorrectes), ainsi on décide de les supprimer (ou les remplacer) pour ne garder que ce qui nous intéresse.\cite{jurafsky_regular} [Exemple]\\
 
 %[lib nltk]
-Après avoir nettoyé notre base de données, il faut segmenter notre texte en mots ou sous-mots, autrement dit, il faut tokeniser notre texte. La tokenisation correspond à la segmentation de chaînes de caractères (comme notre texte) en tokens (mots, sous-mots, ponctuations). Par la suite, on peut extraire l'ensemble des tokens uniques d'un texte que l'on nommera : vocabulaire.
+Après avoir nettoyé notre base de données, il faut segmenter notre texte en mots ou sous-mots, autrement dit, il faut tokeniser notre texte. La tokenisation correspond à la segmentation de chaînes de caractères (comme notre texte) en tokens (mots, sous-mots, caractères, ponctuations). Par la suite, on peut extraire l'ensemble des tokens uniques d'un texte que l'on nommera : vocabulaire.
 % Nous pourrions discuter longuement de ce qui devrait être pris comme tokens ou non. Par exemple, si nous devons prendre en compte la ponctuation en tant que token. Mais aussi les clitiques si elles doivent être pris en compte, ou si elles doivent être développées. Pour cela, nous vous renvoyons au Chapitre 2 de \og Speech and Language Processing \fg de Jurasky.
 % Il est intéressant d'évoquer que suivant les différents niveaux de tokenisations (partant du caractères, au sous-mots, jusqu'au mots entier) aide à mieux respectivement à comprendre la morphologie, la sémantique (suivant les sous-mots des algorithmes statistiques), et la syntaxe (suivant les sous-mots basé sur les règles). Et il a été montré qu'il était suffisant de segmenter des phrases en sous-mots pour analyser le langage de manière pertinente. (Thèse Fourrier)
 Prenons un exemple \og J'aime les bananes\fg, une approche naïve est de tokeniser notre texte suivant les espaces \footnote{Vous remarquerez déjà que ce processus ne s'applique pas aux langues, comme le Japonais ou le Chinois, manquant d'espace.} ce qui nous donne les tokens [\og J'aime \fg, \og les \fg, \og bananes. \fg] avec un vocabulaire de taille 3 (dans cette phrase tout les tokens sont uniques). Cependant, cette approche pose des problèmes, en commençant par le token \og bananes. \fg qui a la même signification avec ou sans point, mais qui sera considéré comme différent pour une IA. Nous pourrions ajouter la séparation suivant la ponctuation, mais alors nous obtiendrons pour \og J'aime \fg les tokens [\og J \fg, \og ' \fg, \og aime \fg] qui est une forme tout aussi problématique. Et il existe encore de nombreux cas (les abréviations, les points de suspension, etc.) où ce type de tokenisation pose problème. Une approche alternative est de tokeniser suivant des règles définis, par exemple, de prendre en compte les contractions comme \og J'aime \fg et de le transformer en deux tokens [\og Je \fg, \og aime \fg], qui est une méthode beaucoup plus efficace que la première approche, mais montrera des limites face à des situations (ou mots) rares, ou alors il faudrait spécifier de nouvelles règles pour gérer ces cas. Ainsi, la solution proposée est une approche statistique, consistant à décomposer de plus en plus un mot en sous-mots \footnote{Remarquez que le terme \textit{mot} a un sens différent de celui qui le précède.} au fil que sa fréquence diminue. [Exemple]. Les quatres algorithmes de tokenisation en sous-mots les plus utilisées sont le \textit{Byte-Pair Encoding} (Sennrich et al., 2016), l'\textit{unigram language modeling} (Kudo, 2018), le \textit{WordPiece} (Schuster et Nakajima, 2012), et le \textit{SentencePiece}\footnote{Cet algorithme est une implémentation des deux premiers.} (Kudo et Richardson, 2018).\cite{jurafsky_regular}\\

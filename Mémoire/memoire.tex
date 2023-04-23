@@ -8,6 +8,13 @@
 \usepackage[T1]{fontenc}
 \usepackage{mathptmx} %Times font (contraint par le CPBx)
 \usepackage{amsmath} % for matrices print
+\usepackage{titlesec}
+
+% Custom chapter design
+\titleformat{\chapter}[hang]
+  {\normalfont\bfseries\Huge}
+  {\thechapter\quad}{0pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{0pt}{32pt}
 
 \usepackage{babel, csquotes, xpatch}
 %\usepackage{polyglossia}
@@ -25,13 +32,32 @@
         description={C'est le nombre minimal de modifications (insertion, substitution, suppression) à appliquer à une chaîne de caractères $a$ pour obtenir la chaîne de caractères $b$.}
 }
 \makeglossaries
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[RO]{\nouppercase{\hfill\leftmark}}
-\fancyhead[LE]{\nouppercase{\rightmark\hfill}}
-\fancyfoot[L]{Mémoire CPBx}
-\fancyfoot[C]{\thepage/\pageref{LastPage}}
-\fancyfoot[R]{2023}
+
+% Custom header and footer for normal pages
+\fancypagestyle{normal}{
+  \fancyhf{}
+  \fancyhead[RO]{\nouppercase{\hfill\leftmark}}
+  \fancyhead[LE]{\nouppercase{\rightmark\hfill}}
+  \fancyfoot[L]{Mémoire CPBx}
+  \fancyfoot[C]{\thepage/\pageref{LastPage}}
+  \fancyfoot[R]{2023}
+  \renewcommand{\headrulewidth}{1pt}
+}
+
+% Custom header and footer for new chapter pages
+\fancypagestyle{newchapter}{
+  \fancyhf{}
+  \fancyfoot[L]{Mémoire CPBx}
+  \fancyfoot[C]{\thepage/\pageref{LastPage}}
+  \fancyfoot[R]{2023}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% Set the new chapter page style to the custom style
+\pagestyle{normal}
+\makeatletter
+\let\ps@plain\ps@newchapter
+\makeatother
 
 \begin{document}
 \begin{titlepage}

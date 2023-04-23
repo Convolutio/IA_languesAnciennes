@@ -44,6 +44,9 @@
     \vspace*{1.5cm}
     \large Thomas HORRUT,\; Eliott CAMOU,\; Benjamin BADOUAILLE\\
     Étudiants au Cycle Préparatoire de Bordeaux (CPBx) 
+
+    \vspace*{1.5cm}
+    \large Projet tutoré par Rachel Bawden 
     
     \vspace*{\fill}
 \end{titlepage}
@@ -214,13 +217,13 @@ Des hyperparamètres pour l'entraînement sont également amenés à être défi
     }
 \subsection{Traitement des donnnées}
 
-Avant de donner à un réseau de neurones des données au format quelconque récupérées pour son entraînement, il est nécessaire d'effectuer un pré-traitement dessus. Le but est de les rendre correctes et compréhensibles pour l'intelligence artificielle. Cette préparation s'effectue selon le type de tâche souhaité. Néanmoins, dans sa généralité, les étapes de préparation des données en TAL restent les mêmes.\\
+Avant de donner à un réseau de neurones des données au format quelconque, que ce soit pour son entraînement ou pour réaliser des inférences dessus, il est nécessaire de les pré-traiter. Le but est de les rendre correctes et compréhensibles pour l'intelligence artificielle. Leur transformation se fait selon le type de tâche souhaitée. Néanmoins, dans sa généralité, les étapes de préparation des données en TAL restent les mêmes.\\
 
 % \footnote{À noter que nous parlons ici de \og grandes \fg quantités de données à analyser, mais ce mot est relatif à un être humain, et encore, il arrive que ce nombre soit restreint, seulement, pour une IA c'est le contraire, nous parlerons plutôt de d'IA à \og basses ressources \fg car ce nombre de données est très petits face à ce qu'elle peut gérer dans le monde moderne et la quantités de textes disponibles sur la toile.}
-Tout d'abord, il faut normaliser (nettoyer) la base de données qui peut être, par exemple, un corpus de textes, une liste de mots, provenant de la toile, ou d'un système de transcription audio-visuelle. Dans ces données se trouvent évidemment des mots, avec des \og caractéristiques \fg de la langue \footnote{Pour simplifier, nous avons pris l'exemple d'une base de données monolingue, mais il est possible d'effectuer le processus avec plusieurs langues, si ce n'est qu'il faut s'adapter à chaque langue.} tel que les ponctuations, les lettres en capitales, les chiffres, ou bien les caractères spéciaux (comme le dièse que l'on retrouve souvent dans les \textit{tweets}). Seulement, il arrive parfois que certains de ces éléments rajoutent inutilement de la complexité pour une machine, sans que cela apporte plus de sens, ou bien sont non-désirées (voir incorrectes), ainsi on décide de les supprimer (ou les remplacer) pour ne garder que ce qui nous intéresse.\cite{jurafsky_regular} [Exemple]\\
+Tout d'abord, il faut normaliser (nettoyer) la base de données qui peut être, par exemple, un corpus de textes, une liste de mots, provenant de la toile, ou d'un système de transcription audio-visuelle. Dans ces données se trouvent des chaînes de caractères sous un certains format, où de la ponctuation peut apparaître, de même que des lettres en capitale, des chiffres, des caractères spéciaux (comme le dièse que l'on retrouve souvent dans les \textit{tweets})\dots Mais une partie de ces éléments peut ne pas avoir d'intérêt à être traitée par les algorithmes et même apporter du bruit en fournissant des données incorrectes pour entraîner l'intelligence artificielle. Une première étape est donc de s'en débarasser ou bien d'apporter des modifications à l'aide d'algorithmes de traitement de texte classique\footnote{les Expressions Régulières sont par exemple de puissants outils pour modifier le contenu textuel}.\cite{jurafsky_regular} [Exemple]\\
 
 %[lib nltk]
-Après avoir nettoyé notre base de données, il faut segmenter notre texte en mots ou sous-mots, autrement dit, il faut tokeniser notre texte. La tokenisation correspond à la segmentation de chaînes de caractères (comme notre texte) en tokens (mots, sous-mots, ponctuations). Par la suite, on peut extraire l'ensemble des tokens uniques d'un texte que l'on nommera : vocabulaire.
+Après avoir nettoyé la base de données, il faut définir une segmentation des textes en éléments d'entrée pertinents pour un traitement par l'IA : les \textit{tokens}. Une tokenisation correspond à la segmentation de chaînes de caractères (comme notre texte) en tokens (mots, sous-mots, ponctuations). Par la suite, on peut extraire l'ensemble des tokens uniques d'un texte que l'on nommera : vocabulaire.
 % Nous pourrions discuter longuement de ce qui devrait être pris comme tokens ou non. Par exemple, si nous devons prendre en compte la ponctuation en tant que token. Mais aussi les clitiques si elles doivent être pris en compte, ou si elles doivent être développées. Pour cela, nous vous renvoyons au Chapitre 2 de \og Speech and Language Processing \fg de Jurasky.
 % Il est intéressant d'évoquer que suivant les différents niveaux de tokenisations (partant du caractères, au sous-mots, jusqu'au mots entier) aide à mieux respectivement à comprendre la morphologie, la sémantique (suivant les sous-mots des algorithmes statistiques), et la syntaxe (suivant les sous-mots basé sur les règles). Et il a été montré qu'il était suffisant de segmenter des phrases en sous-mots pour analyser le langage de manière pertinente. (Thèse Fourrier)
 Prenons un exemple \og J'aime les bananes\fg, une approche naïve est de tokeniser notre texte suivant les espaces \footnote{Vous remarquerez déjà que ce processus ne s'applique pas aux langues, comme le Japonais ou le Chinois, manquant d'espace.} ce qui nous donne les tokens [\og J'aime \fg, \og les \fg, \og bananes. \fg] avec un vocabulaire de taille 3 (dans cette phrase tout les tokens sont uniques). Cependant, cette approche pose des problèmes, en commençant par le token \og bananes. \fg qui a la même signification avec ou sans point, mais qui sera considéré comme différent pour une IA. Nous pourrions ajouter la séparation suivant la ponctuation, mais alors nous obtiendrons pour \og J'aime \fg les tokens [\og J \fg, \og ' \fg, \og aime \fg] qui est une forme tout aussi problématique. Et il existe encore de nombreux cas (les abréviations, les points de suspension, etc.) où ce type de tokenisation pose problème. Une approche alternative est de tokeniser suivant des règles définis, par exemple, de prendre en compte les contractions comme \og J'aime \fg et de le transformer en deux tokens [\og Je \fg, \og aime \fg], qui est une méthode beaucoup plus efficace que la première approche, mais montrera des limites face à des situations (ou mots) rares, ou alors il faudrait spécifier de nouvelles règles pour gérer ces cas. Ainsi, la solution proposée est une approche statistique, consistant à décomposer de plus en plus un mot en sous-mots \footnote{Remarquez que le terme \textit{mot} a un sens différent de celui qui le précède.} au fil que sa fréquence diminue. [Exemple]. Les quatres algorithmes de tokenisation en sous-mots les plus utilisées sont le \textit{Byte-Pair Encoding} (Sennrich et al., 2016), l'\textit{unigram language modeling} (Kudo, 2018), le \textit{WordPiece} (Schuster et Nakajima, 2012), et le \textit{SentencePiece}\footnote{Cet algorithme est une implémentation des deux premiers.} (Kudo et Richardson, 2018).\cite{jurafsky_regular}\\
@@ -289,8 +292,7 @@ La complexification architecturale peut dans un premier temps se remarquer d'un 
 
 D'un point de vue interne, ces deux couches interagissent à travers des \textbf{portes} rejettant et promouvant de l'information.
 
-
-% Transition vers les Transformeurs, discuter des problèmes que pose les RNN. 
+\textit{[Expliquer comment les portes permettent de sélectionner l'information contextuelle + transition]}
 
 \subsubsection{Transformeurs}
 
@@ -370,8 +372,9 @@ Puisque ces variations sont supposées régulières, il est possible de déploye
 
 \subsection{Dernières solutions neuronales}
 \subsubsection{Approche supervisée}
-En disposant des données décrites plus tôt, la dernière démarche supervisée développée ces dernières années s'est directement inspirée des celles mobilisées usuellement dans les problèmes de traduction automatique. Le modèle neuronal est alors doté de l'architecture \textbf{encodeur-décodeur}. L'encodeur reçoit les séquences d'\textit{embeddings} associés aux caractères de chaque cognats et doit apprendre à porter son attention sur \dots
+En disposant des données décrites plus tôt, la dernière démarche supervisée développée ces dernières années est directement inspirée de celles mobilisées usuellement dans les problèmes de \textbf{traduction automatique}. Le modèle neuronal est alors doté de l'architecture \textbf{encodeur-décodeur}.
 
+L'encodeur reçoit les séquences d'\textit{embeddings} associés aux caractères de chaque cognats et encode les informations qui vont être passées dans le décodeur pour générer une proto-forme plausible. Les deux parties sont chacun des réseaux de neurones à part, mais chacune sont en réalité des RNNs composés d'unités GRU.
 \subsubsection{Approche non-supervisée}
 
 \subsection{Limites d'applicabilité}

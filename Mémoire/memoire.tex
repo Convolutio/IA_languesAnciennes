@@ -426,25 +426,72 @@ Puisque ces changements sont supposés être réguliers, il est possible de dép
 
 \subsection{Dernières solutions neuronales}
 \subsubsection{Approche supervisée}
+\textit{
+\begin{itemize}
+    \item Présentation de l'approche avec utilisation de GRU pour encodeur-décodeur + description de la manière de représenter les entrées
+    \item Digression de pourquoi les architectures choisies pour l'encodeur-décodeur sont des GRU et pas des Transformeurs. Évoquer l'expérience du fine-tuning de M-T5 et M-BART qui n'a pas marché + rediriger vers une annexe pour plus de détails
+    \item Évoquer qu'un test de l'approche sur le latin a été effectué et que les variations apprises ont été étudiées
+\end{itemize}}
+
 En disposant des données décrites plus tôt, la dernière démarche supervisée développée ces dernières années est directement inspirée de celles mobilisées usuellement dans les problèmes de \textbf{traduction automatique}. Le modèle neuronal est alors doté de l'architecture \textbf{encodeur-décodeur}.
 
 L'encodeur reçoit les séquences d'\textit{embeddings} associés aux caractères de chaque cognats et encode les informations qui vont être passées dans le décodeur pour générer une proto-forme plausible. Les deux parties sont chacun des réseaux de neurones à part.\\
 
 \textit{Notre première idée a été d'utiliser des modèles de type Transformeurs, en espérant profiter de leur performance, pour notre tâche de reconstruction. Actuellement, en traduction automatique, le modèle neuronal de type encodeur-décodeur le plus utilisé sont les Transformeurs \ref{transformers} qui ont su montré leur performance dans la tâche de traduction automatique (citer références). L'une des raisons de ces résultats est qu'ils peuvent être entrainés sur de grande quantité de données, et se crée une \og bonne\fg représentation de ces données. Mais, dans le cadre de la reconstruction d'une langue, il faut s'attendre à avoir \textit{peu} (ou pas) de données sur la langue à reconstituer. Dans notre cas, nous souhaitons reconstruire le latin à partir de langue romanes (français, espagnol, italien, portugais), dont nous possédons une base de données contenant environ 5 000 mots par langue (latin inclus). Cette base de données est très petite face aux quantités gigantesque (environ des millions de mots) que peuvent traiter les grands modèles de langue. Ainsi, pour appliquer notre idée, nous avons décidé d'utiliser des modèles multilingues pré-entrainés dans la tâche de traduction. En effet, pour pallier le \og manque\fg de données d'entrainement, et espérer utiliser les représentations que ce sont construits ces modèles, c'est-à-dire, les relations sémantiques et syntaxiques qu'ils ont pu apprendre, il a été choisis d'utiliser des modèles qui ont déjà été entrainés sur de grandes quantités de données dans les langues romanes et le latin (en accord avec notre base de données). Ici, nous avons choisis les modèles $mBart$ (réf modèle + papier) et $mT5$ (réf modèle + papier) de chez HuggingFace, qui respectent les critères précédents. Maintenant, nous devons affiner (\textit{fine-tuning}) les modèles choisis pour notre tâche de reconstruction, c'est-à-dire, que nous allons continuer l'entrainement de ces modèles pré-entrainés avec notre base de données pour qu'ils effectuent non plus la tâche de traduction mais de reconstruction. L'affinement d'un modèle neuronal est un procédé courant quand on souhaite utilisé l'apprentissage (les connaissances) d'un modèle pour l'adapter à la tâche souhaitée (similaire à la tâche initial), notamment quand on n'a pas assez de données pour entrainer notre modèle en partant de zéro. (on ne se base pas sur des contraintes phonétiques, uniquement des contraintes "linguistiques"...). La mise en place de ce procédé s'effectue par (db > dl model > set training (hyperpameters opti) and metrics (edit distance) > analysis)... Après plusieurs tests d'affinement et d'optimisation d'hyperparamètres de nos modèles\footnote{Une des causes supposées était que les modèles étaient trop grands pour apprendre avec notre base de données, ainsi, des versions plus petites ont été utilisé $tinymBART$ (réf) et $mT5-small$ (réf), sans pour autant obtenir de résultats significatifs.}, nous n'avons obtenus aucun résultat concluant. Plusieurs causes sont possibles, d'abord le manque de données d'entrainement empêchant le modèle d'apprendre la tâche demandée\footnote{Possible que les modèles apprenent avec de plus grandes quantités de données, mais nous sortons du cadre de notre étude consistant à travailler avec des langues où l'on possède peu de données.}, mais aussi, (paramétrages)..., et, (principes linguistiques)... (Transformeurs et données). Nous en concluons que l'utilisation de Transformeurs n'est pas approprié pour notre tâche de reconstruction, nous devons nous tourné sur d'autres type de modèle.}
 
-\subsubsection{Approche non-supervisée}
+\subsubsection{Approche non supervisée}
+\textit{
+\begin{itemize}
+    \item Démarche non supervisée qui a l'ambition de s'affranchir des bonnes reconstructions associées aux cognats pour entraîner les réseaux. Au contraire il les construit en même temps que d'entraîner les réseaux servant à le faire.
+    \item Conséquence, un modèle général plus complexe, entraîné par des EM de type Monte-Carlo. Décrire le rôle des modèles neuronaux dedans et la modélisation de la variation phonétique qui a du être faite pour que ce modèle général ait du sens.
+    \item Décrire l'architecture des réseaux
+    \item Introduire comment les candidats sont générés, puis expliquer comment l'échantillonnage s'effectue. Discuter sur l'heuristique effectuée à propos des proto-formes possibles pour un set de cognat donné, et émettre une hypothèse sur l'utilité de l'intervention d'un modèle de langue de la proto-langue dans le procédé de sélection.
+    \item Expliquer comment les réseaux sont entraînés à partir des échantillons extraits (étape de maximisation)
+    \item Terminer cette section en rappelant qu'une expérience sur la reconstruction du latin a été effectuée mais que les éléments appris par les modèles neuronaux d'édition n'ont pas encore reçus d'analyse.
+\end{itemize}}
 
 L'ultime modèle étudié dans ce mémoire s'écarte du précédent en proposant de s'affranchir des bonnes reconstructions associées aux cognats pour s'entraîner. Au contraire, il détermine en même temps que d'entraîner les réseaux servant à le faire.
 
 \subsection{Limites d'applicabilité}
+\textit{
+\begin{itemize}
+    \item En admettant que le recueil d'un important ensembles de cognats soit possible pour des langues descendantes d'une langue ancienne commune, il y a des cas où le recueil d'informations phonétiques sur cette dernière est plus difficile, notamment à mesure qu'on souhaite reconstruire des proto-langues anciennes.
+    \item Problème donc à peu de ressources pour lesquels une minimisation des données requises sur la proto-langue peut être intéressante.
+    \item La démarche non supervisée peut donc être nettement plus prometteuse dans ce sens-là
+    \item En revanche, l'intervention du modèle de langue dans l'approche non supervisée ne la libère pas du besoin de 0 ressources sur la proto-langue, puisqu'il faut des mots phonétisés y appartenant pour l'entraîner.
+    \item L'enjeu de l'expérience de notre projet aura été de déterminer l'impact de la qualité du modèle de langue sur la pertinence des résultats prédits par l'approche.
+\end{itemize}}
+
 \textit{[Expliquer en quoi le non-supervisé donne plus d'espoir que le supervisé mais en quoi même cette approche présente des limites.]}\\
 \textit{[Transition avec la problématique de l'article scientifique]}\\
 
-\section{Expérience sur une approche non-supervisée}
+\section{Expérience sur une approche non supervisée}
 \subsection{Méthode}
+\begin{itemize}
+    \item Dans un premier temps, nous initialisons les réseaux de neurones d'édition et implémentons tous les algorithmes décrits par le papier afin de pouvoir reproduire la reconstruction du latin dans un maximum de conditions expérimentales en commun avec les leurs.
+    \item Dans un second temps, nous entraînons des modèles de langue d'architectures différentes (les citer) et pour chacune d'elles entraînons un certain nombre de modèles différents en faisant varier les sets de données d'entraînement (surtout au niveau de la quantité).
+    \item On exécute les itérations de ME pour chaque configuration différente du modèle de langue et on compare les niveaux de pertinence entre chaque exécution.
+    \item La métrique utilisée est la même que pour l'approche non supervisée comme supervisée : la distance d'édition moyenne (non normalisée et normalisée) entre les reconstructions latines prédites et les vraies reconstructions.
+\end{itemize}
 
 \subsection{Critiques}
+\begin{itemize}
+    \item Une première limitation dans notre expérience est que nous n'avons aucune garantie que les résultats que nous observerons sur la reconstruction du latin ne s'applique à des reconstructions de d'autres langues. En effet, rien que l'approche étudiée n'est pas applicable pour la reconstruction de langues comme celles de la famille austronésienne.
+    \item Il est possible que la manière de construire des sous-ensembles de données à partir de la base de données utilisée pour entraîner le modèle du langue du latin ait un profond impact sur la qualité du modèle de langue. Il aurait donc été judicieux de faire varier l'hétérogénéité des données en plus que sa quantité, bien que l'hétérogénéité est une propriété difficile à définir rigoureusement. (cf. dernières sources de la tutrice)
+    \item Néanmoins, s'il est arrivé que le modèle ait varié en qualité selon son architecture et ses données d'entraînement, cette expérience pourra mettre en évidence une première observation de l'impact sur les résultats finaux.
+\end{itemize}
+
 \subsection{Compte-rendu de la mise en place}
+\begin{itemize}
+    \item En souhaitant établir un algorithme de détermination des candidats, un problème de complexité a été mis en évidence : le nombre de candidats est dominé par un terme en $2^d$, avec $d$ la distance d'édition minimale.
+    \item Construire une annexe sur l'algo naïf de détermination des candidats à partir de la matrice de calcul de la distance d'édition minimale entre deux mots. Y discuter d'un hypothétique algorithme moins naïf.
+    \item Le problème de complexité peut justifier partiellement le besoin d'effectuer les premières itérations sur des échantillons tirés d'itérations sur un modèle probabiliste.
+    \item Avec le soutien d'un des auteurs, il a été possible de se procurer les échantillons initiaux qui ont été utilisés lors des expérimentations du papier, nous permettant de ne pas avoir à développer le modèle probabiliste de 2013, qui nous aurait demander de comprendre des notions qui nous échappent dans un délai trop restreint.
+    \item Il a également été possible d'exploiter directement le code des chercheurs pour l'exécution des programmes dynamiques calculant les probabilités des étapes d'échantillonnage et de maximisation
+    \item Nous avons démarré le développement en utilisant la librairie Pytorch. La déclaration des modèles d'édition a été effectuée et une conversion des mots phonétisée en séquences de vecteurs one-hot a été implémentée, en conformité avec les formats de données manipulées dans les programmes dynamiques codés par les chercheurs.
+    \item Néanmoins, l'encodage de l'entraînement des modèles d'édition lors de l'étape de maximisation n'a pas encore été entamé, de même que l'entraînement des modèles de langue et la création de leurs différents sets d'entraînement. L'évaluation des résultats n'a pas non plus été gérée.
+    \item Avec toutes ces fonctionnalités manquantes, il n'a pas été possible de mener l'expérience à son terme avant le rendu de ce mémoire, de même que le code déjà développé n'est pas encore totalement fonctionnel (d'autant que plus que certains tests n'ont alors pas pu être menés). Néanmoins, le code est disponible sur le répertoire <lien github>
+\end{itemize}
 
 \chapter{Conclusion}
 \section{Synthèse}

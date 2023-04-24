@@ -9,6 +9,10 @@
 \usepackage{mathptmx} %Times font (contraint par le CPBx)
 \usepackage{amsmath} % for matrices print
 \usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
 
 % Custom chapter design
 \titleformat{\chapter}[hang]
@@ -81,7 +85,31 @@
     Étudiants au Cycle Préparatoire de Bordeaux (CPBx) 
 
     \vspace*{1.5cm}
-    \large Projet tutoré par Rachel Bawden 
+    \large Projet tutoré par Rachel Bawden
+    \vspace*{1.5cm}
+
+    \begin{figure}[!h]
+        \centering
+        \begin{subfigure}[b]{0.2\textwidth}
+            \includegraphics[width=\textwidth]{logo/cpbx_logo.png}
+        \end{subfigure}\hspace{0,5cm}
+        \begin{subfigure}[b]{0.5\textwidth}
+            \includegraphics[width=\textwidth]{logo/univ_bordeaux_logo.png}
+        \end{subfigure}
+        \begin{subfigure}[b]{0.2\textwidth}
+            \includegraphics[width=\textwidth]{logo/almanach_logo.png}
+        \end{subfigure}
+    \end{figure}
+
+    \begin{figure}[!h]
+        \centering
+        \begin{subfigure}[b]{0.4\textwidth}
+            \includegraphics[width=\textwidth]{logo/logo_enseirb.jpg}
+        \end{subfigure}\hspace{1cm}
+        \begin{subfigure}[b]{0.4\textwidth}
+            \includegraphics[width=\textwidth]{logo/logo_ensc.jpg}
+        \end{subfigure}
+    \end{figure}
     
     \vspace*{\fill}
 \end{titlepage}
@@ -501,7 +529,7 @@ L'encodeur reçoit les séquences d'\textit{embeddings} associés aux caractère
 L'ultime modèle étudié dans ce mémoire s'écarte du précédent en proposant de s'affranchir des bonnes reconstructions associées aux cognats pour s'entraîner. Au contraire, il détermine les proto-formes en même temps que d'entraîner les réseaux servant à le faire \cite{he2022neural}.
 
 \vspace{12pt}
-Pour cela, le modèle général est probabiliste. Celui-ci admet que la transformation d'une proto-forme vers son cognat dans une certaine langue fille suit un processus dans lequel chaque caractère phonétique de la proto-forme peut subir une suppression ou une substitution suivie d'éventuelles insertions de caractères supplémentaires. Les modèles neuronaux interviennent pour apprendre à estimer les probabilités que ces opérations aient lieu sur le $i$-ème caractère d'une proto-forme $x$, en sachant que la forme dans une certaine langue fille actuellement construite avec les précédentes opérations appliquées sur $x$ soit $y'$. Les réseaux sont alors composés d'une couche avec une architecture LSTM encodant un contexte à partir de $x$ et de $y'$, suivie d'une couche FFNN de classification renvoyant une distribution de probabilité sur le vocabulaire\footnote{L'ensemble des caractères phonétiques auquel un caractère spécial est ajouter pour symboliser la suppression ou la fin d'une insertion. Le coefficient $j$ du vecteur de sortie représente alors la probabilité que le $j$-ième caractère du vocabulaire soit inséré sur $y'$.}. \cite[4, 5]{he2022neural}
+Pour cela, le modèle général est probabiliste. Celui-ci admet que la transformation d'une proto-forme vers son cognat dans une certaine langue fille suit un processus dans lequel chaque caractère phonétique de la proto-forme peut subir une suppression ou une substitution suivie d'éventuelles insertions de caractères supplémentaires. Les modèles neuronaux interviennent pour apprendre à estimer les probabilités que ces opérations aient lieu sur le $i$-ème caractère d'une proto-forme $x$, en sachant que la forme dans une certaine langue fille actuellement construite avec les précédentes opérations appliquées sur $x$ soit $y'$. Les réseaux sont alors composés d'une couche avec une architecture LSTM encodant un contexte à partir de $x$ et de $y'$, suivie d'une couche FFNN de classification renvoyant une distribution de probabilité sur le vocabulaire\footnote{L'ensemble des caractères phonétiques auquel un caractère spécial est ajouter pour symboliser la suppression ou la fin d'une insertion. Le coefficient $j$ du vecteur de sortie représente alors la probabilité que le $j$-ième caractère du vocabulaire soit inséré sur $y'$.}. \cite[Section 4-5]{he2022neural}
 
 L'heuristique principal de l'approche est, qu'étant donné une reconstruction temporaire $x_0$ pour un ensemble de cognats $\{y_l, l\in L \}$\footnote{$L$ désigne l'ensemble des langues filles concernées pour la reconstruction} donné, la bonne proto-forme se situe sur un chemin d'édition de taille minimale entre cette reconstruction temporaire et chacun des cognats. Il est donc possible d'établir une liste de candidats $(x_i)_{0\leq{}i\leq{}\Gamma}$ dans laquelle elle se trouve. Le critère de sélection du candidat devrait se faire en calculant la probabilité suivante, qu'on développe grâce aux règles de Bayes\footnote{La dernière égalité est justifiée par la supposition de l'indépendance des apparitions conditionnées des cognats dans les langues filles} :
 \begin{equation} \label{probaSampling}
@@ -510,13 +538,13 @@ L'heuristique principal de l'approche est, qu'étant donné une reconstruction t
         & \propto p(x)p(\{y_l, l \in L\}|x) = p(x)\prod_{l\in L} p(y_l|x)
     \end{split}
 \end{equation}
-Grâce à un programme dynamique utilisant des inférences dans les modèles neuronaux, le calcul des $p(y_l|x)$ est possible. La probabilité $p(x)$ est calculée à l'aide d'un modèle de langue qui est censé déterminer si une chaîne de caractères phonétiques forme un mot ayant des chances d'exister dans la proto-langue.\cite[5]{he2022neural}
+Grâce à un programme dynamique utilisant des inférences dans les modèles neuronaux, le calcul des $p(y_l|x)$ est possible. La probabilité $p(x)$ est calculée à l'aide d'un modèle de langue qui est censé déterminer si une chaîne de caractères phonétiques forme un mot ayant des chances d'exister dans la proto-langue.\cite[Section 5]{he2022neural}
 
 Tant que les réseaux de neurones ne sont pas bien entraînés, les échantillons $x$ tirables ne sont pas fiables. Pourtant, c'est bien avec de tels échantillons qu'il va falloir travailler pour créer des données d'entraînement, si l'on souhaite que la non-supervision soit conservée.\\
-Les modèles neuronaux gagnent dans ce cas en pertinence à mesure qu'ils reçoivent des entraînements, qui sont alors multiples, et où l'ensemble de couples entrée-sortie pour ajuster les poids neuronaux évolue à chaque fois. Il s'agit d'un algorithme d'espérance-maximisation\cite{EM}, où un entraînement maximise la vraisemblance d'évènements attendus à un certain moment. Ici, lors d'une itération, pour chaque paire de cognats, on tire aléatoirement une forme ancestrale selon une distribution de probabilités sur les candidats définie à partir des probabilités $p(x_i|\{y_l, l \in L\})$. À partir de cet échantillon, les évènements attendus sont que certaines modifications aient eu lieu dessus pour obtenir le cognat $y_l$. La probabilité des ces modifications est calculable à l'aide à nouveau d'un programme dynamique et on construit de cette façon les données d'entraînement de manière non-supervisée.\cite[6]{he2022neural}
+Les modèles neuronaux gagnent dans ce cas en pertinence à mesure qu'ils reçoivent des entraînements, qui sont alors multiples, et où l'ensemble de couples entrée-sortie pour ajuster les poids neuronaux évolue à chaque fois. Il s'agit d'un algorithme d'espérance-maximisation\cite{EM}, où un entraînement maximise la vraisemblance d'évènements attendus à un certain moment. Ici, lors d'une itération, pour chaque paire de cognats, on tire aléatoirement une forme ancestrale selon une distribution de probabilités sur les candidats définie à partir des probabilités $p(x_i|\{y_l, l \in L\})$. À partir de cet échantillon, les évènements attendus sont que certaines modifications aient eu lieu dessus pour obtenir le cognat $y_l$. La probabilité des ces modifications est calculable à l'aide à nouveau d'un programme dynamique et on construit de cette façon les données d'entraînement de manière non-supervisée.\cite[Section 6]{he2022neural}
 
 \vspace{12pt}
-Le modèle a pu être testé pour reconstruire le latin à partir des mêmes données que la démarche supervisée, hormis que les formes latines ont intégralement été utilisées pour son évaluation. Il a pu surpasser en performances d'anciens modèles entraînés avec des méthodes non-supervisées. En revanche, aucune étude approfondie des règles de changement phonétique apprises n'a encore été entamée. \cite[7]{he2022neural}
+Le modèle a pu être testé pour reconstruire le latin à partir des mêmes données que la démarche supervisée, hormis que les formes latines ont intégralement été utilisées pour son évaluation. Il a pu surpasser en performances d'anciens modèles entraînés avec des méthodes non-supervisées. En revanche, aucune étude approfondie des règles de changement phonétique apprises n'a encore été entamée. \cite[Section 7]{he2022neural}
 
 
 \subsection{Limites d'applicabilité}

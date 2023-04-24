@@ -18,8 +18,11 @@
 
 \usepackage{babel, csquotes, xpatch}
 %\usepackage{polyglossia}
-\usepackage[backend=biber, style=numeric]{biblatex}
-\addbibresource{biblio.bib}
+%\usepackage[backend=biber, style=numeric]{biblatex}
+%\addbibresource{biblio.bib}
+\usepackage[nottoc]{tocbibind}
+\usepackage[square,numbers]{natbib}
+\bibliographystyle{plainnat}
 
 \usepackage{amsfonts}
 \usepackage{fancyhdr} % Pour la mise en page des en-têtes + pieds de page
@@ -565,6 +568,7 @@ Le modèle a pu être testé pour reconstruire le latin à partir des mêmes don
 \section{Les perspectives de l'IA dans la linguistique historique}
 \textit{Ouverture, dépassement de certaines limites, évolution des modèles.}
 
-\printbibliography[heading=bibintoc]
+%\printbibliography[heading=bibintoc]
+\bibliography{biblio}
 
 \end{document}

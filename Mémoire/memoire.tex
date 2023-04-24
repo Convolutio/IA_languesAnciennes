@@ -15,13 +15,13 @@
   {\normalfont\bfseries\Huge}
   {\thechapter\quad}{0pt}{\Huge}
 \titlespacing*{\chapter}{0pt}{0pt}{32pt}
-
+\usepackage[square,numbers]{natbib}
 \usepackage{babel, csquotes, xpatch}
 %\usepackage{polyglossia}
 %\usepackage[backend=biber, style=numeric]{biblatex}
 %\addbibresource{biblio.bib}
 \usepackage[nottoc]{tocbibind}
-\usepackage[square,numbers]{natbib}
+
 \bibliographystyle{plainnat}
 
 \usepackage{amsfonts}
@@ -520,17 +520,11 @@ Le modèle a pu être testé pour reconstruire le latin à partir des mêmes don
 
 
 \subsection{Limites d'applicabilité}
-\textit{
-\begin{itemize}
-    \item En admettant que le recueil d'un important ensembles de cognats soit possible pour des langues descendantes d'une langue ancienne commune, il y a des cas où le recueil d'informations phonétiques sur cette dernière est plus difficile, notamment à mesure qu'on souhaite reconstruire des proto-langues anciennes.
-    \item Problème donc à peu de ressources pour lesquels une minimisation des données requises sur la proto-langue peut être intéressante.
-    \item La démarche non supervisée peut donc être nettement plus prometteuse dans ce sens-là
-    \item En revanche, l'intervention du modèle de langue dans l'approche non supervisée ne la libère pas du besoin de 0 ressources sur la proto-langue, puisqu'il faut des mots phonétisés y appartenant pour l'entraîner.
-    \item L'enjeu de l'expérience de notre projet aura été de déterminer l'impact de la qualité du modèle de langue sur la pertinence des résultats prédits par l'approche.
-\end{itemize}}
+En admettant que le recueil de nombreux ensembles de cognats soit possible, les informations phonétiques sur une proto-langue peut être en revanche plus éparses, notamment à mesure qu'on souhaite en reconstruire des anciennes. Face à ce problème à peu de ressources, mettre en place un modèle le moins gourmand possible en données sur la proto-langue est donc un objectif présentant de l'intérêt.
 
-\textit{[Expliquer en quoi le non-supervisé donne plus d'espoir que le supervisé mais en quoi même cette approche présente des limites.]}\\
-\textit{[Transition avec la problématique de l'article scientifique]}\\
+Pour aller dans ce sens, la démarche non-supervisée dispose d'un net avantage par rapport à l'approche supervisée. Néanmoins, il a été mentionné que la présence d'un modèle de langue de la proto-langue était nécessaire, ne la dispensant pas totalement du besoin de mots phonétisés dans la proto-langue à reconstruire.
+
+De ce problème a émergé la question de notre article scientifique : celle des propriétés que le modèle de langue doit respecter pour que le modèle non-supervisé puisse prédire des résultats de confiance.
 
 \section{Expérience sur une approche non supervisée}
 \subsection{Méthode}

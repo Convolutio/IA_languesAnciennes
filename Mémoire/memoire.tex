@@ -16,7 +16,6 @@
 
 \usepackage{tipa}
 \usepackage{tabularx}
-\documentclass{article}
 
 % Custom chapter design
 \titleformat{\chapter}[hang]
@@ -53,6 +52,7 @@
 \newglossaryentry{idiome}{
         name = {idiome}, 
         description = { désigne le langage d'une communauté à laquelle ne correspond aucune structure politique, administrative ou nationale}
+}
 
 % Custom header and footer for normal pages
 \fancypagestyle{normal}{
@@ -191,7 +191,7 @@ Ces changements sont appelés correspondances régulières, ce sont des changeme
 \indent Un morphème est quant à lui le plus petit fragment morphologique d’un mot porteur de sens. Il peut être de nature lexical ou grammatical. En parallèle, on le considère également soit comme un thème morphologique, lorsqu'il porte le sens principal du mot, soit comme un affixe, dans le cas d'un préfixe ou d'un suffixe par exemple. Dans \textit{chant-eur}, \textit{jongl-eur}, ou \textit{jou-eur}, le suffixe  \og -eur \fg{} signifie celui qui fait l'action. Ainsi, \og eur \fg{} est un morphème. La Morphologie est le domaine de la linguistique étudiant les morphèmes et leur manière de composer des mots.\\
 % Un exemple pour s'imaginer 
 Les correspondances régulières sont détectées grâce à la méthode comparative. Pour cela, elle considère un ensemble de mots. Les mots doivent alors être apparentés selon leur sens, en prenant en compte les éventuels glissements sémantiques. Après cela, les emprunts doivent être écartés. Enfin, les régularités doivent être cherchées entres les mots et les différentes évolutions qui ont pu conduire des uns aux autres n'ont plus qu'à être inspectées. (rajouter tableaux, texte explication tableaux, sources tableau)\\
-\begin{document}
+
 \begin{tabularx}{0.8\textwidth} {
   | >{\centering\arraybackslash}X
   | >{\centering\arraybackslash}X
@@ -210,26 +210,25 @@ Feu & m-oto & m-odo\\
 Envoyer & -tuma & -duma \\
 \hline
 \end{tabularx}
-\end{document}
+
 Cette méthode met donc en lumière des cognats, c’est-à-dire deux mots de deux langues différentes qui dérivent de la même protolangue. On observe une correspondance régulière entre le /t/ du Swahili et le /d/ du Dawida.
 
-\begin{document}
 \begin{tabularx}{0.8\textwidth} {
   | >{\centering\arraybackslash}X
   | >{\centering\arraybackslash}X | }
 \hline
-Fisch & Poisson 
+Fisch & Poisson\\
 \hline 
-Vater & Père 
+Vater & Père\\
 \hline 
-Fell & Peau 
+Fell & Peau\\
 \hline 
-Ferkel & Porc 
+Ferkel & Porc\\
 \hline 
-Voll & Plein 
+Voll & Plein\\
 \hline 
 \end{tabularx}
-\end{document}
+
 On observe aussi que la méthode marche mieux lorsque les deux langues ont divergées récemment. Par exemple le français et l’allemand, avec des correspondances de /f/ et /p/ à l’initiale, mais restant cependant incertain.
 
 
@@ -250,7 +249,7 @@ Ces listes sont utilisées en glottochronologie et en lexicostatistique, qui son
 Un phonème est un élément sonore du langage articulé considéré d'un point de vue physiologique (disposition des organes vocaux) et d'un point de vue acoustique (perception auditive). Saussure le défini ainsi : \og le phonème est la somme des impressions acoustiques et des mouvements articulatoires, de l’unité entendue et de l’unité parlée, l’une  conditionnant l’autre : ainsi c’est déjà une unité complexe, qui a un pied dans chaque chaîne \fg{} \cite{saussure}
 La phonologie l'étude des phonèmes. Ces phonèmes ont donc des caractéristiques différentes, se différenciant entre eux de par leur prononciation. 
 % Les détails sur la prononciation, et les différents systèmes peuvent être mis en annexe, mais on ne peut détailler cela. Ou bien quelques lignes peuvent être évoqués sur le sujet.
-Ainsi, nous allons évoquer quelques notions de phonétique. La phonétique s'appuie principalement sur des caractères physiques qui permettent la prononciation. De nombreux sons peuvent être produits et sont répertoriés dans des tableaux phonétiques \citep{Saussure} (voir image). 
+Ainsi, nous allons évoquer quelques notions de phonétique. La phonétique s'appuie principalement sur des caractères physiques qui permettent la prononciation. De nombreux sons peuvent être produits et sont répertoriés dans des tableaux phonétiques \citep{saussure} (voir image). 
 % En Annexe
 % Pour la description de l'appareil, nous nous référerons une figure schématique, où $A$ désigne la cavité nasale, $B$ la cavité buccale, $C$ le larynx, contenant la glotte $\varepsilon$ entre les deux cordes vocales.\\
 % Dans la bouche on distingue les lèvres $\alpha$ et $a$, la langue $\beta$ - $\gamma$ ($\beta$ désignant la pointe et $\gamma$ tout le reste), les dents supérieures $d$, le palais, comprenant une partie antérieure, osseuse et inerte $f$ et $h$, et une partie postérieure, molle et mobile ou voile du palais $i$, enfin la luette $\delta$.
@@ -481,18 +480,18 @@ L'attention multi-têtes permet d'étudier tous les vecteurs d'entrées, comme d
 
 Chaque tête contient un module d'auto-attention qui est utilisé pour permettre à chaque tokens $x_i$ de pouvoir \textit{intéragir} avec tous les autres tokens de la séquence $X=(x_1, x_2, \dots, x_n)$. Pour cela est extrait, pour chaque $x_i$, un trio de vecteurs : un vecteur requête (\textit{query}) $q_i$, un vecteur clé (\textit{key}) $k_i$, un vecteur valeur (\textit{value}) $v_i$. Le vecteur requête correspondant au vecteur sur lequel on porte notre attention et qui sera comparé à tous les autres vecteurs, nommés les vecteurs clés. Puis, le vecteur valeur qui sera multiplié par le poids d'attention calculé avec les autres vecteurs (requêtes et clés). [Figure : Exemple de la formation des différents vecteurs $q_i$, $k_i$, $v_i$ suivant une phrase $X$]. Pour créer ces vecteurs, les vecteurs $x_i$ sont multipliés avec les matrices de poids ($W^Q$, $W^K$, $W^V$) qui sont obtenus à l'entrainement du modèle :
 \begin{equation}
-    q_i = W^Q x_i \,;\; k_i = W^K x_i \,;\; v_i = W^V x_i
+    q_i = W^Q x_i \quad ; \quad k_i = W^K x_i \quad ; \quad v_i = W^V x_i
 \end{equation}
 On pose les matrices $Q$, $K$, $V$ respectivement l'ensemble des vecteurs $q_i$, $k_i$, $v_i$.\\
 
 Ensuite, le calcule d'auto-attention pour une tête s'effectue par la multiplication du score d'attention $(QK^T)$, normalisé par la racine carré de la dimension $d_k$ de la matrice $Q$ et $K$, et par la fonction \textit{softmax}, avec la matrice des valeurs $V$ :
 \begin{equation}
-    Attention(Q, K, V)\; =\; softmax(\frac{QK^T}{\sqrt{d_k}})V
+    Attention(Q, K, V) \quad  = \quad  softmax(\frac{QK^T}{\sqrt{d_k}})V
 \end{equation}
 
 Enfin, la matrice d'auto-attention de toutes les têtes sont concaténées en une unique matrice qui est multipliée par une matrice de poids $W^O$ (également obtenus à l'entrainement) pour former la matrice résultante de l'attention multi-têtes : [Figure : résumant toute les étapes.]
 \begin{equation}
-    MultiHeadAttention(X)\;=\;Concat(head_1, head_2, ...)W^O
+    MultiHeadAttention(X) \quad = \quad Concat(head_1, head_2, ...)W^O
 \end{equation}
 \hfill où $head_i = Attention(Q_i, K_i, V_i)$\\
 \vspace{2pt}

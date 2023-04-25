@@ -14,6 +14,9 @@
 \usepackage{caption}
 \usepackage{subcaption}
 
+\usepackage{tipa}
+\usepackage{tabularx}
+
 % Custom chapter design
 \titleformat{\chapter}[hang]
   {\normalfont\bfseries\Huge}
@@ -42,6 +45,11 @@
 \newglossaryentry{api}{
         name={API},
         description={Alphabet Phonétique International.\autocite{IPA_handbook}}
+}
+
+\newglossaryentry{idiome}{
+        name = {idiome}, 
+        description = { désigne le langage d'une communauté à laquelle ne correspond aucune structure politique, administrative ou nationale}
 }
 
 % Custom header and footer for normal pages
@@ -138,74 +146,108 @@
 \subsection{Introduction à la linguistique historique}
 
 % Remarque plan à retravailler
-% L'introdcution à la linguistique "général" jusqu'à arriver à la linguistique historique est bien, mais n'est-il pas toute aussi intéressant d'introduire directement la linguistique historique à la manière de https://www.cairn.info/la-linguistique-jean-perrot--9782130584575-page-59.htm ?
+% L'introduction à la linguistique "général" jusqu'à arriver à la linguistique historique est bien, mais n'est-il pas toute aussi intéressant d'introduire directement la linguistique historique à la manière de https://www.cairn.info/la-linguistique-jean-perrot--9782130584575-page-59.htm ?
+
+L'étude de l'évolution des langues est un aspect crucial de la linguistique générale. Bien que les conditions générales de cette évolution nécessitent une étude détaillée, il est important d'établir dès maintenant  quelques principes sur la linguistique historique. Cette dernière se concentre sur l'histoire des langues, en utilisant à la fois des éléments provenant de la linguistique évolutive (de nature générale) et de la linguistique comparative, qui analyse les similitudes historiques entre les langues grâce à une méthode scientifique de comparaison des matériaux et des structures linguistiques. \\
+Chaque langue a une histoire. Les conditions extérieures, sociales, de son existence évoluent, et la langue elle-même, dans son système et dans son aspect matériel, se transforme, passe par des états divers. Mais les possibilités d’étude sont limitées, notre connaissance de l’histoire d’une langue s’arrêtant à un certain moment, plus ou moins reculé, du passé. Or, les modalités de l’évolution d’une langue sont telles qu’elles donnent le moyen, dans certaines conditions, de projeter sur leur passé une estimation. La linguistique étant la discipline s'intéressant à l'étude du langage, elle se distingue de la grammaire, dans la mesure où elle n'est pas prescriptive mais descriptive. La linguistique a des rapports très étroits avec d'autres sciences, tout en étant très différente, comme l'ethnographie, ou l'anthropologie. Elle est introduite au XIXe siècle (voir annexe). La linguistique peut se définir comme une science qui a pour objet l'étude du langage, des langues envisagées comme systèmes sous leurs aspects phonologiques, syntaxiques, lexicaux et sémantiques.\\  
+
 % Ensuite dans la partie "différents principes" -> "différents concepts", introduction au lecteur comme évoqué à l'évolution (l'histoire culturelle) de la langue, à la morphologie (morphème) et la phonétique (phonème), et à la présence de "lois d'évolutions" (ex: régularité phonétique).
-% Sur la dernière partie, faire apparaitre la limite des linguistes dans certaines tâches, comme que le déchiffrement de système d'écriture à pris des décennies avec des exemples. Et la capacité d'une machine à pouvoir traiter bcp de données, et à chercher les similarités. Ce processus apportera-t-il une accélération des tâches dans ce domaine ? C'est toute la question de notre mémoire (laisser le suspence).  
-
-La linguistique est la discipline s'intéressant à l'étude du langage. Elle se distingue de la grammaire, dans la mesure où elle n'est pas prescriptive mais descriptive. La linguistique a des rapports très étroits avec d'autres sciences, tout en étant très différente, comme l'ethnographie, ou l'anthropologie. La linguistique peut se définir comme une science qui a pour objet l'étude du langage, des langues envisagées comme systèmes sous leurs aspects phonologiques, syntaxiques, lexicaux et sémantiques.\\
-
+% Sur la dernière partie, faire apparaitre la limite des linguistes dans certaines tâches, comme que le déchiffrement de système d'écriture a pris des décennies avec des exemples. Et la capacité d'une machine à pouvoir traiter bcp de données, et à chercher les similarités. Ce processus apportera-t-il une accélération des tâches dans ce domaine ? C'est toute la question de notre mémoire (laisser le suspense).  
 La langue est une partie du langage. C'est un produit social de la faculté du langage et un ensemble de conventions nécessaires, adoptées par une communauté pour permettre l'exercice de cette faculté chez les individus. C'est une institution sociale. Le langage quant à lui est un système de signes qui permet l'expression de la communication.\\
 
-% Appuyer la dimension que la langue est porteur de l'histoire culturelle. L'histoire sociale et de la langue sont indiscossiablement liées. [Comprendre la linguistique, Robert Martin]
+% Appuyer la dimension que la langue est porteur de l'histoire culturelle. L'histoire sociale et de la langue sont indissociablement liées. [Comprendre la linguistique, Robert Martin]
 % Comprendre une langue par son histoire.
 % Introduire ainsi la linguistique historique qui étudie justement la langue sous son aspect historique, en considérant l'évolution de la langue. Elle possède des méthodes qui lui sont propres s'inspirant de l'approche diachronique et des synchronies successives, tout en apportant de la nouveauté (comme les lois d'évolutions).
 
-% Revoir l'introduction de la "linguistique historique"
 % Attention à la "principale méthode" ; ne pas résumé la linguistique historique à la reconstruction de langue (ou à la recherche de parenté)
 % L'idée d'introduire les lois de variations comme des "lois de proba" est bien, mais un peu tôt, cet aspect sera discuté amplement dans la dernière partie. 
-La linguistique historique étudie l'histoire et l'évolution des langues, et des familles des langues. Elle est utilisé, par exemple, dans le déchiffrement de textes anciens, usant de \textit{lois universelles d'évolution}, la tendance de la langue à évoluer suivant certaines \textit{règles}. La principale méthode de travail consiste à une comparaison entre les différents états d'une même langue (synchronie sucessives) ou entre des langues différentes mais issues d'un même ancêtre (comparaison), mais aussi à rechercher des concordances syntaxiques ou sémantiques régulières (loi universelles d'évolution) mettant en évidence la relation entre les différents états d'une langue ou d'un groupe de langues. Par exemple, ce travail de comparaison et de recherche permet de retrouver la langue mère à partir d'une langue fille, comme le latin à partir du français. La linguistique historique permet de caractériser la nature des évolutions, innovations et rétentions l'état initial et les états finaux (phonétique, phonologie, lexique, syntaxe etc.).\\
+La linguistique historique étudie l'histoire et l'évolution des langues, et des familles des langues. Elle est utilisé, par exemple, dans le déchiffrement de textes anciens, usant de \textit{lois universelles d'évolution}, la tendance de la langue à évoluer suivant certaines \textit{règles}. Dans le cadre de l’article scientifique nous avons effectué, nous nous sommes basés sur ce principe, que nous détaillerons dans la partie 4). Dans le cas de la reconstruction de langue, la principale méthode de travail consiste à une comparaison entre les différents états d'une même langue (synchronie successives) ou entre des langues différentes mais issues d'un même ancêtre (comparaison), mais aussi à rechercher des concordances syntaxiques ou sémantiques régulières (loi universelles d'évolution) mettant en évidence la relation entre les différents états d'une langue ou d'un groupe de langues. Par exemple, ce travail de comparaison et de recherche permet de retrouver la langue mère à partir d'une langue fille, comme le latin à partir du français. La linguistique historique permet de caractériser la nature des évolutions, innovations et rétentions l'état initial et les états finaux (phonétique, phonologie, lexique, syntaxe etc.).\\
 
-% Pour raccourcir, on peut enlever cette partie ou la mettre en annexe, si le lecteur souhaite approfondir son histoire.
-% La linguistique historique aurait été introduite par Sir William Jones (1746-1794) lorsqu'il émet l'hypothèse que le grec, le latin et le sanskrit auraient des origines communes, menant à une langue Indo-européenne. Une partie de ses hypothèses se seront révélées incorrectes plus tard, mais la langue Proto Indo-Européenne est toujours étudiée aujourd'hui, se voulant être la protoforme du latin, du gothique, du celte, du grec et du perse.\\  
-%Si toutes les langues indo-européennes descendent d'une langue primitive commune, quel était donc le peuple qui parlait cette langue, où se situait-il et à quelle époque ? Pour  essayer de répondre à cette question, on se base généralement sur des éléments de linguistique et d'archéologie.\\
-%Selon l'hypothèse kourgane, l'indo-européen viendrait d'un peuple semi-nomade ayant vécu il y a environ 6000 à 7000 ans dans la steppe située au nord de la Mer Noire, aux environs de  l'actuelle frontière entre la Russie et l'Ukraine. Dans ce scénario, ce peuple de guerriers et de cavaliers conquérants aurait entrepris de nombreuses migrations, permettant ainsi la diffusion de leur langue en Europe et en Asie.
-%Selon l'hypothèse anatolienne, l'indo-européen trouverait son origine en Anatolie (l'actuelle  Turquie) il y a environ 8 à 10 000 ans, à l'époque de l'apparition de l'agriculture dans cette  région. La langue se serait alors répandue dans toute l'Eurasie en même temps que la  diffusion de l'agriculture.
-% C'est actuellement l'hypothèse Kourgane qui est considérée comme la plus vraisemblable par les spécialistes, sans cependant être une certitude.
+% Pour raccourcir, on peut enlever cette partie ou la mettre en annexe, si le lecteur souhaite approfondir son histoire. Go annexe 
+%La linguistique historique aurait été introduite par Sir William Jones (1746-1794) lorsqu'il émet l'hypothèse que le grec, le latin et le sanskrit auraient des origines communes, menant à une protolangue Indo-européenne. Une partie de ses hypothèses se seront révélées incorrectes plus tard, mais la langue Indo-Européenne est toujours étudiée aujourd'hui, se voulant être la protoforme du latin, du gothique, du celte, du grec et du perse.  
+%Si toutes les langues indo-européennes descendent d'une langue primitive commune, quel était donc le peuple qui parlait cette langue, où se situait-il et à quelle époque ? Pour  essayer de répondre à cette question, on se base généralement sur des éléments de linguistique et d'archéologie. Plusieurs hypothèses existent, mais c'est actuellement l'hypothèse admise est que l'indo-européen viendrait d'un peuple semi-nomade ayant vécu il y a environ 6000 à 7000 ans dans la steppe située au nord de la Mer Noire, aux environs de  l'actuelle frontière entre la Russie et l'Ukraine. Ce peuple de guerriers et de cavaliers conquérants aurait entrepris de nombreuses migrations, permettant ainsi la diffusion de leur langue en Europe et en Asie.
+
+
 
 \subsection{Les différents principes} \label{principesLinguistique}
 
 % Approfondir la manière d'aborder la linguistique historique qui ne résume pas qu'à un "mélange" entre de la synchronie et de la diachronie. Ici, ce n'est pas la "linguistique historique" qui peut s'aborder de deux manières mais l'étude d'une langue, en général, qui s'aborde suivant ces manières (qui peuvent s'additionner).
-Il existe deux manières d'aborder la linguistique historique : en étudiant une langue à un moment donné, sous un point de vue synchronique, ou en l'étudiant au cours du temps, sous l'angle diachronique. 
+Il existe deux manières d'aborder la linguistique historique : en étudiant une langue à un moment donné, sous un point de vue synchronique, ou en l'étudiant au cours du temps, sous l'angle diachronique. Nous allons nous attacher à aborder plus globalement l’étude des langues dans son aspect général, c’est-à-dire en ne négligent aucun aspect. 
 % Etudier la proximité d'une langue est l'une des applications de la linguistique historique, mais ne constitue pas un principe en soit. (Plus répétition avec le paragraphe précédent). Sinon bonne idée, de parler de cette application.
-% Distinction des emprunts ? Où veux tu en venir ? Proche par "hasard" sur certains points ?
-La proximité entre des langues peut traduire une histoire commune.\\
-Cependant, il faut distinguer les emprunts à une ou plusieurs autres langues des caractéristiques ancestrales de la langue étudiée. Après avoir fait la distinction, on peut dire que deux langues ayant des caractéristiques voisines descendent d'une langue plus ancienne commune. Par exemple, les langues romanes comme l'espagnol et le français descendent du latin.\\
-Ainsi, à partir de ces langues voisines, on peut tenter de reconstruire leur langue ancestrale, la protolangue ou langue mère. Selon plusieurs théories de linguistiques, cette protolangue est hypothétique et elle descendrait elle-même d'une langue plus ancienne encore.
-Pour reconstruire cette protolangue, on doit l'étudier sur plusieurs niveaux : la syntaxe, le lexique, la phonologie, la phonétique... De là, on peut aborder un processus récursif : à partir d'un ensemble de protolangues apparentées, on peut reconstruire une protolangue encore plus ancienne, et remonter un arbre généalogique des langues humaines de cette façon.\\
-Pour cela, la linguistique historique doit prendre en compte le sens des mots, mais aussi leur représentation essentielle, caractérisée par une suite de sons -- elle-même représentée ensuite par des symboles. Cependant, les mots de deux langues peuvent être proches, par hasard, à cause d'un emprunt, ou d'une évolution commune des langues.\\
-% La problématique de l'emprunt peut être sous développé ?
+% Distinction des emprunts ? Où veux-tu en venir ? Proche par "hasard" sur certains points ?
+La proximité entre des langues peut traduire une histoire commune. Comme vu précédemment, ces rapprochements se font par la comparaison entre les langues. \\
+	Cependant, il faut distinguer les emprunts des mots étant issus d’une langue plus ancienne : \textit{Algorithme}, \textit{girafe}, \textit{orange}, sont des mots français empruntés à l'arabe. Enfin, les mots \textit{main} et \textit{mano} en espagnol ont la même signification et ont une origine commune. On dit alors qu'ils sont des cognats. Après avoir fait la distinction, on ne se penchera que sur les mots issus de l’évolution d’une langue plus ancienne, les cognats. Ainsi, on peut dire que deux langues ayant des caractéristiques voisines descendent d'une langue mère commune. Par exemple, les langues romanes comme l'espagnol et le français descendent du latin.\\
+	Ainsi, à partir de ces langues voisines, on peut tenter de reconstruire leur langue ancestrale, la protolangue ou langue mère. Selon plusieurs théories de linguistiques, cette protolangue est hypothétique et elle descendrait elle-même d'une langue plus ancienne encore.
+	Pour reconstruire cette protolangue, on doit l'étudier sur plusieurs niveaux : la syntaxe, le lexique, la phonologie, la phonétique... De là, on peut aborder un processus récursif : à partir d'un ensemble de protolangues apparentées, on peut reconstruire une protolangue encore plus ancienne, et remonter un arbre généalogique des langues humaines de cette façon, vers l’Indo-européen par exemple (cf annexe). \\
+	Pour cela, la linguistique historique doit prendre en compte le sens des mots, mais aussi leur représentation essentielle, caractérisée par une suite de sons -- elle-même représentée ensuite par des symboles. Cependant, les mots de deux langues peuvent être proches à cause d'un emprunt, d'une évolution commune des langues ou dû au hasard. Par exemple, \textit{meli} veut dire \textit{miel} en hawaïen et en grec ancien, sans qu'un lien entre les deux langues ne soit établi. 
+	Les emprunts sont très problématiques en linguistique historique, car lors de l’apprentissage, si des emprunts sont utilisés pendant le processus, le modèle de langue va prendre des mesures erronées, faussant ainsi les résultats. // 
 
-% Faire apparaitre plus tôt pour comprendre, quand il est parlé d'emprunt
-Par exemple, \textit{meli} veut dire \textit{miel} en hawaïen et en grec ancien, sans qu'un lien entre les deux langues ne soit établi. \textit{Algorithme}, \textit{girafe}, \textit{orange}, sont des mots français empruntés à l'arabe. Enfin, les mots \textit{main} et \textit{mano} en espagnol ont la même signification et ont une origine commune. On dit alors qu'ils sont des cognats.\\
-
-% Citer la référence à Saussure pour la définition
-Un phonème est un élément sonore du langage articulé considéré d'un point de vue physiologique (disposition des organes vocaux) et d'un point de vue acoustique (perception auditive). 
-% Quand cela a t il été expliqué ? N'a t on pas supposé une certaine régularité dans l'évolution des langues.
-Comme expliqué précédemment, l'évolution des langues se fait de façon plus ou moins régulière, quantifiable, et prévisible. 
+% Quand cela a-t-il été expliqué ? N'a-t-on pas supposé une certaine régularité dans l'évolution des langues.
+Comme expliqué précédemment, l'évolution des langues se fait de façon régulière, quantifiable, et prévisible. 
 % Mieux expliciter correspondances régulières
-Ces changements sont appelés correspondances régulières. Les transformations phonologiques qui changent sans exception un phonème $A$ de la langue $1$ en phonème $B$ de la langue $2$ témoignent d'une relation de parenté entre deux langues.\\
-\indent Un morphème est quant à lui le plus petit fragment porteur de sens. Il peut être de nature lexical ou grammatical. En parallèle, on le considère également soit comme un thème morphologique, lorsqu'il porte le sens principal du mot, soit comme un affixe, dans le cas d'un préfixe ou d'un suffixe par exemple. Dans \textit{chant-eur}, \textit{jongl-eur}, ou \textit{jou-eur}, le suffixe  \og -eur \fg{} signifie celui qui fait l'action. Ainsi, \og eur \fg{} est un morphème. La Morphologie est le domaine de la linguistique étudiant les morphèmes et leur manière de composer des mots.\\
-
-% Un exemple pour s'imaginer
+Ces changements sont appelés correspondances régulières, ce sont des changements prévisibles. Les transformations phonologiques qui changent sans exception un son (=phonème cf définition phonème) $A$ de la langue $1$ en un autre son $B$ de la langue $2$ témoignent d'une relation de parenté entre deux langues.\\
+\indent Un morphème est quant à lui le plus petit fragment morphologique d’un mot porteur de sens. Il peut être de nature lexical ou grammatical. En parallèle, on le considère également soit comme un thème morphologique, lorsqu'il porte le sens principal du mot, soit comme un affixe, dans le cas d'un préfixe ou d'un suffixe par exemple. Dans \textit{chant-eur}, \textit{jongl-eur}, ou \textit{jou-eur}, le suffixe  \og -eur \fg{} signifie celui qui fait l'action. Ainsi, \og eur \fg{} est un morphème. La Morphologie est le domaine de la linguistique étudiant les morphèmes et leur manière de composer des mots.\\
+% Un exemple pour s'imaginer 
 Les correspondances régulières sont détectées grâce à la méthode comparative. Pour cela, elle considère un ensemble de mots. Les mots doivent alors être apparentés selon leur sens, en prenant en compte les éventuels glissements sémantiques. Après cela, les emprunts doivent être écartés. Enfin, les régularités doivent être cherchées entres les mots et les différentes évolutions qui ont pu conduire des uns aux autres n'ont plus qu'à être inspectées. (rajouter tableaux, texte explication tableaux, sources tableau)\\
 
+\begin{tabularx}{0.8\textwidth} {
+  | >{\centering\arraybackslash}X
+  | >{\centering\arraybackslash}X
+  | >{\centering\arraybackslash}X | }
+\hline
+ Sens & Swahili & Dawida \\
+\hline
+Mâcher  & -tafuna  & -dafuna  \\
+\hline
+Couper un arbre & -tema & -dema \\
+\hline
+Arbre & m-ti & m-di \\
+\hline
+Feu & m-oto & m-odo\\
+\hline
+Envoyer & -tuma & -duma \\
+\hline
+\end{tabularx}
+
+Cette méthode met donc en lumière des cognats, c’est-à-dire deux mots de deux langues différentes qui dérivent de la même protolangue. On observe une correspondance régulière entre le /t/ du Swahili et le /d/ du Dawida.
+
+\begin{tabularx}{0.8\textwidth} {
+  | >{\centering\arraybackslash}X
+  | >{\centering\arraybackslash}X | }
+\hline
+Fisch & Poisson\\
+\hline 
+Vater & Père\\
+\hline 
+Fell & Peau\\
+\hline 
+Ferkel & Porc\\
+\hline 
+Voll & Plein\\
+\hline 
+\end{tabularx}
+
+On observe aussi que la méthode marche mieux lorsque les deux langues ont divergées récemment. Par exemple le français et l’allemand, avec des correspondances de /f/ et /p/ à l’initiale, mais restant cependant incertain.
+
+
 % Attention, à ne pas faire, des allers retours entre les différents concepts trop brutaux, sinon le lecteur se perd.
-% Que permet-elles ces listes ?
-Cependant, si des emprunts ne sont pas détectés, ils vont fausser toute mesure, en conduisant à sous-estimer la profondeur d'un ancêtre commun à plusieurs langues. Pour cela, il existe des listes de mots du lexique simple, pouvant être exploités par les linguistes, comme par exemple les listes de Swadesh (\url{https://en.wiktionary.org/wiki/Appendix:Latin_Swadesh_list}).\\
+% Que permettent ces listes ?
+Ainsi, si des emprunts ne sont pas détectés, ils vont fausser toute mesure, en conduisant à sous-estimer la profondeur d'un ancêtre commun à plusieurs langues. Pour cela, on peut utiliser uniquement des mots simples existant individuellement dans chaque langue. Il existe des listes de mots du lexique simple, pouvant être exploités par les linguistes, comme par exemple les listes de Swadesh (\url{https://en.wiktionary.org/wiki/Appendix:Latin_Swadesh_list}).\\
 
 % Il est intéressant d'évoquer ces domaines, mais pas de les développer.
 % Par contre dans la continuité de l'exemple sur la reconstruction de langues, l'introduction à la comparaison de cognat est intéressante. 
 Ces listes sont utilisées en glottochronologie et en lexicostatistique, qui sont deux domaines ouverts par Morris Swadesh.\\
-\indent La glottochronologie \footnote{La glottochronologie est la méthode de datation des langues proposée par Swadesh, fut comparée à la détermination de l'âge des fossiles à partir de la désintégration radioactive du carbone 14 (elle n'est cependant plus utilisée car sujette à beaucoup d'inexactitudes).}, et la lexicostatistique \footnote{ La lexicostatistique est une méthode utilisée en linguistique comparative et historique pour mesurer la proximité entre différentes langues. Elle se base sur l'analyse statistique des mots partagés entre ces langues, notamment les cognats, c'est-à-dire les mots ayant une origine commune. Cette approche permet d'évaluer le degré de parenté entre deux langues et de reconstituer leur histoire évolutive. En comparant la fréquence des cognats, on peut ainsi déterminer si les langues étudiées sont issues d'une même langue ancestrale. Toutefois, la lexicostatistique présente des limites, notamment en raison de possibles emprunts ou convergences culturelles qui peuvent fausser les résultats.} sont des techniques utilisant les listes de Swadesh. Cependant, bien que ces listes soient toujours utilisées,  ces deux méthodes ont fait place à une application récursive de reconstruction de langue, plus adaptée et tenant compte du contexte sémantique, phonétique et syntaxique des langues.\\ 
+\indent La glottochronologie \footnote{La glottochronologie est la méthode de datation des langues proposée par Swadesh, fut comparée à la détermination de l'âge des fossiles à partir de la désintégration radioactive du carbone 14 (elle n'est cependant plus utilisée car sujette à beaucoup d'inexactitudes).}, et la lexicostatistique \footnote{La lexicostatistique est une méthode utilisée en linguistique comparative et historique pour mesurer la proximité entre différentes langues. Elle se base sur l'analyse statistique des mots partagés entre ces langues, notamment les cognats, c'est-à-dire les mots ayant une origine commune. Cette approche permet d'évaluer le degré de parenté entre deux langues et de reconstituer leur histoire évolutive. En comparant la fréquence des cognats, on peut ainsi déterminer si les langues étudiées sont issues d'une même langue ancestrale. Toutefois, la lexicostatistique présente des limites, notamment en raison de possibles emprunts ou convergences culturelles qui peuvent fausser les résultats.} sont des techniques utilisant les listes de Swadesh. Cependant, bien que ces listes soient toujours utilisées,  ces deux méthodes ont fait place à une application récursive de reconstruction de langue, plus adaptée et tenant compte du contexte sémantique, phonétique et syntaxique des langues.\\ 
 % Surement de trop, il faut abbréger.
 % \indent Après une reconstruction de ces protolangues, on arrive à regrouper 12 macro-familles de langues :  ces macro-familles sont cependant aussi sujettes à débat. Bien qu'on admette comme très plausible que les proto-langues des familles de langues du monde ont fait partie à leur tour de familles encore plus anciennes, il n'y a pas d'unité de vues concernant la possibilité de reconstruire les proto-langues des superfamilles, parce qu'après une certaine période, les langues changent dans une telle mesure qu'on ne peut plus leur détecter une origine commune. (cf figure) 
 
 % Il n'a pas été démontré cette étude des phonèmes, ainsi, il ne peut y avoir de "donc".
 % Cependant, il y a bien eu une étude de la morphologie.
 % Pourquoi ne pas présenté, au début, la phonologie et enchainé sur la déf de Saussure. Même raison pour éviter les allers-retours entre les différentes idées.
-La phonologie est donc, comme vu précédemment, l'étude des phonèmes. Ces phonèmes ont donc des caractéristiques différentes, se différenciant entre eux de par leur prononciation. 
+Un phonème est un élément sonore du langage articulé considéré d'un point de vue physiologique (disposition des organes vocaux) et d'un point de vue acoustique (perception auditive). Saussure le défini ainsi : \og le phonème est la somme des impressions acoustiques et des mouvements articulatoires, de l’unité entendue et de l’unité parlée, l’une  conditionnant l’autre : ainsi c’est déjà une unité complexe, qui a un pied dans chaque chaîne \fg{} \autocite{saussure}
+La phonologie l'étude des phonèmes. Ces phonèmes ont donc des caractéristiques différentes, se différenciant entre eux de par leur prononciation. 
 % Les détails sur la prononciation, et les différents systèmes peuvent être mis en annexe, mais on ne peut détailler cela. Ou bien quelques lignes peuvent être évoqués sur le sujet.
-Ainsi, nous allons évoquer quelques notions de phonétique. La phonétique s'appuie principalement sur des caractères physiques qui permettent la prononciation. De nombreux sons peuvent être produits et sont répertoriés dans des tableaux phonétiques \autocite{Saussure} (voir image). 
+Ainsi, nous allons évoquer quelques notions de phonétique. La phonétique s'appuie principalement sur des caractères physiques qui permettent la prononciation. De nombreux sons peuvent être produits et sont répertoriés dans des tableaux phonétiques \autocite{saussure} (voir image). 
 % En Annexe
 % Pour la description de l'appareil, nous nous référerons une figure schématique, où $A$ désigne la cavité nasale, $B$ la cavité buccale, $C$ le larynx, contenant la glotte $\varepsilon$ entre les deux cordes vocales.\\
 % Dans la bouche on distingue les lèvres $\alpha$ et $a$, la langue $\beta$ - $\gamma$ ($\beta$ désignant la pointe et $\gamma$ tout le reste), les dents supérieures $d$, le palais, comprenant une partie antérieure, osseuse et inerte $f$ et $h$, et une partie postérieure, molle et mobile ou voile du palais $i$, enfin la luette $\delta$.
@@ -220,13 +262,14 @@ Ainsi, on peut voir que la prononciation des phonèmes et des sons proviennent d
 
 Les phonèmes sont susceptibles d'évoluer dans le temps suivant des \og lois phonétiques\fg. De plus, les phonèmes, dans une langue, peuvent apparaître ou disparaître, comme par exemple le /h/ aspiré au 17ème siècle, cette disparition s'étalant jusqu'au 19ème siècle.  L'évolution des phonèmes est due principalement à la loi appelée \og \textit{paresse articulatoire} \fg{} : ce qui est trop difficile à articuler est automatiquement simplifié. C'est ainsi que les mots ont été raccourcis, par disparition des syllabes les plus faibles. Des consonnes se sont affaiblies : placées entre 2 voyelles (intervocaliques), elles ont été influencées, se sont sonorisées, et ont pu disparaître. Ce phénomène aboutit à la longue à de profondes transformations de la morphologie, comme la chute des déclinaisons, et la modification des conjugaisons. (par exemple, "pater" en latin est devenu "père" en français, ou encore par exemple, le \og s\fg{} final de "plus" était autrefois prononcé, mais est devenu muet au fil du temps.\\
 \indent Cette loi de simplification est compensée par la loi d'\og \textit{intelligibilité} \fg, la nécessité de clarté dans l'expression : il faut que les mots et les phrases restent compréhensibles ; on a donc conservé certains phonèmes pour éviter que la réduction n'amène des homophones, ou que la phrase devienne obscure. (Par exemple, le son [e] a évolué en “è” ou “ê”, et le son [o] a évolué en “au" ou "eau". De plus, les voyelles suivant une consonne nasale ont tendance à se nasaliser, comme dans le cas de "enfant" où le "a" est nasalisé.)\\ 
-Pour terminer avec la phonétique, voici quelques principes qui régissent les modification phonétiques à travers le temps : 
+Pour terminer avec la phonétique, voici quelques principes qui régissent les modification phonétiques à travers le temps : La palatalisation, la diphtongaison, la disparition des voyelles, la liaison ou encore la nasalisation (cf annexe). 
 % uniquement citer et rajouter cette partie en annexe
 %La palatalisation : La palatalisation est un processus phonétique qui consiste à prononcer une consonne avec un son de palais mou. Par exemple, en ancien français, le son "ch" était prononcé "k" dans certains mots, mais a évolué vers un son de palais mou en français moderne, comme dans le mot "chien".
 %La diphtongaison : La diphtongaison est un processus phonétique qui consiste à ajouter un deuxième son vocalique à la fin d'un son vocalique existant. Par exemple, en ancien français, le son "i" dans le mot "pierre" était prononcé comme une voyelle simple, mais a évolué vers un son diphtongué "ie" en français moderne.
-%La chute des voyelles : La chute des voyelles est un processus phonétique qui consiste à éliminer une voyelle en position finale ou médiane d'un mot. Par exemple, le mot "femme" était autrefois prononcé avec une voyelle en position médiane, mais cette voyelle est tombée au fil du temps, laissant le mot avec deux consonnes.
+%La disparition de voyelles : La disparition de voyelles est un processus phonétique qui consiste à éliminer une voyelle en position finale ou médiane d'un mot. Par exemple, le mot "femme" était autrefois prononcé avec une voyelle en position médiane, mais cette voyelle est tombée au fil du temps, laissant le mot avec deux consonnes.
 %La liaison : La liaison est un processus phonétique qui consiste à lier la dernière consonne d'un mot avec la première voyelle du mot suivant. Par exemple, dans la phrase "les amis", la liaison est faite entre le "s" de "les" et le "a" de "amis".
-%La nasale : La nasalisation est un processus phonétique qui consiste à produire un son nasal en passant de l'air par les fosses nasales. Par exemple, en français, les voyelles suivant une consonne nasale, comme le "n" ou le "m", sont nasalisées, comme dans le mot "enfant".\\ 
+%La nasalisation : La nasalisation est un processus phonétique qui consiste à produire un son nasal en passant de l'air par les fosses nasales. Par exemple, en français, les voyelles suivant une consonne nasale, comme le "n" ou le "m", sont nasalisées, comme dans le mot "enfant".
+
 
 \subsection{Les atouts de l'Intelligence Artificielle dans ce domaine}
 \textit{La linguistique historique fait face à de nombreux problèmes récurrents (traiter une grande quantité de textes pour l'homme, remarquer des motifs dans ces documents historiques). Alors que ce travail pourrait être effectué par une machine, grâce à sa capacité à traiter un grand nombres de données, et à chercher des similarités dans ces données. Avant, de voir les tâches où l'Intelligence Artificielle peut intervenir, il est d'abord nécessaire de voir en détail la conception des ces IA.}
@@ -435,18 +478,18 @@ L'attention multi-têtes permet d'étudier tous les vecteurs d'entrées, comme d
 
 Chaque tête contient un module d'auto-attention qui est utilisé pour permettre à chaque tokens $x_i$ de pouvoir \textit{intéragir} avec tous les autres tokens de la séquence $X=(x_1, x_2, \dots, x_n)$. Pour cela est extrait, pour chaque $x_i$, un trio de vecteurs : un vecteur requête (\textit{query}) $q_i$, un vecteur clé (\textit{key}) $k_i$, un vecteur valeur (\textit{value}) $v_i$. Le vecteur requête correspondant au vecteur sur lequel on porte notre attention et qui sera comparé à tous les autres vecteurs, nommés les vecteurs clés. Puis, le vecteur valeur qui sera multiplié par le poids d'attention calculé avec les autres vecteurs (requêtes et clés). [Figure : Exemple de la formation des différents vecteurs $q_i$, $k_i$, $v_i$ suivant une phrase $X$]. Pour créer ces vecteurs, les vecteurs $x_i$ sont multipliés avec les matrices de poids ($W^Q$, $W^K$, $W^V$) qui sont obtenus à l'entrainement du modèle :
 \begin{equation}
-    q_i = W^Q x_i \,;\; k_i = W^K x_i \,;\; v_i = W^V x_i
+    q_i = W^Q x_i \quad ; \quad k_i = W^K x_i \quad ; \quad v_i = W^V x_i
 \end{equation}
 On pose les matrices $Q$, $K$, $V$ respectivement l'ensemble des vecteurs $q_i$, $k_i$, $v_i$.\\
 
 Ensuite, le calcule d'auto-attention pour une tête s'effectue par la multiplication du score d'attention $(QK^T)$, normalisé par la racine carré de la dimension $d_k$ de la matrice $Q$ et $K$, et par la fonction \textit{softmax}, avec la matrice des valeurs $V$ :
 \begin{equation}
-    Attention(Q, K, V)\; =\; softmax(\frac{QK^T}{\sqrt{d_k}})V
+    Attention(Q, K, V) \quad  = \quad  softmax(\frac{QK^T}{\sqrt{d_k}})V
 \end{equation}
 
 Enfin, la matrice d'auto-attention de toutes les têtes sont concaténées en une unique matrice qui est multipliée par une matrice de poids $W^O$ (également obtenus à l'entrainement) pour former la matrice résultante de l'attention multi-têtes : [Figure : résumant toute les étapes.]
 \begin{equation}
-    MultiHeadAttention(X)\;=\;Concat(head_1, head_2, ...)W^O
+    MultiHeadAttention(X) \quad = \quad Concat(head_1, head_2, ...)W^O
 \end{equation}
 \hfill où $head_i = Attention(Q_i, K_i, V_i)$\\
 \vspace{2pt}

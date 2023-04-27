@@ -180,7 +180,7 @@ La proximité entre des langues peut traduire une histoire commune. Comme vu pr�
 	Ainsi, à partir de ces langues voisines, on peut tenter de reconstruire leur langue ancestrale, la protolangue ou langue mère. Selon plusieurs théories de linguistiques, cette protolangue est hypothétique et elle descendrait elle-même d'une langue plus ancienne encore.
 	Pour reconstruire cette protolangue, on doit l'étudier sur plusieurs niveaux : la syntaxe, le lexique, la phonologie, la phonétique... De là, on peut aborder un processus récursif : à partir d'un ensemble de protolangues apparentées, on peut reconstruire une protolangue encore plus ancienne, et remonter un arbre généalogique des langues humaines de cette façon, vers l’Indo-européen par exemple (cf annexe). \\
 	Pour cela, la linguistique historique doit prendre en compte le sens des mots, mais aussi leur représentation essentielle, caractérisée par une suite de sons -- elle-même représentée ensuite par des symboles. Cependant, les mots de deux langues peuvent être proches à cause d'un emprunt, d'une évolution commune des langues ou dû au hasard. Par exemple, \textit{meli} veut dire \textit{miel} en hawaïen et en grec ancien, sans qu'un lien entre les deux langues ne soit établi. 
-	Les emprunts sont très problématiques en linguistique historique, car lors de l’apprentissage, si des emprunts sont utilisés pendant le processus, le modèle de langue va prendre des mesures erronées, faussant ainsi les résultats. // 
+	Les emprunts sont très problématiques en linguistique historique, car lors de l’apprentissage, si des emprunts sont utilisés pendant le processus, le modèle de langue va prendre des mesures erronées, faussant ainsi les résultats. 
 
 % Quand cela a-t-il été expliqué ? N'a-t-on pas supposé une certaine régularité dans l'évolution des langues.
 Comme expliqué précédemment, l'évolution des langues se fait de façon régulière, quantifiable, et prévisible. 
@@ -546,13 +546,13 @@ Des solutions informatiques appliquant cette méthode-là dans des directions di
 \section{État de l'art}
 \subsection{Conceptualisation du problème}
 
-Le problème que cette tâche doit résoudre est de prédire la proto-forme la plus probable d'ascendre à un ensemble donné de cognats, afin de fournir des ressources hypothétiques pouvant orienter le travail des linguistes. Les indices à suivre pour effectuer la reconstruction sont ici les règles de changement phonétique de la linguistique diachronique.\\
+Le problème que cette tâche doit résoudre est de prédire la proto-forme la plus probable d'être l'ancêtre d'un ensemble donné de cognats, afin de fournir des ressources hypothétiques pouvant orienter le travail des linguistes. Les indices à suivre pour effectuer la reconstruction sont ici les règles de changement phonétique de la linguistique diachronique.\\
 Puisque ces changements sont supposés être réguliers d'une langue à une de ses descendantes, il est possible de déployer des réseaux de neurones pour les apprendre à partir d'un grand nombre de données, qui sont des paires composées d'un groupe de cognats dans des langues filles et de la proto-forme supposée leut être correctement associée. Toutes les chaînes de caractères sont converties au format phonétique afin que les tokens à manipuler ne soient que des caractères de l'\GLS{api}, représentant des sons.
 
 
 \subsection{Dernières solutions neuronales}
 \subsubsection{Approche supervisée}
-\textit{
+\textit{ 
 \begin{itemize}
     \item Présentation de l'approche avec utilisation de GRU pour encodeur-décodeur + description de la manière de représenter les entrées
     \item Digression de pourquoi les architectures choisies pour l'encodeur-décodeur sont des GRU et pas des Transformeurs. Évoquer l'expérience du fine-tuning de M-T5 et M-BART qui n'a pas marché + rediriger vers une annexe pour plus de détails
@@ -616,6 +616,7 @@ Par conséquent, la question de l'applicabilité des dernières démarches neuro
 \subsection{Compte-rendu de l'élaboration}
 
 L'exécution de l'expérience nécessitait de développer la quasi-entièreté des algorithmes posés dans le papier de \cite{he2022neural} en Python, un défi rempli d'obstacles, que ce soit du fait du manque au départ de données publiées ou encore de celui du besoin d'appréhender des notions mathématiques nouvelles, en passant par la nouveauté que l'implémentation de réseaux neuronaux a représenté pour nous.
+
 
 \begin{itemize}
     \item En souhaitant établir un algorithme de détermination des candidats, un problème de complexité a été mis en évidence : le nombre de candidats est dominé par un terme en $2^d$, avec $d$ la distance d'édition minimale.

@@ -132,19 +132,19 @@
 \listoffigures
 \listoftables %si inutile, on le virera
 
-\printglossary % TODO: faire marcher ça
+\printglossary
 
 \chapter{Introduction}
-\textit{Mise en contexte pour arriver à la problématique, quel est le potentiel de l'intelligence artificielle dans la linguistique historique ? ... ?}
+\textit{TODO: Mise en contexte pour arriver à la problématique, quel est le potentiel de l'intelligence artificielle dans la linguistique historique ? ... ?}
 
 \chapter{La linguistique historique et l'Intelligence Artificielle}
 
-\textit{Introduire le but de cette première partie, consitant à familirariser le lecteur à la linguistique historique et l'intelligence artificielle, pour permettre lui permettre de suivre la suite du mémoire.}
+\textit{TODO: Introduire le but de cette première partie, consitant à familirariser le lecteur à la linguistique historique et l'intelligence artificielle, pour permettre lui permettre de suivre la suite du mémoire.}
 
 \section{La linguistique historique}
 \subsection{Introduction à la linguistique historique}
 
-% Remarque plan à retravailler
+% TODO: Remarque plan à retravailler
 % L'introduction à la linguistique "général" jusqu'à arriver à la linguistique historique est bien, mais n'est-il pas toute aussi intéressant d'introduire directement la linguistique historique à la manière de https://www.cairn.info/la-linguistique-jean-perrot--9782130584575-page-59.htm ?
 
 L'étude de l'évolution des langues est un aspect crucial de la linguistique générale. Bien que les conditions générales de cette évolution nécessitent une étude détaillée, il est important d'établir dès maintenant  quelques principes sur la linguistique historique. Cette dernière se concentre sur l'histoire des langues, en utilisant à la fois des éléments provenant de la linguistique évolutive (de nature générale) et de la linguistique comparative, qui analyse les similitudes historiques entre les langues grâce à une méthode scientifique de comparaison des matériaux et des structures linguistiques.\\
@@ -625,6 +625,7 @@ Ce qu'il faut en retenir est que le nombre de candidats à une certaine étape d
 Enfin, il a été possible de directement exploiter le code des chercheurs pour les programmes dynamiques, sur lesquels nous avions eu des difficultés de compréhension. Nous ne l'affichons donc pas dans le répertoire de Github, mais ce script a eu une importance centrale et a servi de base pour notre implémentation des inférences dans les modèles neuronaux d'édition.
 
 \vspace{12pt}
+%TODO: ajouter la source de l'algorithme d'Hastings-Metropolis
 Dans les fonctions qui restent à développer, une première doit effectuer le tirage aléatoire d'échantillons, qui sera simulé à l'aide d'une chaîne de Markov construite à partir de l'algorithme de Metropolis-Hastings, et dont la loi stationnaire finale sera donné par l'équation ci-dessous, étant donné une variable aléatoire $X$ à laquelle on attribue le numéro de l'échantillon tiré dans la liste des $N$ candidats :
 \begin{equation}
     p(X=i)=\frac{p(x_i|\{y_l, l\in L\})}{\sum_{j=1}^{N}p(x_j|\{y_l, l\in L\})}

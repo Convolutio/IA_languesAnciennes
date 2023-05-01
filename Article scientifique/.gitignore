@@ -1,0 +1,7 @@
+*
+!.gitignore
+!Source
+!Source/article.pdf
+!article.tex
+!biblio.bib
+!*.png

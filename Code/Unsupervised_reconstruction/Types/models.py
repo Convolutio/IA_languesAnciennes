@@ -1,0 +1,1 @@
+Edit = tuple[str, str, int]

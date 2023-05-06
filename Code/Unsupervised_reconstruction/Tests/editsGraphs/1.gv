@@ -1,11 +1,11 @@
 // Initial edits graph for "absɛns" to "assɛnte"
 digraph {
 	0 [label="∙"]
-	1 [label="+/e/, 5, -1"]
-	2 [label="/s/→/t/, 5"]
-	3 [label="/b/→/s/, 1"]
-	4 [label="/s/→/e/, 5"]
-	5 [label="+/t/, 4, -1"]
+	1 [label="+/e/, (5, 6), -1"]
+	2 [label="/s/→/t/, (5, 5)"]
+	3 [label="/b/→/s/, (1, 1)"]
+	4 [label="/s/→/e/, (5, 6)"]
+	5 [label="+/t/, (4, 5), -1"]
 	0 -> 1
 	0 -> 4
 	1 -> 2

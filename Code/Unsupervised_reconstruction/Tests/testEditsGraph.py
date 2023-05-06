@@ -4,7 +4,7 @@ a,b = "arɡymntaθjon", "ˌɐɾəɡumˌeɪŋtɐsˈɐ̃ʊ̃"
 print(computeMinEditDistanceMatrix(a, b)[len(a), len(b)])
 tree = getMinEditPaths(a, b)
 tree.displayGraph("errorGraph", "random")
-computeProposals(a, b) #TODO: privilégier l'économie sur la mémoire à celle sur le temps d'exécution
+computeProposals(a, b)
 # samples = [("abɛrɾasɔ", "aberɾatsiˈone"), ("absɛns", "assɛnte"), ("lɛɡˈatɪɔ","leɡasjˈɔ̃")]
 # for i in range(len(samples)):
 #     a, b = samples[i]

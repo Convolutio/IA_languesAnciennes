@@ -115,41 +115,18 @@ def editProtoForm(x:str, edits:list[Edit])->str:
         output += stringified_elt
     return output
 
-# def addProposalsWithDFS(x:str, editsTree:EditsTree, currentCombinationsList:list[list[Edit]], proposalsSet:set[str]):
-#     """
-#     Side effect function which add proposals to the proposal set in argument.
-#     It do it with a depth-first search in the edits tree in argument, initially\
-#     computed with from a search in the edit distance computing matrix.
-#     Attention!: finally the cognat will be added to the proposalSet (the combination
-#     of d edits will be processed.)
-#     """
-#     newCombinationsList = currentCombinationsList.copy()
-#     firstElt = editsTree[0]
-#     if isinstance(firstElt, tuple):
-#         proposalsSet.add(editProtoForm(x, [firstElt]))
-#         newCombinationsList.append([firstElt])
-#         for combinations in currentCombinationsList:
-#             newEditsCombination = combinations+[firstElt]
-#             # the cognate is wrongly added |B| times!!!
-#             # |B| is the number of different edit paths of a length of d
-#             # d is the minimum edit path between x and y
-#             proposalsSet.add(editProtoForm(x, newEditsCombination))
-#             newCombinationsList.append(newEditsCombination)
-#         if len(editsTree)>1:
-#             newEditsTree = editsTree[1:]
-#             addProposalsWithDFS(x, newEditsTree, newCombinationsList, proposalsSet)
-#     else:
-#         addProposalsWithDFS(x, firstElt, currentCombinationsList, proposalsSet)
-#         if isinstance(editsTree[1], tuple) :raise Exception("The tree is not built as expected")
-#         addProposalsWithDFS(x, editsTree[1], currentCombinationsList, proposalsSet)
-
 def computeProposals(x:str, y:str)->list[str]:
     editsTree = getMinEditPaths(x,y)
     editDistance = computeMinEditDistanceMatrix(x, y)[len(x), len(y)]
     #TODO: restructuring the graph to minimize the repetition of computed combinations/proposals
     proposalsSet = set[str]()
-    editsCombinations = editsTree.computeEditCombinations()
-    for editsCombination in editsCombinations:
+    nodesCombinations = editsTree.computeNodesCombinations()
+    numberOfProposals = len(nodesCombinations)
+    printPercentages = numberOfProposals>100
+    percent = numberOfProposals//100
+    for n in range(numberOfProposals):
+        nodesCombination = nodesCombinations.pop()
+        editsCombination = [editsTree.getEdit(editId) for editId in nodesCombination]
         newProposal = editProtoForm(x, editsCombination)
         if len(editsCombination)==editDistance and newProposal!=y:
             print(x,y)
@@ -158,8 +135,10 @@ def computeProposals(x:str, y:str)->list[str]:
             print(editsCombination)
             raise Exception(f"Error: /{newProposal}/ instead of /{y}/")
         proposalsSet.add(newProposal)
-    del(editsTree)
-    gc.collect() #clear the edits tree from memory
+        if printPercentages and n%percent==0:
+            print(f'{n//percent}%')
+    del(nodesCombinations)
+    gc.collect()
     try:
         assert(y in proposalsSet)
     except:

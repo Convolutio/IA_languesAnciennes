@@ -2,6 +2,7 @@ from Types.models import Edit
 from bidict import bidict
 from typing import Optional
 import graphviz
+from collections import deque
 
 class Node:
     def __init__(self, id_:int) -> None:
@@ -94,38 +95,47 @@ class EditsGraph:
     def include(self, edit:Edit)->bool:
         return edit in self.__bimaps.inverse
     
+    def getEdit(self, nodeId:int)->Edit:
+        return self.__bimaps[nodeId]
+    
     @property
     def initialNode(self):
         return self.__nodes[0]
     
-    def computeEditCombinations(self):
-        combs = self.__computeNodesCombinations()
-        newCombs:list[list[Edit]] = []
-        for comb in combs:
-            newCombs.append([self.__bimaps[editId] for editId in comb])
-        return newCombs
-    
-    def __computeNodesCombinations(self, currentNodeId:int = 0,
-                                 previouslySeenCombinations:Optional[list[list[int]]]=None) -> list[list[int]]:
+    def computeNodesCombinations(self) -> list[list[int]]:
         """
         Computes the combinations of nodes that we can do with the available edit paths\
         in this edits graph. Returns all of them in a set.
-        The algorithm which is used to carry out this function is a depth-first search.
+        The algorithm which is used to carry out this function is a breadth-first search.
         #TODO: créer un graphe de stockage des combinaisons
         """
-        currentlySeenCombinations:list[list[int]] = [[]]
-        newCombinations:list[list[int]] = []
-        if previouslySeenCombinations is not None:
-            currentlySeenCombinations = previouslySeenCombinations
-            for combination in previouslySeenCombinations:
-                newCombinations.append(combination+[currentNodeId])
-            currentlySeenCombinations += newCombinations
-        else:
-            newCombinations = [[]]
-        for childId in self.__nodes[currentNodeId].childVertecies:
-            newCombinations += self.__computeNodesCombinations(childId, currentlySeenCombinations.copy())
-        return newCombinations
-
+        combinationsByAlreadySeenNodes:dict[int, list[list[int]]] = {nodeId:[] for nodeId in self.__nodes}
+        combinationsByAlreadySeenNodes[0] = [[]]
+        ancestorsOfNodes = {nodeId:set[int]() for nodeId in self.__nodes}
+        nodeStack = deque([0])
+        while len(nodeStack) > 0:
+            print(nodeStack)
+            currentNodeId = nodeStack.popleft()
+            currentNode = self.__nodes[currentNodeId]
+            # figure out the ancestors of the node
+            for parentId in currentNode.parentVertecies:
+                ancestorsOfNodes[currentNodeId] = ancestorsOfNodes[currentNodeId]\
+                    .union(ancestorsOfNodes[parentId])
+                ancestorsOfNodes[currentNodeId].add(parentId)
+            # Add childs to queue, if not already done 
+            for childId in currentNode.childVertecies:
+                if not childId in nodeStack:
+                    nodeStack.append(childId)
+            # Compute new combinations from the other computed with the node's ancestors
+            for ancestorId in ancestorsOfNodes[currentNodeId]:
+                combinationsByAlreadySeenNodes[currentNodeId] += [
+                    combi + [currentNodeId] for combi in combinationsByAlreadySeenNodes[ancestorId]
+                ]
+        lst = []
+        for nodeId in self.__nodes:
+            lst += combinationsByAlreadySeenNodes.pop(nodeId)
+        return lst
+    
     def displayGraph(self, filename:str, comment:str):
         """
         Debugging method. Build the adjacent matrix and use graphviz to display the graph.

@@ -1,9 +1,14 @@
-from Types.models import Edit
+from Types.models import *
 from bidict import bidict
 from typing import Optional
 import graphviz
 from collections import deque
 
+def addEditToCombi(combi:EditsCombination, edit:EditNDArray):
+    numberOfCombination = combi.item(0,0)
+    combi[numberOfCombination] = edit
+    combi[0,0] = numberOfCombination + 1
+    return combi
 class Node:
     def __init__(self, id_:int) -> None:
         self.__id = id_
@@ -39,16 +44,21 @@ class EditsGraph:
     This class manages the features of an oriented graph to represent
     the edit paths.
     """
-    def __init__(self) -> None:
-        self.__nextNodeId = 1
-        self.__bimaps: bidict[int, Edit] = bidict() # maps bidirectionnaly the edit and its vertex id
+    def __init__(self, x:str, y:str, editDistance:int) -> None:
+        self.__editIds:dict[Edit, int] = {}
+        self.__editsNDArrays = np.array([[0,0,0,0]], dtype=np.int8)
         # The dict below saves the graph's vertecies and their connexions.
-        self.__nodes:dict[int, Node] = {0:Node(0)} # Empty beginning node with 0 index
+        self.__nodes:list[Node] = [Node(0)] # Empty beginning node with 0 index
+        self.__editDistance = editDistance
+        #For debugging
+        self.__x = x
+        self.__y = y
 
     def __addNode(self, edit:Edit):
-        self.__bimaps[self.__nextNodeId] = edit
-        self.__nodes[self.__nextNodeId] = Node(self.__nextNodeId)
-        self.__nextNodeId += 1
+        newNodeId = len(self.__nodes)
+        self.__editsNDArrays = np.append(arr=self.__editsNDArrays, values=np.array([edit], dtype=np.int8), axis=0)
+        self.__nodes.append(Node(newNodeId))
+        self.__editIds[edit] = newNodeId
     
     def connect(self, edit:Edit, fromEdit:Optional[Edit]):
         """
@@ -60,61 +70,45 @@ class EditsGraph:
             will be chosen.
         Add an oriented edge from the `fromEdit` vertex to the `edit` one.
         """
-        if not edit in self.__bimaps.inverse:
+        if not edit in self.__editIds:
             self.__addNode(edit)
-        nodeId = self.__bimaps.inverse[edit]
+        nodeId = self.__editIds[edit]
         fromNodeId = 0
         if fromEdit is not None:
-            fromNodeId = self.__bimaps.inverse[fromEdit]
+            fromNodeId = self.__editIds[fromEdit]
         self.__linkNodes(nodeId, fromNodeId)
     
     def __linkNodes(self, toNode:int, fromNode:int):
         self.__nodes[fromNode].addChildVertex(toNode)
         self.__nodes[toNode].addParentVertex(fromNode)
     
-    def __unlinkNodes(self, toNode: int, fromNode:int):
-        self.__nodes[fromNode].removeChildVertex(toNode)
-        self.__nodes[toNode].removeParentVertex(fromNode)
-
-    def disconnect(self, edit:Edit, fromEdit:Edit):
-        editId, fromEditId = self.__bimaps.inverse[edit], self.__bimaps.inverse[fromEdit]
-        self.__unlinkNodes(editId, fromEditId)
-
-    def __removeNode(self, id_:int):
-        node = self.__nodes[id_]
-        for childId in node.childVertecies:
-            self.__unlinkNodes(childId, id_)
-        for parentId in node.parentVertecies:
-            self.__unlinkNodes(id_, parentId)
-        self.__nodes.pop(id_)
-        self.__bimaps.pop(id_)
-    
     def getNode(self, id_:int):
         return self.__nodes[id_]
     
     def include(self, edit:Edit)->bool:
-        return edit in self.__bimaps.inverse
+        return edit in self.__editIds
     
-    def getEdit(self, nodeId:int)->Edit:
-        return self.__bimaps[nodeId]
+    def getEdit(self, nodeId:int)->npt.NDArray[np.int8]:
+        return self.__editsNDArrays[nodeId]
     
     @property
     def initialNode(self):
         return self.__nodes[0]
     
-    def computeNodesCombinations(self) -> list[list[int]]:
+    def computeEditsCombinations(self) -> npt.NDArray[np.int8]:
         """
-        Computes the combinations of nodes that we can do with the available edit paths\
-        in this edits graph. Returns all of them in a set.
+        Computes the combinations of edits that we can do with the available edit paths\
+        in this edits graph. Returns all of them in a list.
         The algorithm which is used to carry out this function is a breadth-first search.
-        #TODO: créer un graphe de stockage des combinaisons
         """
-        combinationsByAlreadySeenNodes:dict[int, list[list[int]]] = {nodeId:[] for nodeId in self.__nodes}
-        combinationsByAlreadySeenNodes[0] = [[]]
-        ancestorsOfNodes = {nodeId:set[int]() for nodeId in self.__nodes}
+        numberOfNodes = len(self.__nodes)
+        #The first combination bring the length information : [length, 0, 0, 0]
+        combinationsByAlreadySeenNodes = [np.zeros((0, 1+self.__editDistance, 4), dtype=np.int8) for _ in range(numberOfNodes)]
+        combinationsByAlreadySeenNodes[0] = np.append(combinationsByAlreadySeenNodes[0],
+                                                   np.zeros((1,1+self.__editDistance,4),dtype=np.int8), 0)
+        ancestorsOfNodes = [set[int]() for _ in self.__nodes]
         nodeStack = deque([0])
         while len(nodeStack) > 0:
-            print(nodeStack)
             currentNodeId = nodeStack.popleft()
             currentNode = self.__nodes[currentNodeId]
             # figure out the ancestors of the node
@@ -128,33 +122,38 @@ class EditsGraph:
                     nodeStack.append(childId)
             # Compute new combinations from the other computed with the node's ancestors
             for ancestorId in ancestorsOfNodes[currentNodeId]:
-                combinationsByAlreadySeenNodes[currentNodeId] += [
-                    combi + [currentNodeId] for combi in combinationsByAlreadySeenNodes[ancestorId]
-                ]
-        lst = []
-        for nodeId in self.__nodes:
-            lst += combinationsByAlreadySeenNodes.pop(nodeId)
-        return lst
+                combinationsByAlreadySeenNodes[currentNodeId] = np.append(combinationsByAlreadySeenNodes[currentNodeId],
+                                                                          combinationsByAlreadySeenNodes[ancestorId], 0)
+            if currentNodeId != 0:
+                for i in range(combinationsByAlreadySeenNodes[currentNodeId].shape[0]):
+                    oldcombinationsNumber = combinationsByAlreadySeenNodes[currentNodeId].item((i, 0, 0))
+                    combinationsByAlreadySeenNodes[currentNodeId][i, oldcombinationsNumber+1] = self.__editsNDArrays[currentNodeId]
+                    combinationsByAlreadySeenNodes[currentNodeId][i, 0, 0] = oldcombinationsNumber + 1
+        
+        combinArray = np.zeros((0,1+self.__editDistance, 4), dtype=np.int8)
+        for n in range(numberOfNodes):
+            combinArray = np.append(combinArray, combinationsByAlreadySeenNodes.pop(), 0)
+        return combinArray
     
-    def displayGraph(self, filename:str, comment:str):
+    def displayGraph(self, filename:str):
         """
         Debugging method. Build the adjacent matrix and use graphviz to display the graph.
         Make a in-depth walk in this graph to process each node and build the matrix. 
         """
-        G = graphviz.Digraph(comment=comment)
-        for nodeId in self.__nodes:
-            if nodeId==0:
+        G = graphviz.Digraph(comment=f'/{self.__x}/ to /{self.__y}/')
+        for node in self.__nodes:
+            if node.id_==0:
                 G.node('0', '∙')
             else:
-                edit = self.__bimaps[nodeId]
-                label = f"/{edit[0]}/→/{edit[1]}/, ({edit[2]}, {edit[4]})"
-                if edit[0]=="":
-                    label = f"+/{edit[1]}/, ({edit[2]}, {edit[4]}), {edit[3]}"
-                elif edit[1]=="":
-                    label = f"-/{edit[0]}/, ({edit[2]}, {edit[4]})"
-                G.node(str(nodeId), label)
-        for nodeId in self.__nodes:
-            for childId in self.__nodes[nodeId].childVertecies:
-                G.edge(str(nodeId), str(childId))
+                edit:Edit = tuple(self.__editsNDArrays[node.id_])
+                label = f"+/{self.__y[edit[2]]}/, ({edit[1]}, {edit[2]}), {edit[3]}"
+                if edit[0]==0:
+                    label = f"/{self.__x[edit[1]]}/→/{self.__y[edit[2]]}/, ({edit[1]}, {edit[2]})"
+                elif edit[0]==1:
+                    label = f"-/{self.__x[edit[1]]}/, ({edit[1]}, {edit[2]})"
+                G.node(str(node.id_), label)
+        for node in self.__nodes:
+            for childId in node.childVertecies:
+                G.edge(str(node.id_), str(childId))
         G.render(filename=f'{filename}.gv', directory='./Tests/editsGraphs/',
                  format='svg')

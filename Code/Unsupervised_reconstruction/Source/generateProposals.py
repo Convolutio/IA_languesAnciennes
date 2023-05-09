@@ -1,16 +1,23 @@
 import numpy as np
 import numpy.typing as npt
 from typing import Optional
-from Types.models import Edit
+from Types.models import *
+from data.vocab import wordToOneHots
 from Source.editsGraph import EditsGraph
+import multiprocessing as mp
+import multiprocessing.pool as mpp
+import threading
+from queue import SimpleQueue
+from functools import partial
 import gc
+
+THREAD_NUMBER = 10
+
 # calculating the minimum edit distance between the current reconstruction
 # and each of its associated cognates, we add all the strings on its minimum
 # edit paths to a list, which will constitute the list of proposals for the sampling
 
 # cf. 2.5 chapter https://web.stanford.edu/~jurafsky/slp3/2.pdf for the variables notations
-
-OPERATIONS = ("insertion", "deletion", "substitution") # we index operations likes that 
 
 def computeMinEditDistanceMatrix(x:str, y:str)->npt.NDArray[np.int_]:
     """
@@ -27,10 +34,10 @@ def computeMinEditDistanceMatrix(x:str, y:str)->npt.NDArray[np.int_]:
             D[i, j] = min(editCosts)
     return D
 
-EditsTree = EditsGraph
+
 def getMinEditPaths(x:str, y:str,
-                    recursivityArgs: Optional[tuple[npt.NDArray[np.int_], int, int, EditsTree,
-                                                    Optional[Edit]]]=None) -> EditsTree:
+                    recursivityArgs: Optional[tuple[npt.NDArray[np.int_], int, int, EditsGraph,
+                                                    Optional[Edit]]]=None) -> EditsGraph:
     """
     Arguments:
         x (str): the first string to be compared
@@ -50,7 +57,7 @@ def getMinEditPaths(x:str, y:str,
         minEditDistanceMatrix = computeMinEditDistanceMatrix(x, y)
         i_start = minEditDistanceMatrix.shape[0]-1
         j_start = minEditDistanceMatrix.shape[1]-1
-        editsTree = EditsGraph()
+        editsTree = EditsGraph(x, y, minEditDistanceMatrix[len(x), len(y)])
     currentPathLength = minEditDistanceMatrix[i_start, j_start]
     if currentPathLength == 0:
         return editsTree
@@ -71,19 +78,19 @@ def getMinEditPaths(x:str, y:str,
     for c in possiblePriorCoords:
         i, j = c
         deltaCoord = (i-i_start, j-j_start)
-        edit = None
+        edit:Edit
         if deltaCoord==(-1, -1):
             # substitution
-            edit = (x[i_start-1], y[j_start-1], i_start-1, 0, j_start-1)
+            edit = (0, i_start-1, j_start-1, 0)
         elif deltaCoord==(0, -1):
             # insertion
             insertionIdx = -1
-            if parentEdit is not None and parentEdit[0] == "" and parentEdit[2]==i_start-1:
+            if parentEdit is not None and parentEdit[0] == 2 and parentEdit[1]==i_start-1:
                 insertionIdx = parentEdit[3] - 1
-            edit = ("", y[j_start-1], i_start-1, insertionIdx, j_start-1)
+            edit = (2, i_start-1, j_start-1, insertionIdx)
         else:
             # deletion
-            edit = (x[i_start-1], "", i_start-1, 0, j_start-1)
+            edit = (1, i_start-1, j_start-1, 0)
         if not editsTree.include(edit):
             editsTree.connect(edit, parentEdit)
             getMinEditPaths(x, y, (minEditDistanceMatrix, i, j, editsTree, edit))
@@ -92,56 +99,72 @@ def getMinEditPaths(x:str, y:str,
 
     return editsTree
 
-def editProtoForm(x:str, edits:list[Edit])->str:
+def editProtoForm(edits:EditsCombination, x_list:npt.NDArray[np.uint8], y_list:npt.NDArray[np.uint8], editDistance:int)->npt.NDArray[np.uint8]:
     """
     Applies the sequence of edits in argument to the x proto-form
     """
-    a:list[list[str]] = [[]] + [list(c) for c in x]
-    for edit in edits:
-        idxInList = edit[2]+1
-        if edit[0]=="":
+    lastIdxToBeProcessed = edits[0,0]
+    b = np.zeros(x_list.size+editDistance, dtype=np.uint8)
+    if lastIdxToBeProcessed == 0:
+        b[:x_list.size] = x_list
+        return b
+    maxInsertionIdx = -np.min(edits[1:lastIdxToBeProcessed+1,3])
+    a = np.full((x_list.size+1, maxInsertionIdx+1), 0, dtype=np.uint8)
+    a[1:, 0] = x_list
+    for combiIdx in range(1,lastIdxToBeProcessed+1):
+        edit = edits[combiIdx]
+        idxInList = edit[1]+1
+        if edit[0]==2:
             # insertion
-            if len(a[idxInList]) < 1-edit[3]:
-                a[idxInList] = a[idxInList][:1]+ ["" for _ in range(1-edit[3]-len(a[idxInList]))] + a[idxInList][1:] 
-            a[idxInList][edit[3]] = edit[1]
-        else:
+            a[idxInList, edit[3]] = y_list.item(edit[2])
+        elif edit[0]==0:
             # substitution or deletion
-            a[idxInList][0] = edit[1]
-    output = ""
-    for elt in a:
-        stringified_elt = ""
-        for c in elt:
-            stringified_elt += c
-        output += stringified_elt
-    return output
+            a[idxInList, 0] = y_list.item(edit[2])
+        else:
+            a[idxInList, 0] = 0
+    a = a.flatten()
+    a = a[np.nonzero(a!=0)]
+    b[:a.size] = a
+    return b
 
-def computeProposals(x:str, y:str)->list[str]:
+def computeProposals(x:str, y:str)->npt.NDArray[np.uint8]:
+    """
+    Arguments:
+        - x (str): the proto-form
+        - y (str): one of its cognates
+    Returns a list of the proposals in one-hot representation (sequences
+    of vocabulary indexes)
+    """
     editsTree = getMinEditPaths(x,y)
     editDistance = computeMinEditDistanceMatrix(x, y)[len(x), len(y)]
-    #TODO: restructuring the graph to minimize the repetition of computed combinations/proposals
-    proposalsSet = set[str]()
-    nodesCombinations = editsTree.computeNodesCombinations()
-    numberOfProposals = len(nodesCombinations)
-    printPercentages = numberOfProposals>100
-    percent = numberOfProposals//100
-    for n in range(numberOfProposals):
-        nodesCombination = nodesCombinations.pop()
-        editsCombination = [editsTree.getEdit(editId) for editId in nodesCombination]
-        newProposal = editProtoForm(x, editsCombination)
-        if len(editsCombination)==editDistance and newProposal!=y:
-            print(x,y)
-            print(computeMinEditDistanceMatrix(x,y))
-            editsTree.displayGraph("errorGraph", "")
-            print(editsCombination)
-            raise Exception(f"Error: /{newProposal}/ instead of /{y}/")
-        proposalsSet.add(newProposal)
-        if printPercentages and n%percent==0:
-            print(f'{n//percent}%')
+    nodesCombinations = editsTree.computeEditsCombinations()
+    numberOfProposals = nodesCombinations.shape[0]
+    x_list = wordToOneHots(x)
+    y_list = wordToOneHots(y)
+    proposalsSet = []
+    if editDistance < 15:
+        #multithreading
+        # for editsCombin in nodesCombinations:
+        #     proposalsSet.append(editProtoForm(editsCombin, x_list, y_list, editDistance))
+        pool = mpp.ThreadPool(mp.cpu_count()-1)
+    else:
+        #multiprocessing
+        processes_number = mp.cpu_count()-1
+        pool = mp.Pool(processes_number)
+    with pool:
+        proposalsSet = pool.map(partial(editProtoForm, x_list=x_list, 
+                                        y_list=y_list, editDistance=editDistance), nodesCombinations)
     del(nodesCombinations)
     gc.collect()
-    try:
-        assert(y in proposalsSet)
-    except:
-        raise Exception(f"y or x has not been computed. The algorithm is doing wrong.\n\
-                        Data: (/{x}/, /{y}/)")
-    return list(proposalsSet)
+    proposalsSet = np.unique(np.array(proposalsSet, dtype=np.uint8), axis=0)
+    # DEBUG
+    # try:
+    #     b = np.zeros(x_list.size+editDistance, dtype=np.uint8)
+    #     x_check, y_check = b.copy(), b.copy()
+    #     x_check[:x_list.size] = x_list
+    #     y_check[:y_list.size] = y_list
+    #     assert(y_check in proposalsSet and x_check in proposalsSet)
+    # except:
+    #     raise Exception(f"y or x has not been computed. The algorithm is doing wrong.\n\
+    #                     Data: (/{x}/, /{y}/)")
+    return proposalsSet

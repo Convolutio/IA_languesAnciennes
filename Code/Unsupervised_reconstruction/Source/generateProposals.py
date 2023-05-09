@@ -142,7 +142,7 @@ def computeProposals(x:str, y:str)->npt.NDArray[np.uint8]:
     x_list = wordToOneHots(x)
     y_list = wordToOneHots(y)
     proposalsSet = []
-    if editDistance < 15:
+    if editDistance < 13:
         #multithreading
         # for editsCombin in nodesCombinations:
         #     proposalsSet.append(editProtoForm(editsCombin, x_list, y_list, editDistance))

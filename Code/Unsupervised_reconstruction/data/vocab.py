@@ -63,7 +63,7 @@ def make_tensor(formsVec:npt.NDArray[np.uint8], add_boundaries:bool)->Tensor:
         tensor = torch.nn.functional.one_hot(flat, voc_size+2)
         tensor = tensor.reshape((batch_size, max_length, voc_size+2)).transpose(0, 1)
     else:
-        t = np.empty((batch_size, max_length+2))
+        t = np.zeros((batch_size, max_length+2), dtype=np.uint8)
         t[:, 1:max_length+1] = formsVec
         t[:, 0] = np.full(batch_size, voc_size+1)
         flat = torch.from_numpy(t).flatten().to(torch.int64)

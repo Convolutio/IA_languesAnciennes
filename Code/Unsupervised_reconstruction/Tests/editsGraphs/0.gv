@@ -1,0 +1,19 @@
+// /absɛns/ to /assɛnte/
+digraph {
+	node [fillcolor=lightgoldenrod1 style=filled]
+	bgcolor=transparent
+	0 [label="absɛns" fillcolor=darkorange]
+	1 [label="+/e/, (5, 6), -1"]
+	2 [label="/s/→/t/, (5, 5)"]
+	3 [label="/b/→/s/, (1, 1)"]
+	4 [label="/s/→/e/, (5, 6)"]
+	5 [label="+/t/, (4, 5), -1"]
+	6 [label="assɛnte" fillcolor=darkorange]
+	0 -> 1
+	0 -> 4
+	1 -> 2
+	2 -> 3
+	3 -> 6
+	4 -> 5
+	5 -> 3
+}

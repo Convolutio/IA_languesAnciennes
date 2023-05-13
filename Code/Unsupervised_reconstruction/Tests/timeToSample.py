@@ -1,6 +1,6 @@
 from Source.generateProposals import computeProposals, computeMinEditDistanceMatrix
 from data.getDataset import getCognatesSet, getIteration
-from data.vocab import make_tensor
+from data.vocab import make_oneHotTensor
 
 def generateProposalsOverDataset():
     cognates = getCognatesSet()
@@ -14,7 +14,6 @@ def generateProposalsOverDataset():
             if editDistance < 16:
                 print(f'/{x}/ to /{y}/ -{editDistance}- (<{language}>)\nIteration {str(i)}/{numberOfCognatePairs}', end='\r')
                 p = computeProposals(x,cognates[language][i])
-                t = make_tensor(p, True)
 
 def editDistancesInDataset():
     cognates = getCognatesSet()

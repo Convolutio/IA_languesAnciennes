@@ -140,10 +140,11 @@ class EditsGraph:
         Debugging method. Build the adjacent matrix and use graphviz to display the graph.
         Make a in-depth walk in this graph to process each node and build the matrix. 
         """
-        G = graphviz.Digraph(comment=f'/{self.__x}/ to /{self.__y}/')
+        G = graphviz.Digraph(comment=f'/{self.__x}/ to /{self.__y}/', node_attr={'style':'filled','fillcolor':'lightgoldenrod1'})
+        G.attr(bgcolor="transparent")
         for node in self.__nodes:
             if node.id_==0:
-                G.node('0', '∙')
+                G.node('0', self.__x, _attributes={'fillcolor':'darkorange'})
             else:
                 edit:Edit = tuple(self.__editsNDArrays[node.id_])
                 label = f"+/{self.__y[edit[2]]}/, ({edit[1]}, {edit[2]}), {edit[3]}"
@@ -152,8 +153,12 @@ class EditsGraph:
                 elif edit[0]==1:
                     label = f"-/{self.__x[edit[1]]}/, ({edit[1]}, {edit[2]})"
                 G.node(str(node.id_), label)
+        G.node(str(len(self.__nodes)), label=self.__y, _attributes={'fillcolor':'darkorange'})
         for node in self.__nodes:
             for childId in node.childVertecies:
                 G.edge(str(node.id_), str(childId))
+            if len(node.childVertecies)==0:
+                G.edge(str(node.id_), str(len(self.__nodes)))
+        lastNode = self.__nodes[0]
         G.render(filename=f'{filename}.gv', directory='./Tests/editsGraphs/',
                  format='svg')

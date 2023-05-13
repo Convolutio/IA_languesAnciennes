@@ -1,10 +1,9 @@
+import typing
 from Types.articleModels import FormsSet
 from torch import Tensor
 import torch
 from torch.backends import mps
 from torch import cuda
-import numpy as np
-import numpy.typing as npt
 from bidict import bidict
 device = "cuda" if cuda.is_available() else "mps" if mps.is_available() else "cpu"
 
@@ -23,22 +22,25 @@ SIGMA_SUB["<del>"], SIGMA_INS["<end>"] = i, i
 INPUT_VOCABULARY = SIGMA.copy()
 INPUT_VOCABULARY["("], INPUT_VOCABULARY[")"] = i, i+1
 
-def wordToOneHots(word:str)->npt.NDArray[np.uint8]:
+def wordToOneHots(word:str)->typing.Union[torch.ByteTensor,torch.cuda.ByteTensor]:
     """
     0: empty character\n
     1 <= i <= |Σ|: IPA character index\n
     |Σ|+k: additional special character index
     """
-    return np.array([SIGMA[c]+1 for c in word], dtype=np.int8)
+    if device == 'cuda':
+        return torch.cuda.ByteTensor([SIGMA[c]+1 for c in word])
+    else:
+        return torch.ByteTensor([SIGMA[c]+1 for c in word])
 
-def oneHotsToWord(vecSeq: npt.NDArray[np.uint8])->str:
+def oneHotsToWord(vecSeq: torch.Tensor)->str:
     w = ""
     for vocIdx in vecSeq:
         if vocIdx != 0:
-            w += SIGMA.inverse[vocIdx-1]
+            w += SIGMA.inverse[vocIdx.item()-1] # type: ignore
     return w
 
-def make_tensor(formsVec:npt.NDArray[np.uint8], add_boundaries:bool)->Tensor:
+def make_oneHotTensor(formsVec:torch.Tensor, add_boundaries:bool)->Tensor:
     """
     Arguments:
         formsVec (NDArray[uint8]): a batch of forms with their one-hot indexes\
@@ -59,14 +61,14 @@ def make_tensor(formsVec:npt.NDArray[np.uint8], add_boundaries:bool)->Tensor:
     left_boundary_index = voc_size + 1
     right_boundary_index = 0
     if not add_boundaries:
-        flat = torch.from_numpy(formsVec).flatten().to(torch.int64)
+        flat = formsVec.flatten().to(torch.int64)
         tensor = torch.nn.functional.one_hot(flat, voc_size+2)
         tensor = tensor.reshape((batch_size, max_length, voc_size+2)).transpose(0, 1)
     else:
-        t = np.zeros((batch_size, max_length+2), dtype=np.uint8)
+        t = torch.zeros((batch_size, max_length+2), dtype=torch.uint8)
         t[:, 1:max_length+1] = formsVec
-        t[:, 0] = np.full(batch_size, voc_size+1)
-        flat = torch.from_numpy(t).flatten().to(torch.int64)
+        t[:, 0] = torch.full([batch_size], voc_size+1)
+        flat = t.flatten().to(torch.int64)
         tensor = torch.nn.functional.one_hot(flat, voc_size+2)
         tensor = tensor.reshape((batch_size, max_length+2, voc_size+2)).transpose(0,1)
     return tensor

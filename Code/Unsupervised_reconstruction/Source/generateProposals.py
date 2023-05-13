@@ -10,6 +10,7 @@ import threading
 from queue import SimpleQueue
 from functools import partial
 import gc
+import torch
 
 THREAD_NUMBER = 10
 
@@ -99,40 +100,40 @@ def getMinEditPaths(x:str, y:str,
 
     return editsTree
 
-def editProtoForm(edits:EditsCombination, x_list:npt.NDArray[np.uint8], y_list:npt.NDArray[np.uint8], editDistance:int)->npt.NDArray[np.uint8]:
+def editProtoForm(edits:EditsCombination, x_list:torch.Tensor, y_list:torch.Tensor, editDistance:int)->torch.Tensor:
     """
     Applies the sequence of edits in argument to the x proto-form
     """
     lastIdxToBeProcessed = edits[0,0]
-    b = np.zeros(x_list.size+editDistance, dtype=np.uint8)
+    b = torch.zeros([x_list.shape[0]+editDistance], dtype=torch.uint8)
     if lastIdxToBeProcessed == 0:
-        b[:x_list.size] = x_list
+        b[:x_list.shape[0]] = x_list
         return b
-    maxInsertionIdx = -np.min(edits[1:lastIdxToBeProcessed+1,3])
-    a = np.full((x_list.size+1, maxInsertionIdx+1), 0, dtype=np.uint8)
+    maxInsertionIdx = -np.min(edits[1:lastIdxToBeProcessed+1,3]).item(0)
+    a:torch.Tensor = torch.full([x_list.shape[0]+1, maxInsertionIdx+1], 0, dtype=torch.uint8)
     a[1:, 0] = x_list
     for combiIdx in range(1,lastIdxToBeProcessed+1):
         edit = edits[combiIdx]
         idxInList = edit[1]+1
         if edit[0]==2:
             # insertion
-            a[idxInList, edit[3]] = y_list.item(edit[2])
+            a[idxInList, edit[3]] = y_list[edit[2]].item()
         elif edit[0]==0:
             # substitution or deletion
-            a[idxInList, 0] = y_list.item(edit[2])
+            a[idxInList, 0] = y_list[edit[2]].item()
         else:
             a[idxInList, 0] = 0
     a = a.flatten()
-    a = a[np.nonzero(a!=0)]
-    b[:a.size] = a
+    a = a[torch.nonzero(a!=0)]
+    b[:a.shape[0]] = a[:, 0]
     return b
 
-def computeProposals(x:str, y:str)->npt.NDArray[np.uint8]:
+def computeProposals(x:str, y:str)->torch.ByteTensor:
     """
     Arguments:
         - x (str): the proto-form
-        - y (str): one of its cognates
-    Returns a list of the proposals in one-hot representation (sequences
+        - y (str): one of its cognates\\
+    Returns a list of the proposals in one-hot indexes representation (sequences
     of vocabulary indexes)
     """
     editsTree = getMinEditPaths(x,y)
@@ -142,7 +143,7 @@ def computeProposals(x:str, y:str)->npt.NDArray[np.uint8]:
     x_list = wordToOneHots(x)
     y_list = wordToOneHots(y)
     proposalsSet = []
-    if editDistance < 13:
+    if editDistance < 10:
         #multithreading
         # for editsCombin in nodesCombinations:
         #     proposalsSet.append(editProtoForm(editsCombin, x_list, y_list, editDistance))
@@ -150,13 +151,14 @@ def computeProposals(x:str, y:str)->npt.NDArray[np.uint8]:
     else:
         #multiprocessing
         processes_number = mp.cpu_count()-1
-        pool = mp.Pool(processes_number)
+        pool = mp.Pool(processes_number, maxtasksperchild=10)
     with pool:
         proposalsSet = pool.map(partial(editProtoForm, x_list=x_list, 
                                         y_list=y_list, editDistance=editDistance), nodesCombinations)
     del(nodesCombinations)
     gc.collect()
-    proposalsSet = np.unique(np.array(proposalsSet, dtype=np.uint8), axis=0)
+    t = torch.cat(proposalsSet)
+    proposalsSet = torch.unique(t, dim=0)
     # DEBUG
     # try:
     #     b = np.zeros(x_list.size+editDistance, dtype=np.uint8)

@@ -4,15 +4,8 @@ from typing import Optional
 from Types.models import *
 from data.vocab import wordToOneHots
 from Source.editsGraph import EditsGraph
-import multiprocessing as mp
-import multiprocessing.pool as mpp
-import threading
-from queue import SimpleQueue
-from functools import partial
-import gc
 import torch
-
-THREAD_NUMBER = 10
+from torch import Tensor
 
 # calculating the minimum edit distance between the current reconstruction
 # and each of its associated cognates, we add all the strings on its minimum
@@ -100,35 +93,46 @@ def getMinEditPaths(x:str, y:str,
 
     return editsTree
 
-def editProtoForm(edits:EditsCombination, x_list:torch.Tensor, y_list:torch.Tensor, editDistance:int)->torch.Tensor:
+def editProtoForm(edits:EditsCombination, x_list:Tensor, y_list:Tensor, editDistance:int)->Tensor:
     """
     Applies the sequence of edits in argument to the x proto-form
     """
-    lastIdxToBeProcessed = edits[0,0]
+    lastIdxToBeProcessed = int(edits[0,0].item())
     b = torch.zeros([x_list.shape[0]+editDistance], dtype=torch.uint8)
     if lastIdxToBeProcessed == 0:
         b[:x_list.shape[0]] = x_list
-        return b
-    maxInsertionIdx = -np.min(edits[1:lastIdxToBeProcessed+1,3]).item(0)
+        return b.unsqueeze(dim=0)
+    maxInsertionIdx = -int(torch.min(edits[1:lastIdxToBeProcessed+1,3]).item())
     a:torch.Tensor = torch.full([x_list.shape[0]+1, maxInsertionIdx+1], 0, dtype=torch.uint8)
     a[1:, 0] = x_list
     for combiIdx in range(1,lastIdxToBeProcessed+1):
         edit = edits[combiIdx]
-        idxInList = edit[1]+1
+        idxInList = int(edit[1].item())+1
         if edit[0]==2:
             # insertion
-            a[idxInList, edit[3]] = y_list[edit[2]].item()
+            a[idxInList, int(edit[3].item())] = y_list[int(edit[2].item())].item()
         elif edit[0]==0:
             # substitution or deletion
-            a[idxInList, 0] = y_list[edit[2]].item()
+            a[idxInList, 0] = y_list[int(edit[2].item())].item()
         else:
             a[idxInList, 0] = 0
     a = a.flatten()
     a = a[torch.nonzero(a!=0)]
     b[:a.shape[0]] = a[:, 0]
-    return b
+    return b.unsqueeze(dim=0)
 
-def computeProposals(x:str, y:str)->torch.ByteTensor:
+@torch.jit.script
+def combinationsToProposals(combinations:Tensor, x_list:Tensor, y_list:Tensor, editDistance:int):
+    futures:list[torch.jit.Future[Tensor]] = []
+    futures = [torch.jit.fork(editProtoForm, combinations[i], x_list, y_list, editDistance) for i in range(combinations.shape[0])]
+    results = [torch.jit.wait(future) for future in futures]
+    return torch.unique(torch.cat(results), dim=0)
+
+class IncorrectResultsException(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+def computeProposals(x:str, y:str)->Tensor:
     """
     Arguments:
         - x (str): the proto-form
@@ -139,34 +143,15 @@ def computeProposals(x:str, y:str)->torch.ByteTensor:
     editsTree = getMinEditPaths(x,y)
     editDistance = computeMinEditDistanceMatrix(x, y)[len(x), len(y)]
     nodesCombinations = editsTree.computeEditsCombinations()
-    numberOfProposals = nodesCombinations.shape[0]
     x_list = wordToOneHots(x)
     y_list = wordToOneHots(y)
-    proposalsSet = []
-    if editDistance < 10:
-        #multithreading
-        # for editsCombin in nodesCombinations:
-        #     proposalsSet.append(editProtoForm(editsCombin, x_list, y_list, editDistance))
-        pool = mpp.ThreadPool(mp.cpu_count()-1)
-    else:
-        #multiprocessing
-        processes_number = mp.cpu_count()-1
-        pool = mp.Pool(processes_number, maxtasksperchild=10)
-    with pool:
-        proposalsSet = pool.map(partial(editProtoForm, x_list=x_list, 
-                                        y_list=y_list, editDistance=editDistance), nodesCombinations)
-    del(nodesCombinations)
-    gc.collect()
-    t = torch.cat(proposalsSet)
-    proposalsSet = torch.unique(t, dim=0)
+    proposalsSet = combinationsToProposals(nodesCombinations, x_list, y_list, editDistance)
     # DEBUG
-    # try:
-    #     b = np.zeros(x_list.size+editDistance, dtype=np.uint8)
-    #     x_check, y_check = b.copy(), b.copy()
-    #     x_check[:x_list.size] = x_list
-    #     y_check[:y_list.size] = y_list
-    #     assert(y_check in proposalsSet and x_check in proposalsSet)
-    # except:
-    #     raise Exception(f"y or x has not been computed. The algorithm is doing wrong.\n\
-    #                     Data: (/{x}/, /{y}/)")
+    # x_check, y_check = (torch.zeros(x_list.shape[0]+editDistance, dtype=torch.uint8),
+    #                     torch.zeros(x_list.shape[0]+editDistance, dtype=torch.uint8))
+    # x_check[:x_list.shape[0]] = x_list
+    # y_check[:y_list.shape[0]] = y_list
+    # if not y_check in proposalsSet and x_check in proposalsSet:
+    #     raise IncorrectResultsException(f"y or x has not been computed. The algorithm is doing wrong.\n\
+    #                 Data: (/{x}/, /{y}/)")
     return proposalsSet

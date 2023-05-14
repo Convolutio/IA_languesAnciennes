@@ -1,8 +1,7 @@
-import numpy as np
-import numpy.typing as npt
+from torch import Tensor
 
-EditNDArray = npt.NDArray[np.int8]
-EditsCombination = npt.NDArray[np.int8]
+EditNDArray = Tensor
+EditsCombination = Tensor
 Edit = tuple[int, int, int, int]
 """
 [op, i, j, k]

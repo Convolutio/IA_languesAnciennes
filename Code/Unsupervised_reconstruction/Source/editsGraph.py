@@ -1,14 +1,12 @@
 from Types.models import *
-from bidict import bidict
-from typing import Optional
+from typing import Optional, List
 import graphviz
 from collections import deque
+from torch import CharTensor, Tensor, int8
+import torch
 
-def addEditToCombi(combi:EditsCombination, edit:EditNDArray):
-    numberOfCombination = combi.item(0,0)
-    combi[numberOfCombination] = edit
-    combi[0,0] = numberOfCombination + 1
-    return combi
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 class Node:
     def __init__(self, id_:int) -> None:
         self.__id = id_
@@ -39,6 +37,13 @@ class Node:
     def removeParentVertex(self, vertexId:int):
         self.__parentVertecies.remove(vertexId)
 
+def addElementToCombination(combi:Tensor, element:Tensor)->Tensor:
+    newCombi = torch.empty_like(combi).copy_(combi)
+    oldcombinationsNumber = int(combi[0, 0].item())
+    newCombi[oldcombinationsNumber+1] = element
+    newCombi[0, 0] = oldcombinationsNumber + 1
+    return torch.unsqueeze(newCombi, dim=0) # returns a combination line
+
 class EditsGraph:
     """
     This class manages the features of an oriented graph to represent
@@ -46,7 +51,7 @@ class EditsGraph:
     """
     def __init__(self, x:str, y:str, editDistance:int) -> None:
         self.__editIds:dict[Edit, int] = {}
-        self.__editsNDArrays = np.array([[0,0,0,0]], dtype=np.int8)
+        self.__editsNDArrays = CharTensor([[0,0,0,0]], device=device)
         # The dict below saves the graph's vertecies and their connexions.
         self.__nodes:list[Node] = [Node(0)] # Empty beginning node with 0 index
         self.__editDistance = editDistance
@@ -56,7 +61,7 @@ class EditsGraph:
 
     def __addNode(self, edit:Edit):
         newNodeId = len(self.__nodes)
-        self.__editsNDArrays = np.append(arr=self.__editsNDArrays, values=np.array([edit], dtype=np.int8), axis=0)
+        self.__editsNDArrays = torch.cat([self.__editsNDArrays, CharTensor([edit], device=device)], dim=0)
         self.__nodes.append(Node(newNodeId))
         self.__editIds[edit] = newNodeId
     
@@ -88,14 +93,15 @@ class EditsGraph:
     def include(self, edit:Edit)->bool:
         return edit in self.__editIds
     
-    def getEdit(self, nodeId:int)->npt.NDArray[np.int8]:
-        return self.__editsNDArrays[nodeId]
+    def getEdit(self, nodeId:int)->CharTensor:
+        return CharTensor(self.__editsNDArrays[nodeId], device=device)
     
     @property
     def initialNode(self):
         return self.__nodes[0]
     
-    def computeEditsCombinations(self) -> npt.NDArray[np.int8]:
+    @torch.jit.export
+    def computeEditsCombinations(self) -> Tensor:
         """
         Computes the combinations of edits that we can do with the available edit paths\
         in this edits graph. Returns all of them in a list.
@@ -103,9 +109,9 @@ class EditsGraph:
         """
         numberOfNodes = len(self.__nodes)
         #The first combination bring the length information : [length, 0, 0, 0]
-        combinationsByAlreadySeenNodes = [np.zeros((0, 1+self.__editDistance, 4), dtype=np.int8) for _ in range(numberOfNodes)]
-        combinationsByAlreadySeenNodes[0] = np.append(combinationsByAlreadySeenNodes[0],
-                                                   np.zeros((1,1+self.__editDistance,4),dtype=np.int8), 0)
+        combinationsByAlreadySeenNodes = [torch.zeros((0, 1+self.__editDistance, 4), dtype=int8, device=device) for _ in range(numberOfNodes)]
+        combinationsByAlreadySeenNodes[0] = torch.cat([combinationsByAlreadySeenNodes[0], 
+                                torch.zeros((1,1+self.__editDistance,4), dtype=int8, device=device)], dim=0)
         ancestorsOfNodes = [set[int]() for _ in self.__nodes]
         nodeStack = deque([0])
         while len(nodeStack) > 0:
@@ -121,18 +127,18 @@ class EditsGraph:
                 if not childId in nodeStack:
                     nodeStack.append(childId)
             # Compute new combinations from the other computed with the node's ancestors
+            futures:List[torch.jit.Future[Tensor]] = []
+            currentEdit = self.__editsNDArrays[currentNodeId]
             for ancestorId in ancestorsOfNodes[currentNodeId]:
-                combinationsByAlreadySeenNodes[currentNodeId] = np.append(combinationsByAlreadySeenNodes[currentNodeId],
-                                                                          combinationsByAlreadySeenNodes[ancestorId], 0)
+                for i in range(combinationsByAlreadySeenNodes[ancestorId].shape[0]):
+                    previousCombi = combinationsByAlreadySeenNodes[ancestorId][i]
+                    futures.append(torch.jit.fork(addElementToCombination, previousCombi, currentEdit))
             if currentNodeId != 0:
-                for i in range(combinationsByAlreadySeenNodes[currentNodeId].shape[0]):
-                    oldcombinationsNumber = combinationsByAlreadySeenNodes[currentNodeId].item((i, 0, 0))
-                    combinationsByAlreadySeenNodes[currentNodeId][i, oldcombinationsNumber+1] = self.__editsNDArrays[currentNodeId]
-                    combinationsByAlreadySeenNodes[currentNodeId][i, 0, 0] = oldcombinationsNumber + 1
-        
-        combinArray = np.zeros((0,1+self.__editDistance, 4), dtype=np.int8)
+                results:list[Tensor] = [torch.jit.wait(future) for future in futures]
+                torch.cat(results, dim=0, out=combinationsByAlreadySeenNodes[currentNodeId])
+        combinArray = torch.zeros((0,1+self.__editDistance, 4), dtype=int8, device=device)
         for n in range(numberOfNodes):
-            combinArray = np.append(combinArray, combinationsByAlreadySeenNodes.pop(), 0)
+            combinArray = torch.cat([combinArray, combinationsByAlreadySeenNodes.pop()], dim=0)
         return combinArray
     
     def displayGraph(self, filename:str):
@@ -146,7 +152,7 @@ class EditsGraph:
             if node.id_==0:
                 G.node('0', self.__x, _attributes={'fillcolor':'darkorange'})
             else:
-                edit:Edit = tuple(self.__editsNDArrays[node.id_])
+                edit:Edit = tuple([int(e.item()) for e in self.__editsNDArrays[node.id_]])
                 label = f"+/{self.__y[edit[2]]}/, ({edit[1]}, {edit[2]}), {edit[3]}"
                 if edit[0]==0:
                     label = f"/{self.__x[edit[1]]}/→/{self.__y[edit[2]]}/, ({edit[1]}, {edit[2]})"

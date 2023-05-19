@@ -739,7 +739,7 @@ En revanche, en pratique, il est fréquent que des chemins se séparent en deux,
 Étant donné ces conditions, le graphe imaginable avec un nombre maximal de sommets pour une distance d'édition $d$ fixée est celui dont le nombre de sommets est multiplié par deux à chaque descente en profondeur sur la première moitié du graphe pour ensuite être divisé par deux sur l'autre moitié, où les chemins fractionnés se réunissent à nouveau. Dans cet exemple de graphe, il va être montré que le nombre de combinaisons calculées est dominé par une valeur allant au-delà de $O(2^d)$. Déterminer si cette valeur constitue une majoration de la quantité d'intermédiaires générés est un problème mathématique dont le traitement est ici laissé pour des recherches ultérieures.
 
 Soit $(c_k)_{0\leq k \leq d}$ la suite des nombres de combinaisons générées par l'algorithme lorsqu'il travaille sur un n\oe{}ud de profondeur $k$ et soit $(n_k)_{0\leq k \leq d}$ celle des nombres de sommets que le graphe possède à cette même profondeur. On a donc $c_0 = n_0 = 1$. À une profondeur $k \in [\![1,\lceil \frac{d}{2}\rceil]\!]$, un sommet est situé sur un chemin simple et le nombre de combinaisons qui y sont générées est alors de $c_k = 2^{k-1}$. Puisque le nombre de sommets est multiplié par deux d'une profondeur $k$ à $k+1$, pour $k \leq \lceil \frac{d}{2}\rceil -1$, on a donc $n_k=2^k, \forall k\leq \lceil \frac{d}{2} \rceil$.\\
-Pour $k > \lceil \frac{d}{2} \rceil $, si on note $m:=k-\lceil \frac{d}{2} \rceil$, on démontre sans mal que $n_{(\lceil \frac{d}{2} \rceil + m)} = 2^{\lceil \frac{d}{2}\rceil - m}$. Chaque n\oe{}ud renoue deux sommets de sorte à avoir le plus de sommets ancestraux possibles, dont le nombre à la profondeur $k'$ est alors de $\min\{2^{m}, 2^{k'}\}$, dans le cas où $k'\leq \lceil \frac{d}{2} \rceil$ sinon de $2^{k-k'}$, pour $\lceil \frac{d}{2} \rceil < k' <k$.
+Pour $k > \lceil \frac{d}{2} \rceil $, si on note $m:=k-\lceil \frac{d}{2} \rceil$, on démontre sans mal que $n_{(\lceil \frac{d}{2} \rceil + m)} = 2^{\lceil \frac{d}{2}\rceil - m}$. Chaque n\oe{}ud renoue deux sommets de sorte à avoir le plus de sommets ancestraux possibles, dont le nombre à la profondeur $j$ est alors de $\min\{2^{m}, 2^{j}\}$, dans le cas où $j\leq \lceil \frac{d}{2} \rceil$ sinon de $2^{k-j}$, pour $\lceil \frac{d}{2} \rceil < j <k$.
 Le nombre de combinaisons dans un n\oe{}ud à la profondeur $k$ vaut donc :
 \begin{equation}
     \begin{split}
@@ -758,12 +758,15 @@ En notant $(v_m)_{0\leq m \leq \lceil \frac{d}{2} \rceil}$ la suite $(c_{(\lceil
         = & 4v_m - \frac{5}{3}4^m - \frac{5}{6}
     \end{split}
 \end{equation}
-On déduit donc une expression explicite de $(v_m)_{0\leq m \leq \lceil \frac{d}{2} \rceil}$ :
+On déduit donc une expression explicite pour $(v_m)_{0\leq m \leq \lceil \frac{d}{2} \rceil}$ :
 \begin{equation}
     \begin{split}
-        v_m = 4^mv_0 \sum_{j=0}^{m-1}\frac{-5}{3}4^j * 4^{m-j} + \sum_{j=0}^{m-1}\frac{-5}{6}4^{m-j} = 4^m(v_0 -\frac{5}{3}m) - \frac{5}{6}\sum_{j=0}^{m-1}4^{m-j}
+        v_m = & 4^mv_0 \sum_{j=0}^{m-1}\frac{-5}{3}4^j * 4^{m-j} + \sum_{j=0}^{m-1}\frac{-5}{6}4^{m-j} = 4^m(v_0 -\frac{5}{3}m) - \frac{10}{9}4^m\\
+        v_m = & 4^m(v_0 -\frac{5}{3}m -\frac{10}{9})
     \end{split}
 \end{equation}
+
+Avec $v_0=c_{j}$
 
 \begin{figure}[h]{} 
     \centering

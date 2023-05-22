@@ -1,4 +1,4 @@
-from Source.generateProposals import getMinEditPaths, computeProposals, editProtoForm, computeMinEditDistanceMatrix
+from Source.generateProposals import getMinEditPaths, computeProposals, computeMinEditDistanceMatrix
 from data.vocab import make_oneHotTensor
 import numpy as np
 import multiprocessing as mp
@@ -9,7 +9,7 @@ def bigDataTest():
     tree = getMinEditPaths(a, b)
     tree.displayGraph("errorGraph")
     proposals = computeProposals(a, b)
-    tensor = make_oneHotTensor(proposals, True)
+    #tensor = make_oneHotTensor(proposals, True)
 
 def variousDataTest():
     samples = [("absɛns", "assɛnte"), ("abɛrɾasɔ", "aberɾatsiˈone"), ("lɛɡˈatɪɔ","leɡasjˈɔ̃")]

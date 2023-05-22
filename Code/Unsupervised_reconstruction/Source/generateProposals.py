@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 from typing import Optional
 from Types.models import *
-from data.vocab import wordToOneHots
+from data.vocab import wordToOneHots, oneHotsToWord
 from Source.editsGraph import EditsGraph
 import torch
 from torch import Tensor
@@ -75,16 +75,13 @@ def getMinEditPaths(x:str, y:str,
         edit:Edit
         if deltaCoord==(-1, -1):
             # substitution
-            edit = (0, i_start-1, j_start-1, 0)
+            edit = (0, i_start-1, j_start-1)
         elif deltaCoord==(0, -1):
             # insertion
-            insertionIdx = -1
-            if parentEdit is not None and parentEdit[0] == 2 and parentEdit[1]==i_start-1:
-                insertionIdx = parentEdit[3] - 1
-            edit = (2, i_start-1, j_start-1, insertionIdx)
+            edit = (2, i_start-1, j_start-1)
         else:
             # deletion
-            edit = (1, i_start-1, j_start-1, 0)
+            edit = (1, i_start-1, j_start-1)
         if not editsTree.include(edit):
             editsTree.connect(edit, parentEdit)
             getMinEditPaths(x, y, (minEditDistanceMatrix, i, j, editsTree, edit))
@@ -92,45 +89,37 @@ def getMinEditPaths(x:str, y:str,
             editsTree.connect(edit, parentEdit)
 
     return editsTree
-
-def editProtoForm(edits:EditsCombination, x_list:Tensor, y_list:Tensor, editDistance:int)->Tensor:
-    """
-    Applies the sequence of edits in argument to the x proto-form
-    """
-    lastIdxToBeProcessed = int(edits[0,0].item())
-    b = torch.zeros([x_list.shape[0]+editDistance], dtype=torch.uint8)
-    if lastIdxToBeProcessed == 0:
-        b[:x_list.shape[0]] = x_list
-        return b.unsqueeze(dim=0)
-    maxInsertionIdx = -int(torch.min(edits[1:lastIdxToBeProcessed+1,3]).item())
-    a:torch.Tensor = torch.full([x_list.shape[0]+1, maxInsertionIdx+1], 0, dtype=torch.uint8)
-    a[1:, 0] = x_list
-    for combiIdx in range(1,lastIdxToBeProcessed+1):
-        edit = edits[combiIdx]
-        idxInList = int(edit[1].item())+1
-        if edit[0]==2:
-            # insertion
-            a[idxInList, int(edit[3].item())] = y_list[int(edit[2].item())].item()
-        elif edit[0]==0:
-            # substitution or deletion
-            a[idxInList, 0] = y_list[int(edit[2].item())].item()
-        else:
-            a[idxInList, 0] = 0
-    a = a.flatten()
-    a = a[torch.nonzero(a!=0)]
-    b[:a.shape[0]] = a[:, 0]
-    return b.unsqueeze(dim=0)
-
-@torch.jit.script
-def combinationsToProposals(combinations:Tensor, x_list:Tensor, y_list:Tensor, editDistance:int):
-    futures:list[torch.jit.Future[Tensor]] = []
-    futures = [torch.jit.fork(editProtoForm, combinations[i], x_list, y_list, editDistance) for i in range(combinations.shape[0])]
-    results = [torch.jit.wait(future) for future in futures]
-    return torch.unique(torch.cat(results), dim=0)
-
 class IncorrectResultsException(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
+
+def removeZeros(t:Tensor)->Tensor:
+    """
+    Arguments:
+        t (Tensor): a tensor of shape (batch_size, N)
+    Rewrite each tensor's row for the zeros to all be on the right.
+    """
+    N = t.shape[1]
+    for j in range(N-1):
+        stop = False
+        while not stop and not torch.all(t[:, j] != 0).item():
+            a = torch.where((t[:, j]==0).repeat(t.shape[1]-j, 1).T,
+                               (t[:, j:]).roll(-1, 1),
+                               t[:,j:])
+            if torch.all(a==t[:,j:]).item():
+                stop = True
+            else:
+                t[:, j:] = a
+    stop, i = False, N
+    while i>=0 and not stop:
+        i-=1
+        if not torch.all(t[:,i]==0).item():
+            #DEBUG
+            # for j in range(i+1, nodesCombinations.shape[1]):
+            #     if not torch.all(nodesCombinations[:,j]==0).item():
+            #         raise IncorrectResultsException()
+            stop = True
+    return t[:, :i+1]
 
 def computeProposals(x:str, y:str)->Tensor:
     """
@@ -141,17 +130,25 @@ def computeProposals(x:str, y:str)->Tensor:
     of vocabulary indexes)
     """
     editsTree = getMinEditPaths(x,y)
-    editDistance = computeMinEditDistanceMatrix(x, y)[len(x), len(y)]
-    nodesCombinations = editsTree.computeEditsCombinations()
-    x_list = wordToOneHots(x)
-    y_list = wordToOneHots(y)
-    proposalsSet = combinationsToProposals(nodesCombinations, x_list, y_list, editDistance)
+    proposalsSet = editsTree.computeEditsCombinations()
+    proposalsSet = removeZeros(proposalsSet)
+    proposalsSet = proposalsSet.unique(sorted=False, dim=0)
     # DEBUG
-    # x_check, y_check = (torch.zeros(x_list.shape[0]+editDistance, dtype=torch.uint8),
-    #                     torch.zeros(x_list.shape[0]+editDistance, dtype=torch.uint8))
+    # proposalsNumber, maxProposalLength = proposalsSet.shape
+    # x_list, y_list = wordToOneHots(x), wordToOneHots(y)
+    # x_check, y_check = (torch.zeros(maxProposalLength, dtype=torch.uint8),
+    #                      torch.zeros(maxProposalLength, dtype=torch.uint8))
     # x_check[:x_list.shape[0]] = x_list
     # y_check[:y_list.shape[0]] = y_list
     # if not y_check in proposalsSet and x_check in proposalsSet:
     #     raise IncorrectResultsException(f"y or x has not been computed. The algorithm is doing wrong.\n\
     #                 Data: (/{x}/, /{y}/)")
+    # uniques, counts = proposalsSet.unique(sorted=False, dim=0, return_counts=True)
+    # if uniques.shape[0] < proposalsNumber:
+    #     for i in range(uniques.shape[0]):
+    #         word, count = oneHotsToWord(uniques[i]), counts[i]
+    #         if count > 1:
+    #             print(f"{word} ({[u.item() for u in uniques[i]]}): {count}")
+    #     raise IncorrectResultsException(f"The returned proposals set has duplicated strings.\n\
+    #                  Data: (/{x}/, /{y}/)")
     return proposalsSet

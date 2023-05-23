@@ -93,34 +93,6 @@ class IncorrectResultsException(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
-def removeZeros(t:Tensor)->Tensor:
-    """
-    Arguments:
-        t (Tensor): a tensor of shape (batch_size, N)
-    Rewrite each tensor's row for the zeros to all be on the right.
-    """
-    N = t.shape[1]
-    for j in range(N-1):
-        stop = False
-        while not stop and not torch.all(t[:, j] != 0).item():
-            a = torch.where((t[:, j]==0).repeat(t.shape[1]-j, 1).T,
-                               (t[:, j:]).roll(-1, 1),
-                               t[:,j:])
-            if torch.all(a==t[:,j:]).item():
-                stop = True
-            else:
-                t[:, j:] = a
-    stop, i = False, N
-    while i>=0 and not stop:
-        i-=1
-        if not torch.all(t[:,i]==0).item():
-            #DEBUG
-            # for j in range(i+1, nodesCombinations.shape[1]):
-            #     if not torch.all(nodesCombinations[:,j]==0).item():
-            #         raise IncorrectResultsException()
-            stop = True
-    return t[:, :i+1]
-
 def computeProposals(x:str, y:str)->Tensor:
     """
     Arguments:
@@ -131,8 +103,8 @@ def computeProposals(x:str, y:str)->Tensor:
     """
     editsTree = getMinEditPaths(x,y)
     proposalsSet = editsTree.computeEditsCombinations()
-    proposalsSet = removeZeros(proposalsSet)
-    proposalsSet = proposalsSet.unique(sorted=False, dim=0)
+    proposalsSet = proposalsSet.unique(dim=0)
+    print("Proposals number =", proposalsSet.shape[0])
     # DEBUG
     # proposalsNumber, maxProposalLength = proposalsSet.shape
     # x_list, y_list = wordToOneHots(x), wordToOneHots(y)
@@ -143,12 +115,4 @@ def computeProposals(x:str, y:str)->Tensor:
     # if not y_check in proposalsSet and x_check in proposalsSet:
     #     raise IncorrectResultsException(f"y or x has not been computed. The algorithm is doing wrong.\n\
     #                 Data: (/{x}/, /{y}/)")
-    # uniques, counts = proposalsSet.unique(sorted=False, dim=0, return_counts=True)
-    # if uniques.shape[0] < proposalsNumber:
-    #     for i in range(uniques.shape[0]):
-    #         word, count = oneHotsToWord(uniques[i]), counts[i]
-    #         if count > 1:
-    #             print(f"{word} ({[u.item() for u in uniques[i]]}): {count}")
-    #     raise IncorrectResultsException(f"The returned proposals set has duplicated strings.\n\
-    #                  Data: (/{x}/, /{y}/)")
     return proposalsSet

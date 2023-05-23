@@ -58,6 +58,10 @@ class EditsGraph:
         The matrix above contains for each i position in x the following information:\\
         [the max number of inserted characters, the minimal j index in y of the inserted characters]
         """
+        self.__deletionInfos:list[bool] = [False for i in range(len(x))]
+        """
+        This list save if there is an edit path where x[i] is deleted.
+        """
         # The dict below saves the graph's vertecies and their connexions.
         self.__nodes:list[Node] = [Node(0)] # Empty beginning node with 0 index
         self.__editDistance = editDistance
@@ -74,6 +78,9 @@ class EditsGraph:
             _, i,j = edit 
             self.__insertionInfos[i+1][0] += 1
             self.__insertionInfos[i+1][1] = min(self.__insertionInfos[i+1][1], j)
+        elif edit[0]==1:
+            i = edit[1]
+            self.__deletionInfos[i] = True
     
     def connect(self, edit:Edit, fromEdit:Optional[Edit]):
         """
@@ -120,6 +127,35 @@ class EditsGraph:
         op, i, j = insertion
         assert(op==2), "The argument must be an insertion edit"
         return j - self.__insertionInfos[i+1][1] + 1
+    
+    def __rollTensor(self, t:Tensor, j:int):
+        t[:, j:] = torch.where((t[:, j]==0).repeat(t.shape[1]-j, 1).T,
+                                (t[:, j:]).roll(-1, 1),
+                                t[:,j:])
+    
+    def __removeZeros(self, t:Tensor)->Tensor:
+        """
+        Arguments:
+            t (Tensor): a tensor of shape (batch_size, N)
+        Rewrite each tensor's row for the zeros to all be on the right.
+        """
+        N = t.shape[1]
+        for j in range(N-2, -1, -1):
+            self.__rollTensor(t, j)
+        stop, i = False, N
+        while i>=0 and not stop:
+            i-=1
+            if not torch.all(t[:,i]==0).item():
+                stop = True
+        # DEBUG
+        # for j in range(N):
+        #     if torch.all(t[:,j]==0).item():
+        #         for k in range(j+1, N):
+        #             if not torch.all(t[:,k]==0).item():
+        #                 raise Exception("The algorithm is wrong.")
+        #         break
+        return t[:, :i+1]
+                
     
     def computeEditsCombinations(self) -> Tensor:
         """
@@ -192,6 +228,7 @@ class EditsGraph:
         proposals = torch.zeros((0, nonConcatenatedProposalLength), dtype=uint8, device=device)
         for n in range(numberOfNodes):
             proposals = torch.cat((proposals, combinationsByAlreadySeenNodes.pop()), dim=0)
+        proposals = self.__removeZeros(proposals)
         return proposals
     
     def displayGraph(self, filename:str):

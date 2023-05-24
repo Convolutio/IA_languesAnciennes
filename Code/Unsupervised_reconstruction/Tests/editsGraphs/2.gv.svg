@@ -52,7 +52,7 @@
 <!-- 3 -->
 <g id="node4" class="node">
 <title>3</title>
-<ellipse fill="#ffec8b" stroke="black" cx="58.49" cy="-306" rx="58.49" ry="18"/>
+<ellipse fill="lightcoral" stroke="black" cx="58.49" cy="-306" rx="58.49" ry="18"/>
 <text text-anchor="middle" x="58.49" y="-302.3" font-family="Times New Roman,serif" font-size="14.00">/ɪ/→/j/, (6, 5)</text>
 </g>
 <!-- 2&#45;&gt;3 -->
@@ -142,7 +142,7 @@
 <!-- 10 -->
 <g id="node11" class="node">
 <title>10</title>
-<ellipse fill="#ffec8b" stroke="black" cx="259.49" cy="-234" rx="58.49" ry="18"/>
+<ellipse fill="lightcoral" stroke="black" cx="259.49" cy="-234" rx="58.49" ry="18"/>
 <text text-anchor="middle" x="259.49" y="-230.3" font-family="Times New Roman,serif" font-size="14.00">+/s/, (4, 4), 1</text>
 </g>
 <!-- 9&#45;&gt;10 -->
@@ -172,7 +172,7 @@
 <!-- 12 -->
 <g id="node13" class="node">
 <title>12</title>
-<ellipse fill="#ffec8b" stroke="black" cx="390.49" cy="-162" rx="61.19" ry="18"/>
+<ellipse fill="lightcoral" stroke="black" cx="390.49" cy="-162" rx="61.19" ry="18"/>
 <text text-anchor="middle" x="390.49" y="-158.3" font-family="Times New Roman,serif" font-size="14.00">/ˈ/→/a/, (3, 3)</text>
 </g>
 <!-- 11&#45;&gt;12 -->

@@ -103,8 +103,13 @@ def computeProposals(x:str, y:str)->Tensor:
     """
     editsTree = getMinEditPaths(x,y)
     proposalsSet = editsTree.computeEditsCombinations()
-    proposalsSet = proposalsSet.unique(dim=0)
     print("Proposals number =", proposalsSet.shape[0])
+    proposalsSet, counts = proposalsSet.unique(dim=0, return_counts=True)
+    print("Single proposals number =", proposalsSet.shape[0])
+    # for j in range(counts.shape[0]):
+    #     if counts[j].item() > 1:
+    #         print(oneHotsToWord(proposalsSet[j]), counts[j].item())
+    print()
     # DEBUG
     # proposalsNumber, maxProposalLength = proposalsSet.shape
     # x_list, y_list = wordToOneHots(x), wordToOneHots(y)

@@ -64,15 +64,17 @@ class EditsGraph:
         """
         # The dict below saves the graph's vertecies and their connexions.
         self.__nodes:list[Node] = [Node(0)] # Empty beginning node with 0 index
+        self.__nodesDepth:list[int] = [0] # list of depth of each node
         self.__editDistance = editDistance
         #For debugging
         self.__x = x
         self.__y = y
 
-    def __addNode(self, edit:Edit):
+    def __addNode(self, edit:Edit, fromNodeId:int):
         newNodeId = len(self.__nodes)
         self.__edits.append(edit)
         self.__nodes.append(Node(newNodeId))
+        self.__nodesDepth.append(self.__nodesDepth[fromNodeId]+1)
         self.__editIds[edit] = newNodeId
         if edit[0] == 2:
             _, i,j = edit 
@@ -93,12 +95,13 @@ class EditsGraph:
             0
         Add an oriented edge from the `fromEdit` vertex to the `edit` one.
         """
-        if not edit in self.__editIds:
-            self.__addNode(edit)
-        nodeId = self.__editIds[edit]
         fromNodeId = 0
         if fromEdit is not None:
             fromNodeId = self.__editIds[fromEdit]
+        if not edit in self.__editIds:
+            self.__addNode(edit, fromNodeId)
+        nodeId = self.__editIds[edit]
+        self.__nodesDepth[nodeId]
         self.__linkNodes(nodeId, fromNodeId)
     
     def __linkNodes(self, toNode:int, fromNode:int):
@@ -107,6 +110,21 @@ class EditsGraph:
     
     def getNode(self, id_:int):
         return self.__nodes[id_]
+    
+    def getLastNode(self)->Node:
+        lastNodes:list[Node] = []
+        for node in self.__nodes:
+            if len(node.childVertecies) ==0:
+                lastNodes.append(node)
+        if len(lastNodes)==1:
+            return lastNodes[0]
+        elif len(lastNodes)==2:
+            nodeToBeReturned = Node(-1)
+            for node in lastNodes:
+                nodeToBeReturned.addParentVertex(node.id_)
+            return nodeToBeReturned
+        else:
+            raise Exception('It must be one or two last node(s).')
     
     def include(self, edit:Edit)->bool:
         return edit in self.__editIds
@@ -128,12 +146,42 @@ class EditsGraph:
         assert(op==2), "The argument must be an insertion edit"
         return j - self.__insertionInfos[i+1][1] + 1
     
+    def __nearestCommonAncestorDepth(self, node1_id:int, node2_id:int)->int:
+        """
+        node1 and node2 are two nodes of the graphs with the same depth.\\
+        Computes the common ancestor between node1 and node2 with
+        the nearest depth to their's. 
+        """
+        node1, node2 = self.__nodes[node1_id], self.__nodes[node2_id]
+        ancestors1 = deque(node1.parentVertecies)
+        ancestors2 = deque(node2.parentVertecies)
+        if len(node1.parentVertecies.intersection(node2.parentVertecies))>0:
+            return self.__nodesDepth[node1.id_]-1
+        while True:
+            ancestor1 = ancestors1.popleft()
+            ancestor2 = ancestors2.popleft()
+            for parentId in self.__nodes[ancestor1].parentVertecies:
+                if parentId in ancestors2:
+                    return self.__nodesDepth[parentId]
+                elif self.__nodesDepth[parentId]==0:
+                    return 0
+                elif not parentId in ancestors1:
+                    ancestors1.append(parentId)
+            for parentId in self.__nodes[ancestor2].parentVertecies:
+                if parentId in ancestors1:
+                    return self.__nodesDepth[parentId]
+                elif self.__nodesDepth[parentId]==0:
+                    return 0
+                elif not parentId in ancestors2:
+                    ancestors2.append(parentId)
+
+    
     def __rollTensor(self, t:Tensor, j:int):
         t[:, j:] = torch.where((t[:, j]==0).repeat(t.shape[1]-j, 1).T,
                                 (t[:, j:]).roll(-1, 1),
                                 t[:,j:])
     
-    def __removeZeros(self, t:Tensor)->Tensor:
+    def __moveZeros(self, t:Tensor)->Tensor:
         """
         Arguments:
             t (Tensor): a tensor of shape (batch_size, N)
@@ -155,7 +203,36 @@ class EditsGraph:
         #                 raise Exception("The algorithm is wrong.")
         #         break
         return t[:, :i+1]
-                
+
+    def __addCombinations(self, combinationsList:list[Tensor], fromNode_id:int, toNode_id:int):
+        ancestorDepth = self.__nodesDepth[fromNode_id]
+        combinationsList[toNode_id] = torch.cat(
+                (combinationsList[toNode_id],
+                combinationsList[fromNode_id]), dim=0
+            )
+        
+    def __nodesWithAllCombinations(self, )->list[bool]:
+        """
+        All the edits graph is crossed to figure out for each node whether the combinations will be computed from its parent. Sometimes, it does not have to happen, in the order to prevent the duplication of generated proposals.
+        """
+        combinateFromTheParent = [True for _ in range(len(self.__nodes))]
+        combinateFromTheParent[0] = False # it is just a principle
+        nodesToBeProcessed = deque([self.getLastNode()])
+        while len(nodesToBeProcessed)>0:
+            currentNode = nodesToBeProcessed.popleft()
+            parents = [self.__nodes[parentId] for parentId in currentNode.parentVertecies]
+            for parent in parents:
+                if not parent in nodesToBeProcessed:
+                    nodesToBeProcessed.append(parent)
+            if len(parents)==2:
+                designedParent = 1
+                if len(parents[1].parentVertecies)==2:
+                    designedParent = 0 
+                combinateFromTheParent[parents[designedParent].id_] = False
+        return combinateFromTheParent
+
+
+            
     
     def computeEditsCombinations(self) -> Tensor:
         """
@@ -178,7 +255,8 @@ class EditsGraph:
                                 emptyCombination], dim=0)
         ancestorsOfNodes = [set[int]() for _ in self.__nodes]
         nodeStack = deque([0])
-        nodeWithItsLongestCombination = [True for _ in range(numberOfNodes)]
+        nodeWithAllItsCombinations = self.__nodesWithAllCombinations()
+        # Breadth-first search
         while len(nodeStack) > 0:
             currentNodeId = nodeStack.popleft()
             currentNode = self.__nodes[currentNodeId]
@@ -189,46 +267,54 @@ class EditsGraph:
             
             
             # Compute new combinations from the others computed with the node's ancestors
-            
+
             # figure out the ancestors of the node
             for parentId in currentNode.parentVertecies:
                 ancestorsOfNodes[currentNodeId] = ancestorsOfNodes[currentNodeId]\
                     .union(ancestorsOfNodes[parentId])
-            for ancestorId in ancestorsOfNodes[currentNodeId]:
-                combinationsByAlreadySeenNodes[currentNodeId] = torch.cat(
-                    (combinationsByAlreadySeenNodes[currentNodeId],
-                     combinationsByAlreadySeenNodes[ancestorId]), dim=0
-                )
-            # the parent(s) must be treated at the end so the final combination is the one with the
-            # greatest number of applied edits
-            parentsIds = list(currentNode.parentVertecies)
-            if len(parentsIds)==2:
-                # here a combination is removed because it generates the same proposal that another one
-                if nodeWithItsLongestCombination[0] and nodeWithItsLongestCombination[1]:
-                    combinationsByAlreadySeenNodes[parentsIds[0]] = combinationsByAlreadySeenNodes[parentsIds[0]][:-1, :]
-                    nodeWithItsLongestCombination[parentsIds[0]] = False
-                elif nodeWithItsLongestCombination[parentsIds[0]]:
-                    a,b = parentsIds
-                    parentsIds = [b, a]
-            for parentId in parentsIds:
-                combinationsByAlreadySeenNodes[currentNodeId] = torch.cat(
-                    (combinationsByAlreadySeenNodes[currentNodeId],
-                     combinationsByAlreadySeenNodes[parentId]), dim=0
-                )
                 ancestorsOfNodes[currentNodeId].add(parentId)
-
+            interestingAncestors = ancestorsOfNodes[currentNodeId].copy()
+            if not nodeWithAllItsCombinations[currentNodeId]:
+                # there are nodes with which the combinations with their single parent do not have to be computed, because they will generate the same proposals that other combinations which will be computed at the same depth, with the other node which will be connected to this one.
+                #TODO: correct that 
+                # pass
+                #For this proposition, the results are not duplicated but the last example is not correct
+                # interestingAncestors = {0} if currentNodeId!=0 else {}
+                #For this proposition, all examples are correct but the results are duplicated for the second example
+                # TODO: remove more ancestors when necessaries (as in example 2)
+                for parentId in currentNode.parentVertecies:
+                    if len(currentNode.parentVertecies)<2 or not nodeWithAllItsCombinations[parentId]:
+                        if self.__edits[parentId][0]==2:
+                            #remove all the previous ancestors that are edits at the same i index in x 
+                            currentAncestorId = parentId
+                            indexInXOfEdit = self.__edits[currentAncestorId][1]
+                            while currentAncestorId != -1:
+                                interestingAncestors.remove(currentAncestorId)
+                                parents = self.__nodes[currentAncestorId].parentVertecies
+                                currentAncestorId = -1
+                                for parentId in parents:
+                                    if self.__edits[parentId][0]==2 and self.__edits[parentId][1]==indexInXOfEdit:
+                                        currentAncestorId = parentId
+                        else:
+                            # remove one of the parent(s)
+                            interestingAncestors.remove(parentId)
+            for ancestorId in interestingAncestors:
+                self.__addCombinations(combinationsByAlreadySeenNodes, ancestorId, currentNodeId)
             
-            # prepare the edit and apply it on all the duplicated combinations
+            
+            # prepare the edit and apply it on all the selected duplicated combinations
             edit = self.__edits[currentNodeId]
-            newChar = 0 if edit[0]==1 else oneHotY[edit[2]]
+            newChar = 0 if edit[0]==1 else oneHotY[edit[2]].item()
             indexWhereApplyingEdit = f_i[edit[1]+1]
             if edit[0]==2:
                 indexWhereApplyingEdit += self.__computeInsertionIndex(edit)
             combinationsByAlreadySeenNodes[currentNodeId][:, indexWhereApplyingEdit] = newChar*torch.ones(combinationsByAlreadySeenNodes[currentNodeId].shape[0], dtype=uint8, device=device)
+        
+        #Gather all the computed combinations and translate all the sparsed zeros to the right of the proposals matrix 
         proposals = torch.zeros((0, nonConcatenatedProposalLength), dtype=uint8, device=device)
-        for n in range(numberOfNodes):
+        for _ in range(numberOfNodes):
             proposals = torch.cat((proposals, combinationsByAlreadySeenNodes.pop()), dim=0)
-        proposals = self.__removeZeros(proposals)
+        proposals = self.__moveZeros(proposals)
         return proposals
     
     def displayGraph(self, filename:str):
@@ -238,8 +324,9 @@ class EditsGraph:
         """
         G = graphviz.Digraph(comment=f'/{self.__x}/ to /{self.__y}/', node_attr={'style':'filled','fillcolor':'lightgoldenrod1'})
         G.attr(bgcolor="transparent")
-        for node in self.__nodes:
-            if node.id_==0:
+        c = self.__nodesWithAllCombinations()
+        for nodeId, node in enumerate(self.__nodes):
+            if nodeId==0:
                 G.node('0', self.__x, _attributes={'fillcolor':'darkorange'})
             else:
                 edit = self.__edits[node.id_]
@@ -250,7 +337,10 @@ class EditsGraph:
                     label = f"-/{self.__x[edit[1]]}/, ({edit[1]}, {edit[2]})"
                 else:
                     label = f"+/{self.__y[edit[2]]}/, ({edit[1]}, {edit[2]}), {self.__computeInsertionIndex(edit)}"
-                G.node(str(node.id_), label)
+                if c[nodeId]:
+                    G.node(str(node.id_), label)
+                else:
+                    G.node(str(node.id_), label, _attributes={'fillcolor':'lightcoral'})
         G.node(str(len(self.__nodes)), label=self.__y, _attributes={'fillcolor':'darkorange'})
         for node in self.__nodes:
             for childId in node.childVertecies:

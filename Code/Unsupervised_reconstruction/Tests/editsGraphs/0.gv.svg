@@ -76,7 +76,7 @@
 <!-- 5 -->
 <g id="node6" class="node">
 <title>5</title>
-<ellipse fill="#ffec8b" stroke="black" cx="196.44" cy="-162" rx="57.39" ry="18"/>
+<ellipse fill="lightcoral" stroke="black" cx="196.44" cy="-162" rx="57.39" ry="18"/>
 <text text-anchor="middle" x="196.44" y="-158.3" font-family="Times New Roman,serif" font-size="14.00">+/t/, (4, 5), 1</text>
 </g>
 <!-- 4&#45;&gt;5 -->

@@ -1,7 +1,6 @@
 from Source.generateProposals import getMinEditPaths, computeProposals, computeMinEditDistanceMatrix
 from data.vocab import make_oneHotTensor
-import numpy as np
-import multiprocessing as mp
+import torch
 
 def bigDataTest():
     a,b = ("arɡymntaθjon", "ˌɐɾəɡumˌeɪŋtɐsˈɐ̃ʊ̃")
@@ -11,17 +10,22 @@ def bigDataTest():
     proposals = computeProposals(a, b)
     #tensor = make_oneHotTensor(proposals, True)
 
-def variousDataTest():
-    samples = [("absɛns", "assɛnte"), ("abɛrɾasɔ", "aberɾatsiˈone"), ("lɛɡˈatɪɔ","leɡasjˈɔ̃")]
+samples = [("absɛns", "assɛnte"), ("abɛrɾasɔ", "aberɾatsiˈone"), ("lɛɡˈatɪɔ","leɡasjˈɔ̃"), ("paɾaθentɛzɪs", "paɾatʃentˈezɪ"), ("partiθipʊ", "partitʃˈipio")]
+
+def variousDataTest(save:bool = False):    
+    goodProposals = torch.load('./Tests/proposalsTensors.pt')
+    proposals = []
     for i in range(len(samples)):
         a, b = samples[i]
         p = computeProposals(a, b)
-        # if i==0:
-        #     print(p)
+        if save:
+            proposals.append(p)
+        else:
+            assert(torch.all(goodProposals[i]==p))
+    if save:
+        torch.save(proposals, f'./Tests/proposalsTensors.pt')
 
 def drawGraphs():
-    samples = [("absɛns", "assɛnte"), ("abɛrɾasɔ", "aberɾatsiˈone"), ("lɛɡˈatɪɔ","leɡasjˈɔ̃"),
-               ("arɡymntaθjon", "ˌɐɾəɡumˌeɪŋtɐsˈɐ̃ʊ̃")]
     for i in range(len(samples)):
         a,b = samples[i]
         editGraph = getMinEditPaths(a, b)

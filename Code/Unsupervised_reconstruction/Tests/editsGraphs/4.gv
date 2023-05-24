@@ -1,0 +1,34 @@
+// /partiθipʊ/ to /partitʃˈipio/
+digraph {
+	node [fillcolor=lightgoldenrod1 style=filled]
+	bgcolor=transparent
+	0 [label="partiθipʊ" fillcolor=darkorange]
+	1 [label="+/o/, (8, 11), 1"]
+	2 [label="/ʊ/→/i/, (8, 10)"]
+	3 [label="+/ˈ/, (5, 7), 2"]
+	4 [label="+/ʃ/, (5, 6), 1"]
+	5 [label="/θ/→/t/, (5, 5)" fillcolor=lightcoral]
+	6 [label="/θ/→/ʃ/, (5, 6)" fillcolor=lightcoral]
+	7 [label="+/t/, (4, 5), 1"]
+	8 [label="/θ/→/ˈ/, (5, 7)"]
+	9 [label="+/ʃ/, (4, 6), 2"]
+	10 [label="/ʊ/→/o/, (8, 11)"]
+	11 [label="+/i/, (7, 10), 1" fillcolor=lightcoral]
+	12 [label="partitʃˈipio" fillcolor=darkorange]
+	0 -> 1
+	0 -> 10
+	1 -> 2
+	2 -> 8
+	2 -> 3
+	3 -> 4
+	3 -> 6
+	4 -> 5
+	5 -> 12
+	6 -> 7
+	7 -> 12
+	8 -> 9
+	9 -> 7
+	10 -> 11
+	11 -> 8
+	11 -> 3
+}

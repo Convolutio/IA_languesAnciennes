@@ -10,7 +10,7 @@ def bigDataTest():
     proposals = computeProposals(a, b)
     #tensor = make_oneHotTensor(proposals, True)
 
-samples = [("absɛns", "assɛnte"), ("abɛrɾasɔ", "aberɾatsiˈone"), ("lɛɡˈatɪɔ","leɡasjˈɔ̃"), ("paɾaθentɛzɪs", "paɾatʃentˈezɪ"), ("partiθipʊ", "partitʃˈipio")]
+samples = [("absɛns", "assɛnte"), ("abɛrɾasɔ", "aberɾatsiˈone"), ("lɛɡˈatɪɔ","leɡasjˈɔ̃"), ("paɾaθentɛzɪs", "paɾatʃentˈezɪ"), ("partiθipʊ", "partitʃˈipio"), ("arɡymntaθjon", "ˌɐɾəɡumˌeɪŋtɐsˈɐ̃ʊ̃")]
 
 def variousDataTest(save:bool = False):    
     goodProposals = torch.load('./Tests/proposalsTensors.pt')
@@ -21,7 +21,14 @@ def variousDataTest(save:bool = False):
         if save:
             proposals.append(p)
         else:
-            assert(torch.all(goodProposals[i]==p))
+            try:
+                assert(torch.all(goodProposals[i]==p))
+            except:
+                editGraph = getMinEditPaths(a,b)
+                editGraph.displayGraph('errorGraph')
+                msg = f'Good number of proposals: {goodProposals[i].shape[0]}'
+                msg += f'\nCurrent number of proposals: {p.shape[0]}'
+                raise Exception(msg)
     if save:
         torch.save(proposals, f'./Tests/proposalsTensors.pt')
 

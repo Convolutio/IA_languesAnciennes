@@ -283,7 +283,7 @@ class EditsGraph:
                 #For this proposition, all examples are correct but the results are duplicated for the second example
                 # TODO: remove more ancestors when necessaries (as in example 2)
                 for parentId in currentNode.parentVertecies:
-                    if len(currentNode.parentVertecies)<2 or not nodeWithAllItsCombinations[parentId]:
+                    if nodeWithAllItsCombinations[parentId]:
                         if self.__edits[parentId][0]==2:
                             #remove all the previous ancestors that are edits at the same i index in x 
                             currentAncestorId = parentId

@@ -268,7 +268,7 @@ Cependant, il faut aussi identifier les mots provenant de d'autres langues, afin
 
 \subsection{Le besoin de modèles informatiques}
 
-L'évocation des listes de Swadesh est suffisante pour comprendre que la discipline de la linguistique historique dispose de ressources composées de tables et de bases de données dont la taille dépasse certainement les capacités de la mémorisation humaine pour pouvoir les exploiter efficacement durant des travaux. L'outil informatique est donc nécessaire pour pouvoir produire des résultats à partir d'un parcours rapide de ces données. Mais, pour l'ordinateur, la difficulté de l'abstraction de la langue est rencontrée. Des outils de modélisation sont donc à mettre en place afin d'obtenir des hypothèses qui vont permettre aux linguistes, grâce à leur niveau de connaissances, d'être plus efficace dans leurs recherches.
+L'évocation des listes de Swadesh est suffisante pour comprendre que la discipline de la linguistique historique dispose de ressources composées de tables et de bases de données dont la taille dépasse certainement les capacités de la mémorisation humaine pour pouvoir les exploiter efficacement durant des travaux. L'outil informatique est donc nécessaire pour pouvoir produire des résultats à partir d'un parcours rapide de ces données. Mais, pour l'ordinateur, la difficulté de l'abstraction de la langue est rencontrée. Des outils de modélisation sont donc à mettre en place afin d'obtenir des hypothèses qui vont permettre aux linguistes, grâce à leur niveau de connaissances, d'être plus efficaces dans leurs recherches.
 
 Concevoir ce type d'outil fait parti des enjeux du \Gls{tal}. Dans la partie suivante, les technologies de l'\Gls{ia} qui y sont utiles sont introduites.
 
@@ -276,7 +276,7 @@ Concevoir ce type d'outil fait parti des enjeux du \Gls{tal}. Dans la partie sui
 \subsection{Introduction à l'apprentissage automatique}
 
 Un nombre important de problèmes informatiques peut être résolu à travers la détermination d'une fonction mathématique $f$ d'un espace vectoriel $\mathbb{K}^n$ vers un espace vectoriel $\mathbb{K}^{n'}$ (avec $\mathbb{K}$ correspondant à $\mathbb{R}$ ou $\mathbb{C}$).\\
-De nombreux cas demeurent où il est difficile -- voire impossible -- de poser une expression mathématique ou un algorithme pour répondre à certains problèmes. On considère alors $f$ comme hypothétique et on cherche à l'approcher à partir d'un \textbf{modèle}, qu'on construit à partir des informations qu'on a à     , comme un ensemble de ses points $\{(x_k, y_k=f(x_k)), k \in S\}$, à travers une tâche dite de \textbf{régression}.
+De nombreux cas demeurent où il est difficile -- voire impossible -- de poser une expression mathématique ou un algorithme pour répondre à certains problèmes. On considère alors $f$ comme hypothétique et on cherche à l'approcher à partir d'un \textbf{modèle}, qu'on construit à partir des informations qu'on a dessus, comme un ensemble de ses points $\{(x_k, y_k=f(x_k)), k \in S\}$, à travers une tâche dite de \textbf{régression}.
 
 \vspace{12pt}
 Les \textbf{réseaux de neurones} sont des outils performants pour établir des modèles. Mathématiquement, ce sont des compositions d'applications non-linéaires et linéaires recevant un vecteur d'entrée représentant une donnée et sortant un vecteur de sortie représentant un résultat dans un format cohérent avec le problème.
@@ -331,7 +331,7 @@ Une \textbf{couche de neurones} est la mise en commun d'un nombre arbitraire $N$
     \end{split}
 \end{equation}
 
-Un réseau neuronal est ainsi formé à partir de la mobilisation d'une ou plusieurs couches. L''utilisation de couches intermédiaires, qu'on nomme des \textbf{couches cachées}, induit que la machine puisse être capable d'apprendre à construire des \textbf{représentations adéquates} des données pour effectuer la prédiction finalement voulue avec pertinence. On parle alors d'\textbf{apprentissage profond} et cette technique offre des réponses face aux difficultés d'abstraction soulevées par les problèmes de \Gls{tal}.
+Un réseau neuronal est ainsi formé à partir de la mobilisation d'une ou plusieurs couches. L'intuition est que l'utilisation de couches intermédiaires, qu'on nomme des \textbf{couches cachées}, rende la machine capable d'apprendre à construire des \textbf{représentations adéquates} des données pour effectuer la prédiction finalement voulue avec pertinence. On parle alors d'\textbf{apprentissage profond} et cette technique offre des réponses face aux difficultés d'abstraction soulevées par les problèmes de \Gls{tal}.
 % un exemple de problème de TAL ? Le lecteur n'est pas encore complétement familier avec ce concept.
 
 L'agencement des couches et la manière de calculer la sortie finale à partir de chacune d'elles, qu'on peut rassembler sous le terme de \og mode de \textbf{propagation} \fg, est un \textbf{paramètre architectural} à part entière qu'il faut judicieusement définir en fonction de la tâche à réaliser. Pour traiter de l'utilisation de l'\Gls{ia} dans le \Gls{tal}, au moins deux principaux types de réseaux de neurones seront introduits au cours de ce chapitre, différant par la nature récurrente ou non de l'enchaînement de leurs couches internes \autocite[chap.~7]{jurafsky}.
@@ -626,7 +626,7 @@ L'intelligence artificielle a déjà commencé sa révolution dans la linguistiq
 
 Bien que performants de par leur rapidité, il a été cependant démontré que les modèles neuronaux font des prédictions dont la fiabilité doit souvent être remise en question, du fait de la variété des cas possibles rencontrés dans une ou plusieurs langues, qu'ils savent difficilement gérer dans son ensemble. Néanmoins, des pistes de réflexion sont fournies aux linguistes grâce à ces outils, permettant de prétraiter leur travail.
 
-L'amélioration du niveau de confiance qu'il sera possible d'accorder aux hypothèses sorties par les machines à base d'intelligence artificielle progressera certainement avec les avancées de la recherche sur la modélisation des langues en général. Les progrès dans le domaine des langues contemporaines étant tout aussi important à considérer que ceux dans le domaine des langues anciennes
+L'amélioration du niveau de confiance qu'il sera possible d'accorder aux hypothèses sorties par les machines à base d'intelligence artificielle progressera certainement avec les avancées de la recherche sur la modélisation des langues en général, les progrès dans le domaine des langues contemporaines étant aussi importants à considérer que ceux dans le domaine des langues anciennes.
 
 \printbibliography[heading=bibintoc]
 

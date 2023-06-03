@@ -38,13 +38,6 @@ class Node:
     def removeParentVertex(self, vertexId:int):
         self.__parentVertecies.remove(vertexId)
 
-def addElementToCombination(combi:Tensor, element:Tensor)->Tensor:
-    newCombi = torch.empty_like(combi).copy_(combi)
-    oldcombinationsNumber = int(combi[0, 0].item())
-    newCombi[oldcombinationsNumber+1] = element
-    newCombi[0, 0] = oldcombinationsNumber + 1
-    return torch.unsqueeze(newCombi, dim=0) # returns a combination line
-
 class EditsGraph:
     """
     This class manages the features of an oriented graph to represent
@@ -146,35 +139,6 @@ class EditsGraph:
         assert(op==2), "The argument must be an insertion edit"
         return j - self.__insertionInfos[i+1][1] + 1
     
-    def __nearestCommonAncestorDepth(self, node1_id:int, node2_id:int)->int:
-        """
-        node1 and node2 are two nodes of the graphs with the same depth.\\
-        Computes the common ancestor between node1 and node2 with
-        the nearest depth to their's. 
-        """
-        node1, node2 = self.__nodes[node1_id], self.__nodes[node2_id]
-        ancestors1 = deque(node1.parentVertecies)
-        ancestors2 = deque(node2.parentVertecies)
-        if len(node1.parentVertecies.intersection(node2.parentVertecies))>0:
-            return self.__nodesDepth[node1.id_]-1
-        while True:
-            ancestor1 = ancestors1.popleft()
-            ancestor2 = ancestors2.popleft()
-            for parentId in self.__nodes[ancestor1].parentVertecies:
-                if parentId in ancestors2:
-                    return self.__nodesDepth[parentId]
-                elif self.__nodesDepth[parentId]==0:
-                    return 0
-                elif not parentId in ancestors1:
-                    ancestors1.append(parentId)
-            for parentId in self.__nodes[ancestor2].parentVertecies:
-                if parentId in ancestors1:
-                    return self.__nodesDepth[parentId]
-                elif self.__nodesDepth[parentId]==0:
-                    return 0
-                elif not parentId in ancestors2:
-                    ancestors2.append(parentId)
-
     
     def __rollTensor(self, t:Tensor, j:int):
         t[:, j:] = torch.where((t[:, j]==0).repeat(t.shape[1]-j, 1).T,
@@ -205,7 +169,6 @@ class EditsGraph:
         return t[:, :i+1]
 
     def __addCombinations(self, combinationsList:list[Tensor], fromNode_id:int, toNode_id:int):
-        ancestorDepth = self.__nodesDepth[fromNode_id]
         combinationsList[toNode_id] = torch.cat(
                 (combinationsList[toNode_id],
                 combinationsList[fromNode_id]), dim=0
@@ -216,19 +179,7 @@ class EditsGraph:
         All the edits graph is crossed to figure out for each node whether the combinations will be computed from its parent. Sometimes, it does not have to happen, in the order to prevent the duplication of generated proposals.
         """
         combinateFromTheParent = [True for _ in range(len(self.__nodes))]
-        combinateFromTheParent[0] = False # it is just a principle
-        nodesToBeProcessed = deque([self.getLastNode()])
-        while len(nodesToBeProcessed)>0:
-            currentNode = nodesToBeProcessed.popleft()
-            parents = [self.__nodes[parentId] for parentId in currentNode.parentVertecies]
-            for parent in parents:
-                if not parent in nodesToBeProcessed:
-                    nodesToBeProcessed.append(parent)
-            if len(parents)==2:
-                designedParent = 1
-                if len(parents[1].parentVertecies)==2:
-                    designedParent = 0 
-                combinateFromTheParent[parents[designedParent].id_] = False
+        # TODO
         return combinateFromTheParent
 
 
@@ -255,7 +206,7 @@ class EditsGraph:
                                 emptyCombination], dim=0)
         ancestorsOfNodes = [set[int]() for _ in self.__nodes]
         nodeStack = deque([0])
-        nodeWithAllItsCombinations = self.__nodesWithAllCombinations()
+
         # Breadth-first search
         while len(nodeStack) > 0:
             currentNodeId = nodeStack.popleft()
@@ -265,7 +216,6 @@ class EditsGraph:
                 if not childId in nodeStack:
                     nodeStack.append(childId)
             
-            
             # Compute new combinations from the others computed with the node's ancestors
 
             # figure out the ancestors of the node
@@ -274,33 +224,8 @@ class EditsGraph:
                     .union(ancestorsOfNodes[parentId])
                 ancestorsOfNodes[currentNodeId].add(parentId)
             interestingAncestors = ancestorsOfNodes[currentNodeId].copy()
-            if not nodeWithAllItsCombinations[currentNodeId]:
-                # there are nodes with which the combinations with their single parent do not have to be computed, because they will generate the same proposals that other combinations which will be computed at the same depth, with the other node which will be connected to this one.
-                #TODO: correct that 
-                # pass
-                #For this proposition, the results are not duplicated but the last example is not correct
-                # interestingAncestors = {0} if currentNodeId!=0 else {}
-                #For this proposition, all examples are correct but the results are duplicated for the second example
-                # TODO: remove more ancestors when necessaries (as in example 2)
-                for parentId in currentNode.parentVertecies:
-                    if nodeWithAllItsCombinations[parentId]:
-                        if self.__edits[parentId][0]==2:
-                            #remove all the previous ancestors that are edits at the same i index in x 
-                            currentAncestorId = parentId
-                            indexInXOfEdit = self.__edits[currentAncestorId][1]
-                            while currentAncestorId != -1:
-                                interestingAncestors.remove(currentAncestorId)
-                                parents = self.__nodes[currentAncestorId].parentVertecies
-                                currentAncestorId = -1
-                                for parentId in parents:
-                                    if self.__edits[parentId][0]==2 and self.__edits[parentId][1]==indexInXOfEdit:
-                                        currentAncestorId = parentId
-                        else:
-                            # remove one of the parent(s)
-                            interestingAncestors.remove(parentId)
             for ancestorId in interestingAncestors:
                 self.__addCombinations(combinationsByAlreadySeenNodes, ancestorId, currentNodeId)
-            
             
             # prepare the edit and apply it on all the selected duplicated combinations
             edit = self.__edits[currentNodeId]

@@ -16,7 +16,7 @@ M = 10**4 # normally ok
 def metropolisHasting(law:np.ndarray)->int:
     """
     Arguments:
-        law (list[float]) :  a probability distribution
+        law (list[float]) : a probability distribution
     Sample the index of a proposal randomly from the probability
     distribution.
     """

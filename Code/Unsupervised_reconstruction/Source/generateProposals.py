@@ -103,7 +103,7 @@ def computeProposals(currentReconstruction:str, cognates:list[str])->Tensor:
     Returns a list of the proposals in one-hot indexes representation (sequences
     of indexes in the vocabulary)
     """
-    proposalsSet = torch.ByteTensor().to(device)
+    proposalsSet = torch.ByteTensor(size=(0,0)).to(device)
     for cognate in cognates:
         editsTree = getMinEditPaths(currentReconstruction,cognate)
         newComputedProposals = editsTree.computeEditsCombinations()

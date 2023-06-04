@@ -117,7 +117,6 @@ def computeProposals(currentReconstruction:str, cognates:list[str])->Tensor:
                                                    mode='constant', value=0)
         proposalsSet = torch.cat((proposalsSet, newComputedProposals), dim=0)
     proposalsSet = proposalsSet.unique(dim=0)
-    print()
     # DEBUG
     # proposalsNumber, maxProposalLength = proposalsSet.shape
     # x_list, y_list = wordToOneHots(x), wordToOneHots(y)

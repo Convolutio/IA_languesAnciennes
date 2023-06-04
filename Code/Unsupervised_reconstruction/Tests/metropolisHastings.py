@@ -1,33 +1,31 @@
-from Source.sampling import metropolisHasting, computeLaw
+from Source.sampling import computeLaw
 import numpy as np
-from threading import Thread
+import torch
+import math
 
-def computeFrequencies(law:np.ndarray, iterations:int, effectivesTable:np.ndarray, threadNumber:int):
-    for _ in range(iterations):
-        n = metropolisHasting(law)
-        effectivesTable[threadNumber, n] += 1
-
-REPETITIONS = 10**4
+REPETITIONS = 10**5
 THREADS_NUMBER = 20
 
 unnormalizedProbs = np.array([0.1, 0.15, 0.08, 0.11, 0.144, 0.078])
-probs = np.log(unnormalizedProbs, dtype=float)
-law = computeLaw(probs)
+logProbs = np.log(unnormalizedProbs, dtype=float)
+law = computeLaw(logProbs)
 print("Computed law:", np.exp(law))
+law = logProbs
 
+def optimizedMH_Test():
+    """
+    Run MH a lot of times and compute the frequencies of indexes selections.
+    """
+    M = 10**5
+    N = len(law)
+    t_law = torch.tensor(law)
+    i = torch.zeros(REPETITIONS, dtype=torch.int32)
+    for _ in range(M):
+        j = torch.randint(0, N-1, (REPETITIONS,), dtype=torch.int32)
+        j = torch.where(j>=i, j+1, j)
+        acceptation = torch.index_select(t_law, 0, j) - torch.index_select(t_law, 0, i)
+        u = torch.log(torch.rand(REPETITIONS))
+        i = torch.where(u<=acceptation, j, i)
+    return torch.exp(torch.log(torch.bincount(i))-math.log(REPETITIONS))
 
-print('0%', end='\r')
-effectivesByThread = np.zeros((THREADS_NUMBER, law.size)) 
-for p in range(100):
-    threads = [Thread(target=computeFrequencies, args=(law, 
-                REPETITIONS//(100*THREADS_NUMBER), effectivesByThread, i))
-                for i in range(THREADS_NUMBER)]
-    for tn in range(THREADS_NUMBER):
-        threads[tn].start()
-    for tn in range(THREADS_NUMBER):
-        threads[tn].join()
-    print(f'{p+1}%', end='\r')
-print("100%")
-frequencies = effectivesByThread.sum(0)/REPETITIONS
-
-print("Frequencies:", frequencies)
+print("Frequencies:", optimizedMH_Test())

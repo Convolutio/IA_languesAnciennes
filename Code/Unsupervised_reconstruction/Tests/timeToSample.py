@@ -10,7 +10,7 @@ def generateProposalsOverDataset():
     for i in range(numberOfCognatePairs):
         x = reconstructions[i]
         Y = [cognates[language][i] for language in languages]
-        print(f'/{x}/ to (${Y}) \nIteration {str(i)}/{numberOfCognatePairs}', end='\r')
+        print(f'/{x}/ to ({Y}) \nCognate Set {str(i)}/{numberOfCognatePairs}'+''*10, end='\r')
         p = computeProposals(x,Y)
 
 def editDistancesInDataset():

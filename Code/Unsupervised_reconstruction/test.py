@@ -1,3 +1,5 @@
+import time
+
 from Tests.timeToSample import generateProposalsOverDataset
 # from Tests import metropolisHastings
 from Tests.testEditsGraph import variousDataTest, bigDataTest, drawGraphs

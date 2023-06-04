@@ -12,20 +12,20 @@ law = computeLaw(logProbs)
 print("Computed law:", np.exp(law))
 law = logProbs
 
-def optimizedMH_Test():
+def optimizedMH_Test(samplingIterations:int):
     """
     Run MH a lot of times and compute the frequencies of indexes selections.
     """
-    M = 10**5
+    MH_iterations = 10**5
     N = len(law)
     t_law = torch.tensor(law)
-    i = torch.zeros(REPETITIONS, dtype=torch.int32)
-    for _ in range(M):
-        j = torch.randint(0, N-1, (REPETITIONS,), dtype=torch.int32)
+    i = torch.zeros(samplingIterations, dtype=torch.int32)
+    for _ in range(MH_iterations):
+        j = torch.randint(0, N-1, (samplingIterations,), dtype=torch.int32)
         j = torch.where(j>=i, j+1, j)
         acceptation = torch.index_select(t_law, 0, j) - torch.index_select(t_law, 0, i)
-        u = torch.log(torch.rand(REPETITIONS))
+        u = torch.log(torch.rand(samplingIterations))
         i = torch.where(u<=acceptation, j, i)
-    return torch.exp(torch.log(torch.bincount(i))-math.log(REPETITIONS))
+    return torch.exp(torch.log(torch.bincount(i))-math.log(samplingIterations))
 
-print("Frequencies:", optimizedMH_Test())
+print("Frequencies:", optimizedMH_Test(REPETITIONS))

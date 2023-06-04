@@ -41,6 +41,9 @@ def getMinEditPaths(x: str, y: str,
                     recursivityArgs: Optional[tuple[npt.NDArray[np.int_], int, int, EditsGraph,
                                                     Optional[Edit]]] = None) -> EditsGraph:
     """
+    This is all the minimal edit paths with distinct editions set. A path is modeled by a recursive
+    list of edits (type Edit), which modelize an arbor.
+
     Arguments:
         x (str): the first string to be compared
         y (str): the second one
@@ -48,9 +51,6 @@ def getMinEditPaths(x: str, y: str,
     If mentionned, this recursive function figures out the minimal edit paths between x[:i_start]
     and y[:j_start] thanks to the minEditDistanceMatrix. Else, this is the minimal edit paths\
     between x and y.
-
-    This is all the minimal edit paths with distinct editions set. A path is modeled by a recursive
-    list of edits (type Edit), which modelize an arbor.
     """
     (minEditDistanceMatrix, i_start, j_start,
      editsTree, parentEdit) = None, -1, -1, None, None
@@ -117,11 +117,12 @@ class IncorrectResultsException(Exception):
 
 def computeProposals(currentReconstruction: str, cognates: list[str]) -> Tensor:
     """
+    Returns a list of the proposals in one-hot indexes representation (sequences
+    of indexes in the vocabulary)
+
     Arguments:
         - currentReconstruction (str): the current sampled proto-form
         - cognates (list[str]): its cognates\\
-    Returns a list of the proposals in one-hot indexes representation (sequences
-    of indexes in the vocabulary)
     """
     proposalsSet = torch.ByteTensor(size=(0, 0)).to(device)
 

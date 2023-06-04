@@ -90,6 +90,8 @@ class EditsGraph:
 
     def connect(self, edit: Edit, fromEdit: Optional[Edit]):
         """
+        Add an oriented edge from the `fromEdit` vertex to the `edit` one.
+
         Arguments:
             - edit (Edit): the vertex to which the stop will be oriented. It will be created\
             if it doesn't exist in the graph.
@@ -97,7 +99,6 @@ class EditsGraph:
             exist in the graph. If not specified, the empty vertex at the beginning of the graph\
             will be chosen.
             0
-        Add an oriented edge from the `fromEdit` vertex to the `edit` one.
         """
         fromNodeId = 0
 
@@ -165,9 +166,10 @@ class EditsGraph:
 
     def __moveZeros(self, t: Tensor) -> Tensor:
         """
+        Rewrite each tensor's row for the zeros to all be on the right.
+
         Arguments:
             t (Tensor): a tensor of shape (batch_size, N)
-        Rewrite each tensor's row for the zeros to all be on the right.
         """
         N = t.shape[1]
 
@@ -197,7 +199,8 @@ class EditsGraph:
 
     def __nodesWithAllCombinations(self, ) -> list[bool]:
         """
-        All the edits graph is crossed to figure out for each node whether the combinations will be computed from its parent. Sometimes, it does not have to happen, in the order to prevent the duplication of generated proposals.
+        All the edits graph is crossed to figure out for each node whether the combinations will be computed from its parent.
+        Sometimes, it does not have to happen, in the order to prevent the duplication of generated proposals.
         """
         combinateFromTheParent = [True for _ in range(len(self.__nodes))]
         # TODO

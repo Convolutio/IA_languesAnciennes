@@ -72,3 +72,5 @@ def make_oneHotTensor(formsVec:torch.Tensor, add_boundaries:bool)->Tensor:
         tensor = torch.nn.functional.one_hot(flat, voc_size+2)
         tensor = tensor.reshape((batch_size, max_length+2, voc_size+2)).transpose(0,1)
     return tensor
+
+#TODO convertir les cognats en vecteurs one-hot une seule fois

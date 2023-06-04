@@ -7,6 +7,8 @@ from Source.editsGraph import EditsGraph
 import torch
 from torch import Tensor
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 # calculating the minimum edit distance between the current reconstruction
 # and each of its associated cognates, we add all the strings on its minimum
 # edit paths to a list, which will constitute the list of proposals for the sampling
@@ -93,16 +95,27 @@ class IncorrectResultsException(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
-def computeProposals(x:str, y:str)->Tensor:
+def computeProposals(currentReconstruction:str, cognates:list[str])->Tensor:
     """
     Arguments:
-        - x (str): the proto-form
-        - y (str): one of its cognates\\
+        - currentReconstruction (str): the current sampled proto-form
+        - cognates (list[str]): its cognates\\
     Returns a list of the proposals in one-hot indexes representation (sequences
-    of vocabulary indexes)
+    of indexes in the vocabulary)
     """
-    editsTree = getMinEditPaths(x,y)
-    proposalsSet = editsTree.computeEditsCombinations()
+    proposalsSet = torch.ByteTensor().to(device)
+    for cognate in cognates:
+        editsTree = getMinEditPaths(currentReconstruction,cognate)
+        newComputedProposals = editsTree.computeEditsCombinations()
+        if newComputedProposals.shape[1] > proposalsSet.shape[1]:
+            proposalsSet = torch.nn.functional.pad(input=proposalsSet,
+                                                   pad=(0, newComputedProposals.shape[1]-proposalsSet.shape[1]),
+                                                   mode='constant', value=0)
+        elif newComputedProposals.shape[1] < proposalsSet.shape[1]:
+            newComputedProposals = torch.nn.functional.pad(input=newComputedProposals,
+                                                   pad=(0, proposalsSet.shape[1]-newComputedProposals.shape[1]),
+                                                   mode='constant', value=0)
+        proposalsSet = torch.cat((proposalsSet, newComputedProposals), dim=0)
     print("Proposals number =", proposalsSet.shape[0])
     proposalsSet, counts = proposalsSet.unique(dim=0, return_counts=True)
     print("Single proposals number =", proposalsSet.shape[0])

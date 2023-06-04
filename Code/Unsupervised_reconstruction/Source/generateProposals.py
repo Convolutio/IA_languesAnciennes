@@ -116,12 +116,7 @@ def computeProposals(currentReconstruction:str, cognates:list[str])->Tensor:
                                                    pad=(0, proposalsSet.shape[1]-newComputedProposals.shape[1]),
                                                    mode='constant', value=0)
         proposalsSet = torch.cat((proposalsSet, newComputedProposals), dim=0)
-    print("Proposals number =", proposalsSet.shape[0])
-    proposalsSet, counts = proposalsSet.unique(dim=0, return_counts=True)
-    print("Single proposals number =", proposalsSet.shape[0])
-    # for j in range(counts.shape[0]):
-    #     if counts[j].item() > 1:
-    #         print(oneHotsToWord(proposalsSet[j]), counts[j].item())
+    proposalsSet = proposalsSet.unique(dim=0)
     print()
     # DEBUG
     # proposalsNumber, maxProposalLength = proposalsSet.shape

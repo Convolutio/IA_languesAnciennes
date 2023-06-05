@@ -6,8 +6,8 @@ from torch.backends import mps
 from Types.articleModels import *
 from data.vocab import V_SIZE
 
-device = "cuda" if torch.cuda.is_available() else "mps" if mps.is_available() else "cpu"
-print(f"Using {device} device")
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 BIG_NEG = -1e9
 
 class EditModel(nn.Module):
@@ -20,7 +20,7 @@ class EditModel(nn.Module):
         Output: a tensor of dimension |Σ|+1 representing a probability distribution over\
         Σ ∪ {'<del>'} for q_sub or Σ ∪ {'<end>'} for q_ins
     """
-    def __init__(self, languages:Languages, input_dim: int, hidden_dim: int, output_dim: int):
+    def __init__(self, languages:ModernLanguages, input_dim: int, hidden_dim: int, output_dim: int):
         super(EditModel, self).__init__()
         self.languages = languages
 
@@ -57,6 +57,9 @@ class EditModel(nn.Module):
             in the language of this instance of EditModel.
         Computes the inference for each proto-form--cognate pair. 
         """
+        #TODO revoir l'inférence
+        #TODO : s'assurer que les caractères vides renvoient des résultats contextuels nuls
+        #TODO : aller chercher l
         _, batch_size, INPUT_VOC_SIZE = sources.shape
         assert(INPUT_VOC_SIZE==self.input_dim), "The input dimension of the model is wrongly defined."
         max_protoForm_length = sources.shape[0]-2 # without boundaries

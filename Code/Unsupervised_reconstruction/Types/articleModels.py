@@ -1,15 +1,9 @@
 from enum import Enum
-from typing import Union, TypedDict
+from typing import Union, TypedDict, Literal
 import numpy.typing as npt
 import numpy as np
 
-class Languages(Enum):
-    FRENCH="french"
-    SPANISH="spanish"
-    ITALIAN="italian"
-    PORTUGUESE="portuguese"
-    LATIN="latin"
-
+ModernLanguages = Literal['french', 'spanish', 'italian', 'portuguese', 'romanian']
 class op(Enum):
     sub='sub'
     ins='ins'

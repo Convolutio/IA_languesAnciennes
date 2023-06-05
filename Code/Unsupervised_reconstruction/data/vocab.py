@@ -80,3 +80,32 @@ def make_oneHotTensor(formsVec: torch.Tensor, add_boundaries: bool) -> Tensor:
             (batch_size, max_length+2, voc_size+2)).transpose(0, 1)
 
     return tensor
+
+def reduceOneHotTensor(t:Tensor):
+    """
+    Lets t a tensor with one-hot indexes and zeros on the right. This function suppress as many zeros columns as possible.
+    """
+    stop, i = False, t.shape[1]
+
+    while i >= 0 and not stop:
+        i -= 1
+        if not torch.all(t[:, i] == 0).item():
+            stop = True
+    
+    return t[:, :i+1]
+
+def getWordsLengthFromOneHot(t:Tensor)->Tensor:
+    """
+    Returns a tensor of (batch_size) dimension with the length of each one-hot indexes-represented words in the tensor.
+
+    Arguments:
+        t (ByteTensor): a matrix representing a word at each rows. Empty characters could be present at the right. 
+    """
+    batch_size = t.shape[0]
+    lengths = t.shape[1]*torch.ones(batch_size, dtype=torch.uint8).to(device)
+    for j in range(t.shape[1]-1, -1, -1):
+        jVec = j*torch.ones(batch_size, dtype=torch.uint8).to(device)
+        lengths = torch.where(t[:, j]==0, jVec, lengths)
+    return lengths
+
+#TODO convertir les cognats en vecteurs one-hot une seule fois

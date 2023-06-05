@@ -1,22 +1,25 @@
 import typing
-from Types.articleModels import FormsSet
 from torch import Tensor
+from torch.nn.utils.rnn import PackedSequence, pack_padded_sequence
 import torch
 from torch.backends import mps
 from torch import cuda
-from bidict import bidict
+import numpy as np
 device = "cuda" if cuda.is_available() else "mps" if mps.is_available() else "cpu"
 
-SIGMA:bidict[str, int] = bidict() #the IPA vocabulary
-V_SIZE:int = 0
+SIGMA: dict[str, int] = {} #the IPA vocabulary
+SIGMA_INV: np.ndarray[np.str_] = ['']
+V_SIZE: int = 0
 
-i=0
+i=1
 with open('./data/IPA_vocabulary.txt', 'r', encoding='utf-8') as vocFile:
     chars = vocFile.read().split(", ")
     V_SIZE = len(chars)
     for char in chars:
         SIGMA[char] = i
+        SIGMA_INV = np.append(arr=SIGMA_INV, values=[char], axis=0)
         i+=1
+print(SIGMA_INV)
 SIGMA_SUB, SIGMA_INS = SIGMA.copy(), SIGMA.copy()
 SIGMA_SUB["<del>"], SIGMA_INS["<end>"] = i, i
 INPUT_VOCABULARY = SIGMA.copy()
@@ -43,13 +46,11 @@ def oneHotsToWord(vecSeq: torch.Tensor)->str:
 def make_oneHotTensor(formsVec:torch.Tensor, add_boundaries:bool)->Tensor:
     """
     Arguments:
-        formsVec (NDArray[uint8]): a batch of forms with their one-hot indexes\
-        instead of their characters. Dimension (B, N), with \
-            N the maximal sequence length in the batch, \
-            B the batch size
+        formsVec (ByteTensor, dim=(batch_size, maxWordLength)): a batch of forms with their one-hot indexes\
+        instead of their characters.
         add_boundaries (bool): if we add "(" and ")" to the forms to\
-        be converted (')' is confunded with the empty character).
-    Converts each string in the list to a tensor of one-hot vectors.
+        be converted.
+    Converts each one-hot index in the tensor to a one-hot vectors (the zero index representing the empty character, the assiocated vector will be the null one).
     Tensor's shape : (N, B, |Σ|+2) if add_boundaries = False, \
     (N+2, B, |Σ|+2) else, with
         |Σ| = the number of IPA characters in the vocabulary (excluding \
@@ -99,5 +100,12 @@ def getWordsLengthFromOneHot(t:Tensor)->Tensor:
         jVec = j*torch.ones(batch_size, dtype=torch.uint8).to(device)
         lengths = torch.where(t[:, j]==0, jVec, lengths)
     return lengths
+
+def oneHotsToWords(t:Tensor)->list[str]:
+    array = t.numpy()
+    arr = np.zeros(t.shape[0], dtype=np.str_)
+    for j in range(t.shape[1]):
+        arr = np.char.add(arr, SIGMA_INV[array[:, j]])
+    return list(arr)
 
 #TODO convertir les cognats en vecteurs one-hot une seule fois

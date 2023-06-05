@@ -26,6 +26,6 @@ def optimizedMH_Test():
         acceptation = torch.index_select(t_law, 0, j) - torch.index_select(t_law, 0, i)
         u = torch.log(torch.rand(REPETITIONS))
         i = torch.where(u<=acceptation, j, i)
-    return torch.exp(torch.log(torch.bincount(i))-math.log(REPETITIONS))
+    return torch.exp(torch.log(torch.bincount(i))-torch.log(REPETITIONS))
 
 print("Frequencies:", optimizedMH_Test())

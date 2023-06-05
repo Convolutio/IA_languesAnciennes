@@ -2,7 +2,7 @@ from typing import Optional
 from collections import deque
 
 from Types.models import *
-from data.vocab import wordToOneHots
+from data.vocab import wordToOneHots, reduceOneHotTensor
 
 import torch
 from torch import Tensor, uint8, ByteTensor
@@ -176,12 +176,6 @@ class EditsGraph:
         for j in range(N-2, -1, -1):
             self.__rollTensor(t, j)
 
-        stop, i = False, N
-
-        while i >= 0 and not stop:
-            i -= 1
-            if not torch.all(t[:, i] == 0).item():
-                stop = True
         # DEBUG
         # for j in range(N):
         #     if torch.all(t[:,j]==0).item():
@@ -189,7 +183,7 @@ class EditsGraph:
         #             if not torch.all(t[:,k]==0).item():
         #                 raise Exception("The algorithm is wrong.")
         #         break
-        return t[:, :i+1]
+        return reduceOneHotTensor(t)
 
     def __addCombinations(self, combinationsList: list[Tensor], fromNode_id: int, toNode_id: int):
         combinationsList[toNode_id] = torch.cat(

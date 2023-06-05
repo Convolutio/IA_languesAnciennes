@@ -4,6 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from Types.models import *
+from Types.articleModels import CognatesSet
 from data.vocab import wordToOneHots, oneHotsToWord
 from Source.editsGraph import EditsGraph
 
@@ -154,3 +155,13 @@ def computeProposals(currentReconstruction: str, cognates: list[str]) -> Tensor:
     #     raise IncorrectResultsException(f"y or x has not been computed. The algorithm is doing wrong.\n\
     #                 Data: (/{x}/, /{y}/)")
     return proposalsSet
+
+def generateProposalsFromCurrentReconstructions(currentReconstructions: list[str], cognates: CognatesSet)->list[Tensor]:
+    p = list()
+    numberOfCognatePairs = len(cognates['french'])
+    for i in range(numberOfCognatePairs):
+        x = currentReconstructions[i]
+        Y = [cognates[language][i] for language in cognates]
+        print(f'/{x}/ to ({Y}) \nCognate Set {str(i)}/{numberOfCognatePairs}'+''*10, end='\r')
+        p.append(computeProposals(x, Y))
+    return p

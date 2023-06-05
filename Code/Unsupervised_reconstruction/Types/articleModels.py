@@ -3,7 +3,7 @@ from typing import Union, TypedDict, Literal
 import numpy.typing as npt
 import numpy as np
 
-Languages = Literal['french', 'spanish', 'italian', 'portuguese', 'latin']
+ModernLanguages = Literal['french', 'spanish', 'italian', 'portuguese', 'romanian']
 class op(Enum):
     sub='sub'
     ins='ins'

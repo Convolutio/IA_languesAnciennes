@@ -20,7 +20,7 @@ class EditModel(nn.Module):
         Output: a tensor of dimension |Σ|+1 representing a probability distribution over\
         Σ ∪ {'<del>'} for q_sub or Σ ∪ {'<end>'} for q_ins
     """
-    def __init__(self, languages:Languages, input_dim: int, hidden_dim: int, output_dim: int):
+    def __init__(self, languages:ModernLanguages, input_dim: int, hidden_dim: int, output_dim: int):
         super(EditModel, self).__init__()
         self.languages = languages
 

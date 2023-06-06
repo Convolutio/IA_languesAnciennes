@@ -140,29 +140,4 @@ class EditModel(nn.Module):
         
         # print(f'Test Accuracy: {100 * correct / total}%')
 
-    def edit(self, x: Form) -> tuple[Form, list[Edition]]:
-        """
-        Args:
-            x (Form): a string of IPA tokens representing the ancestral form
-        
-        Returns
-            y : a string representing a modern form 
-            delta: list of computed editions
-        """
-        y0: Form = "" # it is represented as y' in the figure 2 of the paper
-        delta: list[Edition] = []
-        for i in range(len(x)):
-            omega:IPA_char = SIGMA_SUB[torch.argmax(self.q_sub(x, i, y0))]
-            delta.append(
-                (op.sub, omega, x, i, y0)
-                )
-            if omega!='<del>':
-                canInsert:bool = True
-                while canInsert:
-                    y0 += omega
-                    omega = SIGMA_INS[torch.argmax(self.q_ins(x, i, y0))]
-                    delta.append(
-                        (op.ins, omega, x, i, y0)
-                    )
-                    canInsert = omega!="<end>"
-        return (y0, delta)
+    

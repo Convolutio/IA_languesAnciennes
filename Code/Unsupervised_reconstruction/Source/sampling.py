@@ -2,9 +2,10 @@ import numpy as np
 from torch import Tensor, tensor
 import torch
 from Types.articleModels import ModernLanguages
+from Types.models import InferenceData
 from Source.dynamicPrograms import compute_mutation_prob
 from Source.editModel import EditModel
-from data.vocab import reduceOneHotTensor
+from data.vocab import computeInferenceData
 from lm.PriorLM import PriorLM
 
 INFTY_NEG = -1e9
@@ -25,22 +26,22 @@ def computeLaw(probs: np.ndarray) -> np.ndarray:
     return np.array([prob-totalProb for prob in probs], dtype=float)
 
 
-def computeUnnormalizedProbs(models:dict[ModernLanguages, EditModel], priorLM:PriorLM, proposalsSetsList:list[Tensor], cognates:dict[ModernLanguages, Tensor], selectionIndexes:Tensor, maxWordLengths:Tensor, maxWordLength:int)->Tensor:
+def computeUnnormalizedProbs(models:dict[ModernLanguages, EditModel], priorLM:PriorLM, proposalsSetsList:list[Tensor], cognatesInferenceData:dict[ModernLanguages, InferenceData], selectionIndexes:Tensor, maxWordLengths:Tensor, maxWordLength:int)->Tensor:
     """
     Run the dynamic inferences in the neural edit models and inferences in the prior language model to compute p(x|{y_l : l \\in L}) over the proposals batch which will be built from the sampled indexes.
     """
     batch_size = len(proposalsSetsList)
     batch = torch.zeros((batch_size, maxWordLength), dtype=torch.uint8)
     for n in range(batch_size): batch[n, :maxWordLengths[n].item()] = proposalsSetsList[n][selectionIndexes[n]]
-    batch = reduceOneHotTensor(batch)
+    sourceInferenceData = computeInferenceData(batch)
 
-    probs = priorLM.inference(batch)
+    probs = priorLM.inference(batch) #TODO: develop this method
     for language in models:
-        probs += compute_mutation_prob(models[language], batch, cognates[language])
+        probs += compute_mutation_prob(models[language], sourceInferenceData, cognatesInferenceData[language])
     return torch.as_tensor(probs)
 
     
-def metropolisHasting(proposalsSetsList: list[Tensor], models:dict[ModernLanguages, EditModel], priorLM:PriorLM, cognates:dict[ModernLanguages, Tensor], iteration: int = 10**4) -> Tensor:
+def metropolisHasting(proposalsSetsList: list[Tensor], models:dict[ModernLanguages, EditModel], priorLM:PriorLM, cognates:dict[ModernLanguages, InferenceData], iteration: int = 10**4) -> Tensor:
     """
     Sample proposals randomly from a probability distribution which will be computed progressively from forward dynamic program (so the language model, the edit models and the cognates are required).
 

@@ -37,7 +37,7 @@ def computeUnnormalizedProbs(models:dict[ModernLanguages, EditModel], priorLM:Pr
 
     probs = priorLM.inference(batch) #TODO: develop this method
     for language in models:
-        probs += compute_mutation_prob(models[language], sourceInferenceData, cognatesInferenceData[language])
+        probs += compute_mutation_prob(models[language], sourceInferenceData, cognatesInferenceData[language]) #type:ignore
     return torch.as_tensor(probs)
 
     
@@ -60,6 +60,10 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:dict[ModernLanguag
         l = len(proposalsSetsList[n])
         maxWordLengths[n] = l
         if l > maxWordLength: maxWordLength=l
+    
+    # Computes once the context of targets in the edits models
+    for language in models:
+        models[language].cache_target_context(cognates[language])
     
     i = torch.zeros(batch_size, dtype=torch.int32)
     iProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, cognates, i, maxWordLengths, maxWordLength)

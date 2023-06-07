@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.nn.utils.rnn import pad_packed_sequence
+from torch.nn.utils.rnn import pad_packed_sequence, PackedSequence
 from torch import Tensor
 from Types.articleModels import *
 from Types.models import InferenceData
@@ -46,7 +46,9 @@ class EditModel(nn.Module):
             nn.LogSoftmax()
             )
         
-        self.__cachedProbs:dict[Literal['ins', 'sub', 'end', 'del'], Tensor]
+        self.__modernContext: Tensor
+        self.__targetsOneHots: Tensor
+        self.__cachedProbs: dict[Literal['ins', 'sub', 'end', 'del'], Tensor]
 
     def __encode_context(self, x:Form, i:int, y0:Form):
         encoder_prior__output, _ = self.encoder_prior(x) # cette inférence s'exécute plusieurs fois inutilement !!
@@ -55,23 +57,33 @@ class EditModel(nn.Module):
         g_y0 = encoder_modern__output[-1, :]
         return h_xi + g_y0
     
-    def cache_probs(self, sources_: InferenceData, targets_: InferenceData):
-        sourcePack, targetPack = sources_[0], targets_[0]
+    def cache_target_context(self, targets_: InferenceData):
+        """
+        Optimisation method : computes once the usefull data for the targets for the probs computing over each Metropolis-Hastings iteration.
+        """
+        self.__modernContext, _ = pad_packed_sequence(self.encoder_modern(targets_[0])) # dim = (|y|+2, B, 2*hidden_dim)
+        unpackedTargets, _ = pad_packed_sequence(targets_[0])
+        self.__targetsOneHots = unpackedTargets[:,1:,:,:-1] #dim = (|x|+2, |y|+1, B, |Σ|+1) : the boundaries are not interesting values for y[j] (erased by the reduction)
+    
+    def cache_probs(self, sources: PackedSequence):
+        """
+        Runs inferences in the model from given sources. It is supposed that the context of the targets and their one-hots have already been computed in the model.
+        """
+        sourcePack = sources
         
         priorContext, _ = pad_packed_sequence(self.encoder_prior(sourcePack)) # dim = (|x|+2, B, 2*hidden_dim)
-        # TODO to correct: The inference at the line below is vainly done at each MH iteration
-        modernContext, _ = pad_packed_sequence(self.encoder_modern(targetPack)) # dim = (|y|+2, B, 2*hidden_dim)
+        modernContext = self.__modernContext
         priorN, modernN = priorContext.size()[0], modernContext.size()[0]
         ctx = priorContext.repeat(modernN, 1,1,1).transpose(0,1) + modernContext.repeat(priorN, 1,1,1) # dim = (|x|+2, |y|+2, B, 2*hidden_dim)
         
-        sub_results = self.sub_head(ctx)[:,:-1,:,:] # dim = (|x|+2, |y|+1, B, |Σ|+1) ; the ')' column is useless
-        ins_results = self.ins_head(ctx)[:,:-1,:,:] # dim = (|x|+2, |y|+1, B, |Σ|+1)
+        #TODO: check if in the padded part the probs equal -infty
+        sub_results = self.sub_head(ctx) # dim = (|x|+2, |y|+2, B, |Σ|+1) ; the ')' column is useless
+        ins_results = self.ins_head(ctx) # dim = (|x|+2, |y|+2, B, |Σ|+1)
         
-        self.__cachedProbs['del'] = sub_results[:,:-1,:,self.output_dim-1] #dim = (|x|+2, |y|+1, B)
-        self.__cachedProbs['end'] = ins_results[:,:-1,:,self.output_dim-1] #dim = (|x|+2, |y|+1, B)
+        self.__cachedProbs['del'] = sub_results[:,:,:,self.output_dim-1] #dim = (|x|+2, |y|+2, B)
+        self.__cachedProbs['end'] = ins_results[:,:,:,self.output_dim-1] #dim = (|x|+2, |y|+2, B)
         
-        # TODO to correct: The tensor below is vainly computed at each MH iteration
-        scalarTargets = pad_packed_sequence(targetPack)[0][:,1:,:,:-1] #dim = (|x|+2, |y|+1, B, |Σ|+1) : the boundaries are not interesting values for y[j] (erased by the reduction)
+        scalarTargets = self.__targetsOneHots
         # q(y[j]| x, i, y[:j]) = < onehot(y[j]), q(.| x, i, y[:j]) >
         self.__cachedProbs['sub'] = torch.linalg.vecdot(sub_results[:,:-1,:,:], scalarTargets, dim=3) #dim = (|x|+2, |y|+1, B)
         self.__cachedProbs['ins'] = torch.linalg.vecdot(ins_results[:,:-1,:,:], scalarTargets, dim=3) #dim = (|x|+2, |y|+1, B)

@@ -1,6 +1,7 @@
 import numpy as np
 from torch import Tensor, tensor
 import torch
+from torch.nn.utils.rnn import pad_sequence
 from Types.articleModels import ModernLanguages
 from Types.models import InferenceData
 from Source.dynamicPrograms import compute_mutation_prob
@@ -26,13 +27,12 @@ def computeLaw(probs: np.ndarray) -> np.ndarray:
     return np.array([prob-totalProb for prob in probs], dtype=float)
 
 
-def computeUnnormalizedProbs(models:dict[ModernLanguages, EditModel], priorLM:PriorLM, proposalsSetsList:list[Tensor], cognatesInferenceData:dict[ModernLanguages, InferenceData], selectionIndexes:Tensor, maxWordLengths:Tensor, maxWordLength:int)->Tensor:
+def computeUnnormalizedProbs(models:dict[ModernLanguages, EditModel], priorLM:PriorLM, proposalsSetsList:list[Tensor], cognatesInferenceData:dict[ModernLanguages, InferenceData], selectionIndexes:Tensor)->Tensor:
     """
     Run the dynamic inferences in the neural edit models and inferences in the prior language model to compute p(x|{y_l : l \\in L}) over the proposals batch which will be built from the sampled indexes.
     """
     batch_size = len(proposalsSetsList)
-    batch = torch.zeros((batch_size, maxWordLength), dtype=torch.uint8)
-    for n in range(batch_size): batch[n, :maxWordLengths[n].item()] = proposalsSetsList[n][selectionIndexes[n]]
+    batch = pad_sequence([proposalsSetsList[n][int(selectionIndexes[n].item())] for n in range(batch_size)], batch_first=True).to(dtype=torch.uint8)
     sourceInferenceData = computeInferenceData(batch)
 
     probs = priorLM.inference(batch) #TODO: develop this method
@@ -63,10 +63,10 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:dict[ModernLanguag
     
     # Computes once the context of targets in the edits models
     for language in models:
-        models[language].cache_target_context(cognates[language])
+        models[language].cache_target_data(cognates[language])
     
     i = torch.zeros(batch_size, dtype=torch.int32)
-    iProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, cognates, i, maxWordLengths, maxWordLength)
+    iProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, cognates, i)
     
     for _ in range(iteration):
         # random j index for each sample
@@ -75,7 +75,7 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:dict[ModernLanguag
             ).to(dtype=torch.int32)
         j = torch.where(j>=i, j+1, j)
         
-        jProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, cognates, j, maxWordLengths, maxWordLength)
+        jProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, cognates, j)
         
         acceptation = jProbs - iProbs
         u = torch.log(torch.rand(batch_size))

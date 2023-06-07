@@ -93,7 +93,7 @@ def make_oneHotTensor(formsVec: Tensor, add_boundaries: bool, formsLengths:NDArr
         t[range(batch_size), formsLengths+1] = np.full((batch_size,), right_boundary_index, dtype=np.uint8)
         t = torch.as_tensor(t, dtype=torch.uint8, device=device)
     flat = t.flatten().to(torch.int64)
-    tensor = torch.nn.functional.one_hot(flat, voc_size+2)
+    tensor = torch.nn.functional.one_hot(flat, voc_size+2).to(torch.float32) # for the LSTM module
     tensor = tensor.reshape(
         (batch_size, max_length + (2 if add_boundaries else 0), voc_size+2)
         ).transpose(0, 1)

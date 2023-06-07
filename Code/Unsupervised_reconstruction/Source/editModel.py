@@ -39,7 +39,7 @@ class EditModel(nn.Module):
 
         self.sub_head = nn.Sequential(
             nn.Linear(hidden_dim*2, output_dim),
-            nn.LogSoftmax() #we want the log of the probabilities
+            nn.LogSoftmax()
             )
         self.ins_head = nn.Sequential(
             nn.Linear(hidden_dim*2, output_dim),
@@ -47,23 +47,16 @@ class EditModel(nn.Module):
             )
         
         self.__modernContext: Tensor
-        self.__targetsOneHots: Tensor
+        self.__targetsLogOneHots: Tensor
         self.__cachedProbs: dict[Literal['ins', 'sub', 'end', 'del'], Tensor]
 
-    def __encode_context(self, x:Form, i:int, y0:Form):
-        encoder_prior__output, _ = self.encoder_prior(x) # cette inférence s'exécute plusieurs fois inutilement !!
-        h_xi = encoder_prior__output[i, :]
-        encoder_modern__output, _ = self.encoder_modern(y0)
-        g_y0 = encoder_modern__output[-1, :]
-        return h_xi + g_y0
-    
     def cache_target_context(self, targets_: InferenceData):
         """
         Optimisation method : computes once the usefull data for the targets for the probs computing over each Metropolis-Hastings iteration.
         """
         self.__modernContext, _ = pad_packed_sequence(self.encoder_modern(targets_[0])) # dim = (|y|+2, B, 2*hidden_dim)
         unpackedTargets, _ = pad_packed_sequence(targets_[0])
-        self.__targetsOneHots = unpackedTargets[:,1:,:,:-1] #dim = (|x|+2, |y|+1, B, |Σ|+1) : the boundaries are not interesting values for y[j] (erased by the reduction)
+        self.__targetsLogOneHots = torch.log(unpackedTargets[:,1:,:,:-1]) #dim = (|x|+2, |y|+1, B, |Σ|+1) : the boundaries are not interesting values for y[j] (erased by the reduction)
     
     def cache_probs(self, sources: PackedSequence):
         """
@@ -76,17 +69,17 @@ class EditModel(nn.Module):
         priorN, modernN = priorContext.size()[0], modernContext.size()[0]
         ctx = priorContext.repeat(modernN, 1,1,1).transpose(0,1) + modernContext.repeat(priorN, 1,1,1) # dim = (|x|+2, |y|+2, B, 2*hidden_dim)
         
-        #TODO: check if in the padded part the probs equal -infty
         sub_results = self.sub_head(ctx) # dim = (|x|+2, |y|+2, B, |Σ|+1) ; the ')' column is useless
         ins_results = self.ins_head(ctx) # dim = (|x|+2, |y|+2, B, |Σ|+1)
         
+        #TODO: check if in the padded part the probs equal -infty
         self.__cachedProbs['del'] = sub_results[:,:,:,self.output_dim-1] #dim = (|x|+2, |y|+2, B)
         self.__cachedProbs['end'] = ins_results[:,:,:,self.output_dim-1] #dim = (|x|+2, |y|+2, B)
         
-        scalarTargets = self.__targetsOneHots
+        targetsLogOneHots = self.__targetsLogOneHots
         # q(y[j]| x, i, y[:j]) = < onehot(y[j]), q(.| x, i, y[:j]) >
-        self.__cachedProbs['sub'] = torch.linalg.vecdot(sub_results[:,:-1,:,:], scalarTargets, dim=3) #dim = (|x|+2, |y|+1, B)
-        self.__cachedProbs['ins'] = torch.linalg.vecdot(ins_results[:,:-1,:,:], scalarTargets, dim=3) #dim = (|x|+2, |y|+1, B)
+        self.__cachedProbs['sub'] = torch.logsumexp(sub_results[:,:-1,:,:] + targetsLogOneHots, dim=3) #dim = (|x|+2, |y|+1, B)
+        self.__cachedProbs['ins'] = torch.logsumexp(ins_results[:,:-1,:,:] + targetsLogOneHots, dim=3) #dim = (|x|+2, |y|+1, B)
     
     
     def ins(self, i:int, j:int):

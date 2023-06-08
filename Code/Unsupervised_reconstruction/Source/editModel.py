@@ -2,99 +2,129 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.backends import mps
+from torch.nn.utils.rnn import pad_packed_sequence, PackedSequence
+from torch import Tensor
 from Types.articleModels import *
+from Types.models import InferenceData
 from data.vocab import V_SIZE
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 BIG_NEG = -1e9
 
+class CachedTargetsData():
+    """
+    Contains :
+        * modernContext (Tensor) : the context embeddings computed from the targets
+        * logarithmicOneHots (Tensor) : the logarithmics targets' one-hot vectors
+        * sequencesLengths (ByteTensor) : the lengths of each sequence
+        * maxSequenceLength (int)
+        * arePaddingElements(BoolTensor) : A coefficient equals True if its position is not in a padding zone
+    """
+    modernContext: Tensor
+    logarithmicOneHots: Tensor
+    sequencesLengths: Tensor
+    maxSequenceLength: int
+    arePaddingElements: Tensor
 
 class EditModel(nn.Module):
     """
-    This class gathers the edit models and edit function specific to a branch between the\
-    proto-language and a modern language.
+    # Neural Edit Model
 
-    q_ins and q_sub are defined as followed:
-        Input: a sequence of N one-hot tensors of dimension |Σ|+2 representing an element\
-        of (Σ ∪ {'(', ')'})
-        Output: a tensor of dimension |Σ|+1 representing a probability distribution over\
-        Σ ∪ {'<del>'} for q_sub or Σ ∪ {'<end>'} for q_ins
+    ### This class gathers the neural insertion and substitution models, specific to a branch between the\
+          proto-language and a modern language.
+    `q_ins` and `q_sub` are defined as followed:
+        * Input: a sequence of N one-hot vectors of dimension |Σ|+2 representing an element\
+        of (Σ ∪ {`'('`, `')'`})
+        * Output: a tensor of dimension |Σ|+1 representing a probability distribution over\
+        Σ ∪ {`'<del>'`} for `q_sub` or Σ ∪ {`'<end>'`} for `q_ins`
+    #### Inference in the model
+    With the `cache_probs` method.
     """
-
-    def __init__(self, languages: ModernLanguages, input_dim: int, hidden_dim: int, output_dim: int):
+    def __init__(self, languages:ModernLanguages, hidden_dim: int, input_dim: int = V_SIZE+2, output_dim: int = V_SIZE+1):
         super(EditModel, self).__init__()
         self.languages = languages
-
-        # must equals |Σ|+2 for the ( and ) boundaries characters.
-        self.input_dim = input_dim
-        self.hidden_dim = hidden_dim  # abitrary embedding size
-        self.output_dim = output_dim  # must equals |Σ|+1 for the <end>/<del> characters
-
+        
+        self.input_dim = input_dim # must equals |Σ|+2 for the ( and ) boundaries characters.
+        self.hidden_dim = hidden_dim # abitrary embedding size
+        self.output_dim = output_dim # must equals |Σ|+1 for the <end>/<del> characters
+        
         self.encoder_prior = nn.LSTM(input_dim, hidden_dim, bidirectional=True)
-        # les dimensions des couches cachées sont multipliées par 2 pour être égale à
-        # celle de la couche cachée de l'encodeur bidirectionnel (qui subit une concaténation)
         self.encoder_modern = nn.LSTM(input_dim, hidden_dim*2)
 
         self.sub_head = nn.Sequential(
             nn.Linear(hidden_dim*2, output_dim),
-            nn.LogSoftmax()  # we want the log of the probabilities
-        )
+            nn.LogSoftmax(dim=-1)
+            )
         self.ins_head = nn.Sequential(
             nn.Linear(hidden_dim*2, output_dim),
-            nn.LogSoftmax()
-        )
+            nn.LogSoftmax(dim=-1)
+            )
+        
+        self.__cachedTargetsData = CachedTargetsData()
+        
+        self.__cachedProbs: dict[Literal['ins', 'sub', 'end', 'del'], Tensor] = {}
 
-    def __encode_context(self, x: Form, i: int, y0: Form):
-        # cette inférence s'exécute plusieurs fois inutilement !!
-        encoder_prior__output, _ = self.encoder_prior(x)
-        h_xi = encoder_prior__output[i, :]
-        encoder_modern__output, _ = self.encoder_modern(y0)
-        g_y0 = encoder_modern__output[-1, :]
-        return h_xi + g_y0
-
-    def cache_probs(self, sources: OneHotsSet, targets: OneHotsSet):
+    def cache_target_data(self, targets_: InferenceData):
         """
+        Optimisation method : computes once the usefull data for the targets for the probs computing over each Metropolis-Hastings iteration.
+        """
+        cache = self.__cachedTargetsData
+        a, _ = self.encoder_modern(targets_[0])
+        cache.modernContext, cache.sequencesLengths = pad_packed_sequence(a) # dim = (|y|+2, B, 2*hidden_dim)
+        cache.maxSequenceLength = cache.modernContext.size()[0]
+        
+        unpackedTargets, _ = pad_packed_sequence(targets_[0])
+        cache.logarithmicOneHots = torch.log(unpackedTargets[1:,:,:-1]) #dim = (|y|+1, B, |Σ|+1) : the boundaries are not interesting values for y[j] (that is why they have been erased with the reduction)
+        
+        batch_size, outputDim = cache.logarithmicOneHots.size()[1:3]
+        cache.arePaddingElements = torch.arange(cache.maxSequenceLength).repeat(outputDim, batch_size, 1).transpose(0,2) < cache.sequencesLengths.repeat(cache.maxSequenceLength, outputDim, 1).transpose(1,2) #dim = (|y|+2, B, |Σ|+1)
+    
+    def __computePaddingMatrix(self, sourcesLengths:Tensor, maxSourceLength:int):
+        """
+        Computes a bool matrix where True represents an output value of interest and False a padding value (0).
+        dim = (|x|+2, |y|+2, B, |Σ|+1)
+        
         Arguments:
-            sources (OneHotsSet): the set of vectorized proto-forms with boundaries
-            targets (OneHotsSet): the set of their vectorized target cognates with boundaries\
-            in the language of this instance of EditModel.
-        Computes the inference for each proto-form--cognate pair. 
+            sourcesLengths (IntTensor, dim = (B)) : contains the length of each reconstruction sequence
+            maxSourceLength (int)
         """
-        # TODO revoir l'inférence
-        # TODO : s'assurer que les caractères vides renvoient des résultats contextuels nuls
-        # TODO : aller chercher l
-        _, batch_size, INPUT_VOC_SIZE = sources.shape
-        assert (INPUT_VOC_SIZE ==
-                self.input_dim), "The input dimension of the model is wrongly defined."
-        max_protoForm_length = sources.shape[0]-2  # without boundaries
-        max_cognat_length = targets.shape[0]-2  # without boundaries
-        cachedProbsNDArray_shape = (
-            max_protoForm_length+2, max_cognat_length+2, batch_size)
-        self.__cachedProbs = {op: torch.as_tensor(np.full(cachedProbsNDArray_shape, BIG_NEG))
-                              for op in ('ins', 'sub', 'end', 'del')}
-        for b in range(batch_size):
-            x, y = torch.as_tensor(
-                sources[:, b, :]), torch.as_tensor(targets[:, b, :])
-            x_embeddings, y_embedding = self.encoder_prior(
-                x), self.encoder_modern(y)
-            for i in range(max_protoForm_length+2):
-                for j in range(max_cognat_length+1):
-                    if True in x[i, :] and True in y[j, :]:
-                        context = x_embeddings[i, :] + y_embedding[j, :]
-                        subProbs, insProbs = self.sub_head(
-                            context), self.ins_head(context)
-                        # The character to be inserted/used in substitution is not ')'
-                        if not bool(y[j+1, V_SIZE+1]):
-                            self.__cachedProbs["ins"][i, j, b] = torch.inner(
-                                insProbs, y[j+1, :-2])
-                            self.__cachedProbs["sub"][i, j, b] = torch.inner(
-                                subProbs, y[j+1, :-2])
-                        self.__cachedProbs["end"][i, j, b] = insProbs[V_SIZE]
-                        self.__cachedProbs["del"][i, j, b] = subProbs[V_SIZE]
+        batch_size = len(sourcesLengths)
+        outputDim = self.output_dim
+        maxTargetLength = self.__cachedTargetsData.maxSequenceLength
+        A = torch.arange(maxSourceLength).repeat(outputDim, batch_size, 1).transpose(0,2) < sourcesLengths.repeat(maxSourceLength, outputDim, 1).transpose(1,2) #dim = (|x|+2, B, |Σ|+1)
+        B = self.__cachedTargetsData.arePaddingElements
+        return torch.logical_and(A.repeat(maxTargetLength, 1,1,1).transpose(0,1), B.repeat(maxSourceLength, 1,1,1)) #dim = (|x|+2, |y|+2, B, |Σ|+1)
+    
+    def cache_probs(self, sources: PackedSequence):
+        """
+        Runs inferences in the model from given sources. It is supposed that the context of the targets and their one-hots have already been computed in the model.
+        """
+        with torch.no_grad():
+            sourcePack = sources
+            
+            priorContext, sourcesLengths = pad_packed_sequence(self.encoder_prior(sourcePack)[0]) # priorContext dim = (|x|+2, B, 2*hidden_dim)
+            modernContext = self.__cachedTargetsData.modernContext
+            priorMaxSequenceLength, modernMaxSequenceLength = priorContext.size()[0], modernContext.size()[0]
+            ctx = priorContext.repeat(modernMaxSequenceLength, 1,1,1).transpose(0,1) +  modernContext.repeat(priorMaxSequenceLength, 1,1,1) # dim = (|x|+2, |y|+2, B, 2*hidden_dim)
 
-    def ins(self, i: int, j: int):
+            paddingMatrix = self.__computePaddingMatrix(sourcesLengths, priorMaxSequenceLength)
+
+            # set the probs for padding elements to 1
+            
+            sub_results = torch.where(paddingMatrix, self.sub_head(ctx), 0) # dim = (|x|+2, |y|+2, B, |Σ|+1)
+            ins_results = torch.where(paddingMatrix, self.ins_head(ctx), 0) # dim = (|x|+2, |y|+2, B, |Σ|+1)
+            
+            self.__cachedProbs['del'] = sub_results[:,:,:,self.output_dim-1].numpy() #dim = (|x|+2, |y|+2, B)
+            self.__cachedProbs['end'] = ins_results[:,:,:,self.output_dim-1].numpy() #dim = (|x|+2, |y|+2, B)
+            
+            targetsLogOneHots = self.__cachedTargetsData.logarithmicOneHots.repeat(sub_results.shape[0],1,1,1)
+            # q(y[j]| x, i, y[:j]) = < onehot(y[j]), q(.| x, i, y[:j]) >
+            self.__cachedProbs['sub'] = torch.logsumexp(sub_results[:,:-1,:,:] + targetsLogOneHots, dim=3).numpy() #dim = (|x|+2, |y|+1, B)
+            self.__cachedProbs['ins'] = torch.logsumexp(ins_results[:,:-1,:,:] + targetsLogOneHots, dim=3).numpy() #dim = (|x|+2, |y|+1, B)
+    
+    
+    def ins(self, i:int, j:int):
         return self.__cachedProbs['ins'][i, j, :]
 
     def sub(self, i: int, j: int):
@@ -105,26 +135,9 @@ class EditModel(nn.Module):
 
     def dlt(self, i: int, j: int):
         return self.__cachedProbs['del'][i, j, :]
+    
 
-    def q_sub(self, x: Form, i: int, y0: Form):
-        """
-        Forwards inference in q_sub model.
-        Returns a tensor (dimension : |Σ*|) representing a logarithmic
-        probability distribution over Σ* that each token Σ*[j] is added
-        to y0 in replacing the x[i] token.
-        """
-        context = self.__encode_context(x, i, y0)
-        return self.sub_head(context)
-
-    def q_ins(self, x: Form, i: int, y0: Form) -> torch.Tensor:
-        """
-        Forwards inference in q_ins model.
-        Returns a tensor (dimension : |Σ*|) representing a probability
-        distribution over Σ* that each token Σ*[j] is inserted after y0.
-        """
-        context = self.__encode_context(x, i, y0)
-        return self.sub_ins(context)
-
+    
     def training(self, train_loader, test_loader, epochs=5, learning_rate=0.01):
         optimizer = optim.Adam(self.parameters(), lr=learning_rate)
 
@@ -156,29 +169,4 @@ class EditModel(nn.Module):
 
         # print(f'Test Accuracy: {100 * correct / total}%')
 
-    def edit(self, x: Form) -> tuple[Form, list[Edition]]:
-        """
-        Args:
-            x (Form): a string of IPA tokens representing the ancestral form
-
-        Returns
-            y : a string representing a modern form 
-            delta: list of computed editions
-        """
-        y0: Form = ""  # it is represented as y' in the figure 2 of the paper
-        delta: list[Edition] = []
-        for i in range(len(x)):
-            omega: IPA_char = SIGMA_SUB[torch.argmax(self.q_sub(x, i, y0))]
-            delta.append(
-                (op.sub, omega, x, i, y0)
-            )
-            if omega != '<del>':
-                canInsert: bool = True
-                while canInsert:
-                    y0 += omega
-                    omega = SIGMA_INS[torch.argmax(self.q_ins(x, i, y0))]
-                    delta.append(
-                        (op.ins, omega, x, i, y0)
-                    )
-                    canInsert = omega != "<end>"
-        return (y0, delta)
+    

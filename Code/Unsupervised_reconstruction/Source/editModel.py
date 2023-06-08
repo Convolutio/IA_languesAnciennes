@@ -12,6 +12,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 BIG_NEG = -1e9
 
+
 class CachedTargetsData():
     """
     Contains :
@@ -27,6 +28,7 @@ class CachedTargetsData():
     maxSequenceLength: int
     arePaddingElements: Tensor
 
+
 class EditModel(nn.Module):
     """
     # Neural Edit Model
@@ -41,29 +43,32 @@ class EditModel(nn.Module):
     #### Inference in the model
     With the `cache_probs` method.
     """
-    def __init__(self, languages:ModernLanguages, hidden_dim: int, input_dim: int = V_SIZE+2, output_dim: int = V_SIZE+1):
+
+    def __init__(self, languages: ModernLanguages, hidden_dim: int, input_dim: int = V_SIZE+2, output_dim: int = V_SIZE+1):
         super(EditModel, self).__init__()
         self.languages = languages
-        
-        self.input_dim = input_dim # must equals |Σ|+2 for the ( and ) boundaries characters.
-        self.hidden_dim = hidden_dim # abitrary embedding size
-        self.output_dim = output_dim # must equals |Σ|+1 for the <end>/<del> characters
-        
+
+        # must equals |Σ|+2 for the ( and ) boundaries characters.
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim  # abitrary embedding size
+        self.output_dim = output_dim  # must equals |Σ|+1 for the <end>/<del> characters
+
         self.encoder_prior = nn.LSTM(input_dim, hidden_dim, bidirectional=True)
         self.encoder_modern = nn.LSTM(input_dim, hidden_dim*2)
 
         self.sub_head = nn.Sequential(
             nn.Linear(hidden_dim*2, output_dim),
             nn.LogSoftmax(dim=-1)
-            )
+        )
         self.ins_head = nn.Sequential(
             nn.Linear(hidden_dim*2, output_dim),
             nn.LogSoftmax(dim=-1)
-            )
-        
+        )
+
         self.__cachedTargetsData = CachedTargetsData()
-        
-        self.__cachedProbs: dict[Literal['ins', 'sub', 'end', 'del'], Tensor] = {}
+
+        self.__cachedProbs: dict[Literal['ins',
+                                         'sub', 'end', 'del'], Tensor] = {}
 
     def cache_target_data(self, targets_: InferenceData):
         """
@@ -71,20 +76,23 @@ class EditModel(nn.Module):
         """
         cache = self.__cachedTargetsData
         a, _ = self.encoder_modern(targets_[0])
-        cache.modernContext, cache.sequencesLengths = pad_packed_sequence(a) # dim = (|y|+2, B, 2*hidden_dim)
+        cache.modernContext, cache.sequencesLengths = pad_packed_sequence(
+            a)  # dim = (|y|+2, B, 2*hidden_dim)
         cache.maxSequenceLength = cache.modernContext.size()[0]
-        
+
         unpackedTargets, _ = pad_packed_sequence(targets_[0])
-        cache.logarithmicOneHots = torch.log(unpackedTargets[1:,:,:-1]) #dim = (|y|+1, B, |Σ|+1) : the boundaries are not interesting values for y[j] (that is why they have been erased with the reduction)
-        
+        # dim = (|y|+1, B, |Σ|+1) : the boundaries are not interesting values for y[j] (that is why they have been erased with the reduction)
+        cache.logarithmicOneHots = torch.log(unpackedTargets[1:, :, :-1])
+
         batch_size, outputDim = cache.logarithmicOneHots.size()[1:3]
-        cache.arePaddingElements = torch.arange(cache.maxSequenceLength).repeat(outputDim, batch_size, 1).transpose(0,2) < cache.sequencesLengths.repeat(cache.maxSequenceLength, outputDim, 1).transpose(1,2) #dim = (|y|+2, B, |Σ|+1)
-    
-    def __computePaddingMatrix(self, sourcesLengths:Tensor, maxSourceLength:int):
+        cache.arePaddingElements = torch.arange(cache.maxSequenceLength).repeat(outputDim, batch_size, 1).transpose(
+            0, 2) < cache.sequencesLengths.repeat(cache.maxSequenceLength, outputDim, 1).transpose(1, 2)  # dim = (|y|+2, B, |Σ|+1)
+
+    def __computePaddingMatrix(self, sourcesLengths: Tensor, maxSourceLength: int):
         """
         Computes a bool matrix where True represents an output value of interest and False a padding value (0).
         dim = (|x|+2, |y|+2, B, |Σ|+1)
-        
+
         Arguments:
             sourcesLengths (IntTensor, dim = (B)) : contains the length of each reconstruction sequence
             maxSourceLength (int)
@@ -92,39 +100,51 @@ class EditModel(nn.Module):
         batch_size = len(sourcesLengths)
         outputDim = self.output_dim
         maxTargetLength = self.__cachedTargetsData.maxSequenceLength
-        A = torch.arange(maxSourceLength).repeat(outputDim, batch_size, 1).transpose(0,2) < sourcesLengths.repeat(maxSourceLength, outputDim, 1).transpose(1,2) #dim = (|x|+2, B, |Σ|+1)
+        A = torch.arange(maxSourceLength).repeat(outputDim, batch_size, 1).transpose(
+            0, 2) < sourcesLengths.repeat(maxSourceLength, outputDim, 1).transpose(1, 2)  # dim = (|x|+2, B, |Σ|+1)
         B = self.__cachedTargetsData.arePaddingElements
-        return torch.logical_and(A.repeat(maxTargetLength, 1,1,1).transpose(0,1), B.repeat(maxSourceLength, 1,1,1)) #dim = (|x|+2, |y|+2, B, |Σ|+1)
-    
+        # dim = (|x|+2, |y|+2, B, |Σ|+1)
+        return torch.logical_and(A.repeat(maxTargetLength, 1, 1, 1).transpose(0, 1), B.repeat(maxSourceLength, 1, 1, 1))
+
     def cache_probs(self, sources: PackedSequence):
         """
         Runs inferences in the model from given sources. It is supposed that the context of the targets and their one-hots have already been computed in the model.
         """
         with torch.no_grad():
             sourcePack = sources
-            
-            priorContext, sourcesLengths = pad_packed_sequence(self.encoder_prior(sourcePack)[0]) # priorContext dim = (|x|+2, B, 2*hidden_dim)
-            modernContext = self.__cachedTargetsData.modernContext
-            priorMaxSequenceLength, modernMaxSequenceLength = priorContext.size()[0], modernContext.size()[0]
-            ctx = priorContext.repeat(modernMaxSequenceLength, 1,1,1).transpose(0,1) +  modernContext.repeat(priorMaxSequenceLength, 1,1,1) # dim = (|x|+2, |y|+2, B, 2*hidden_dim)
 
-            paddingMatrix = self.__computePaddingMatrix(sourcesLengths, priorMaxSequenceLength)
+            priorContext, sourcesLengths = pad_packed_sequence(self.encoder_prior(
+                sourcePack)[0])  # priorContext dim = (|x|+2, B, 2*hidden_dim)
+            modernContext = self.__cachedTargetsData.modernContext
+            priorMaxSequenceLength, modernMaxSequenceLength = priorContext.size()[
+                0], modernContext.size()[0]
+            ctx = priorContext.repeat(modernMaxSequenceLength, 1, 1, 1).transpose(
+                0, 1) + modernContext.repeat(priorMaxSequenceLength, 1, 1, 1)  # dim = (|x|+2, |y|+2, B, 2*hidden_dim)
+
+            paddingMatrix = self.__computePaddingMatrix(
+                sourcesLengths, priorMaxSequenceLength)
 
             # set the probs for padding elements to 1
-            
-            sub_results = torch.where(paddingMatrix, self.sub_head(ctx), 0) # dim = (|x|+2, |y|+2, B, |Σ|+1)
-            ins_results = torch.where(paddingMatrix, self.ins_head(ctx), 0) # dim = (|x|+2, |y|+2, B, |Σ|+1)
-            
-            self.__cachedProbs['del'] = sub_results[:,:,:,self.output_dim-1].numpy() #dim = (|x|+2, |y|+2, B)
-            self.__cachedProbs['end'] = ins_results[:,:,:,self.output_dim-1].numpy() #dim = (|x|+2, |y|+2, B)
-            
-            targetsLogOneHots = self.__cachedTargetsData.logarithmicOneHots.repeat(sub_results.shape[0],1,1,1)
+
+            sub_results = torch.where(paddingMatrix, self.sub_head(
+                ctx), 0)  # dim = (|x|+2, |y|+2, B, |Σ|+1)
+            ins_results = torch.where(paddingMatrix, self.ins_head(
+                ctx), 0)  # dim = (|x|+2, |y|+2, B, |Σ|+1)
+
+            self.__cachedProbs['del'] = sub_results[:, :, :,
+                                                    self.output_dim-1].numpy()  # dim = (|x|+2, |y|+2, B)
+            self.__cachedProbs['end'] = ins_results[:, :, :,
+                                                    self.output_dim-1].numpy()  # dim = (|x|+2, |y|+2, B)
+
+            targetsLogOneHots = self.__cachedTargetsData.logarithmicOneHots.repeat(
+                sub_results.shape[0], 1, 1, 1)
             # q(y[j]| x, i, y[:j]) = < onehot(y[j]), q(.| x, i, y[:j]) >
-            self.__cachedProbs['sub'] = torch.logsumexp(sub_results[:,:-1,:,:] + targetsLogOneHots, dim=3).numpy() #dim = (|x|+2, |y|+1, B)
-            self.__cachedProbs['ins'] = torch.logsumexp(ins_results[:,:-1,:,:] + targetsLogOneHots, dim=3).numpy() #dim = (|x|+2, |y|+1, B)
-    
-    
-    def ins(self, i:int, j:int):
+            self.__cachedProbs['sub'] = torch.logsumexp(
+                sub_results[:, :-1, :, :] + targetsLogOneHots, dim=3).numpy()  # dim = (|x|+2, |y|+1, B)
+            self.__cachedProbs['ins'] = torch.logsumexp(
+                ins_results[:, :-1, :, :] + targetsLogOneHots, dim=3).numpy()  # dim = (|x|+2, |y|+1, B)
+
+    def ins(self, i: int, j: int):
         return self.__cachedProbs['ins'][i, j, :]
 
     def sub(self, i: int, j: int):
@@ -135,9 +155,7 @@ class EditModel(nn.Module):
 
     def dlt(self, i: int, j: int):
         return self.__cachedProbs['del'][i, j, :]
-    
 
-    
     def training(self, train_loader, test_loader, epochs=5, learning_rate=0.01):
         optimizer = optim.Adam(self.parameters(), lr=learning_rate)
 
@@ -168,5 +186,3 @@ class EditModel(nn.Module):
         #         # edit distance
 
         # print(f'Test Accuracy: {100 * correct / total}%')
-
-    

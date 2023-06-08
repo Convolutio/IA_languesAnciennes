@@ -5,7 +5,6 @@ import torch
 from torch.backends import mps
 from torch import cuda
 import numpy as np
-device = "cuda" if cuda.is_available() else "mps" if mps.is_available() else "cpu"
 
 device = "cuda" if cuda.is_available() else "cpu"
 

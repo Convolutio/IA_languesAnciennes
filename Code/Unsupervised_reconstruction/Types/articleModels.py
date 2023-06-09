@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union, TypedDict, Literal
+from typing import Union, Literal
 import numpy.typing as npt
 import numpy as np
 
@@ -8,12 +8,7 @@ class op(Enum):
     sub='sub'
     ins='ins'
 
-class CognatesSet(TypedDict):
-    french:list[str]
-    spanish:list[str]
-    italian:list[str]
-    portuguese:list[str]
-    romanian:list[str]
+CognatesSet = dict[ModernLanguages, list[str]]
 
 Form = str
 FormsSet = list[str] # a list of forms, 

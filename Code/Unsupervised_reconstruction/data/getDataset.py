@@ -4,7 +4,7 @@ from Types.articleModels import CognatesSet
 def getCognatesSet() -> CognatesSet:
     cognates:CognatesSet = {"french":[], "spanish":[], "portuguese":[], "italian":[], "romanian":[]}
     for modernLanguage in cognates:
-        with open(f"./recons_data/data/{modernLanguage}_ipa.txt", "r", encoding="utf-8") as file:
+        with open(f"./recons_data/data/{modernLanguage.capitalize()}_ipa.txt", "r", encoding="utf-8") as file:
             lines = file.readlines()
             for i in range(len(lines)-1):
                 cognates[modernLanguage].append(lines[i][1:-1]) # eliminate the escape and the \n

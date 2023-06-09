@@ -52,7 +52,7 @@ def oneHotsToWord(vecSeq: Tensor) -> str:
     w = ""
     for vocIdx in vecSeq:
         if vocIdx != 0:
-            w += SIGMA.inverse[vocIdx.item()-1]  # type: ignore
+            w += SIGMA_INV[vocIdx.item()-1]  # type: ignore
     return w
 
 

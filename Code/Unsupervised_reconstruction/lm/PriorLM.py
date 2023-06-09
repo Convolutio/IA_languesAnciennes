@@ -3,12 +3,12 @@ from math import log
 from itertools import permutations
 
 import torch
-from torch import Tensor
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW, optim, sgd
 from tqdm.auto import tqdm
 
+from Types.models import InferenceData
 from Source.sampling import INFTY_NEG
 
 
@@ -23,7 +23,7 @@ class PriorLM:
     def evaluation(self) -> float:
         pass
 
-    def inference(self, reconstructions: Tensor) -> Tensor:
+    def inference(self, reconstructions: InferenceData) -> Tensor:
         pass
 
 
@@ -75,7 +75,7 @@ class NGramLM(PriorLM):
         # Returns : perplexity of the model.
         pass
 
-    def inference(self, reconstructions: Tensor) -> Tensor:
+    def inference(self, reconstructions: InferenceData) -> Tensor:
         """
         
         """
@@ -153,5 +153,5 @@ class RNNLM(nn.Module, PriorLM):
         # Returns : perplexity of the model.
         pass
 
-    def inference(self, reconstructions: Tensor) -> Tensor:
+    def inference(self, reconstructions: InferenceData) -> Tensor:
         pass

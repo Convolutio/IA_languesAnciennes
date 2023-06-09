@@ -2,7 +2,7 @@ from typing import Optional
 from collections import deque
 
 from Types.models import *
-from data.vocab import wordToOneHots, reduceOneHotTensor
+from data.vocab import wordToOneHots, reduceOneHotTensor, oneHotsToWord
 
 import torch
 from torch import Tensor, uint8, ByteTensor
@@ -51,7 +51,7 @@ class EditsGraph:
     the edit paths.
     """
 
-    def __init__(self, x: str, y: str, editDistance: int) -> None:
+    def __init__(self, x: Tensor, y: Tensor, editDistance: int) -> None:
         self.__editIds: dict[Edit, int] = {}
         self.__edits: list[Edit] = [(0, 0, 0)]
         self.__insertionInfos: list[list[int]] = [
@@ -209,7 +209,7 @@ class EditsGraph:
         numberOfNodes = len(self.__nodes)
         f_i: list[int] = [-1]
         nonConcatenatedProposalLength = self.__insertionInfos[0][0]
-        oneHotX, oneHotY = wordToOneHots(self.__x), wordToOneHots(self.__y)
+        oneHotX, oneHotY = self.__x, self.__y
 
         for i in range(1, len(self.__x)+1):
             f_i.append(nonConcatenatedProposalLength)
@@ -281,30 +281,31 @@ class EditsGraph:
         Debugging method. Build the adjacent matrix and use graphviz to display the graph.
         Make a in-depth walk in this graph to process each node and build the matrix. 
         """
-        G = graphviz.Digraph(comment=f'/{self.__x}/ to /{self.__y}/', node_attr={
+        x, y = oneHotsToWord(self.__x), oneHotsToWord(self.__y)
+        G = graphviz.Digraph(comment=f'/{x}/ to /{y}/', node_attr={
                              'style': 'filled', 'fillcolor': 'lightgoldenrod1'})
         G.attr(bgcolor="transparent")
         c = self.__nodesWithAllCombinations()
 
         for nodeId, node in enumerate(self.__nodes):
             if nodeId == 0:
-                G.node('0', self.__x, _attributes={'fillcolor': 'darkorange'})
+                G.node('0', x, _attributes={'fillcolor': 'darkorange'})
             else:
                 edit = self.__edits[node.id_]
                 label: str
                 if edit[0] == 0:
-                    label = f"/{self.__x[edit[1]]}/→/{self.__y[edit[2]]}/, ({edit[1]}, {edit[2]})"
+                    label = f"/{x[edit[1]]}/→/{y[edit[2]]}/, ({edit[1]}, {edit[2]})"
                 elif edit[0] == 1:
-                    label = f"-/{self.__x[edit[1]]}/, ({edit[1]}, {edit[2]})"
+                    label = f"-/{x[edit[1]]}/, ({edit[1]}, {edit[2]})"
                 else:
-                    label = f"+/{self.__y[edit[2]]}/, ({edit[1]}, {edit[2]}), {self.__computeInsertionIndex(edit)}"
+                    label = f"+/{y[edit[2]]}/, ({edit[1]}, {edit[2]}), {self.__computeInsertionIndex(edit)}"
                 if c[nodeId]:
                     G.node(str(node.id_), label)
                 else:
                     G.node(str(node.id_), label, _attributes={
                            'fillcolor': 'lightcoral'})
 
-        G.node(str(len(self.__nodes)), label=self.__y,
+        G.node(str(len(self.__nodes)), label=y,
                _attributes={'fillcolor': 'darkorange'})
 
         for node in self.__nodes:
@@ -313,8 +314,6 @@ class EditsGraph:
 
             if len(node.childVertecies) == 0:
                 G.edge(str(node.id_), str(len(self.__nodes)))
-
-        lastNode = self.__nodes[0]
 
         G.render(filename=f'{filename}.gv', directory='./Tests/editsGraphs/',
                  format='svg')

@@ -1,0 +1,6 @@
+*
+!.gitignore
+!article.tex
+!biblio.bib
+!*.png
+!article.pdf

@@ -2,6 +2,7 @@
 .env
 .python-version
 __pycache__
+.ipynb_checkpoints
 
 # Exclude these files which are not from us
 recons_data

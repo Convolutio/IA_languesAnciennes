@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from Types.models import *
-from Types.articleModels import CognatesSet
+from Types.articleModels import CognatesSet_oneHotIdxs
 from data.vocab import wordToOneHots, oneHotsToWord
 from Source.editsGraph import EditsGraph
 
@@ -20,7 +20,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # cf. 2.5 chapter https://web.stanford.edu/~jurafsky/slp3/2.pdf for the variables notations
 
 
-def computeMinEditDistanceMatrix(x: str, y: str) -> npt.NDArray[np.int_]:
+def computeMinEditDistanceMatrix(x: Tensor, y: Tensor) -> npt.NDArray[np.int_]:
     """
     We consider that a substitution has the same cost than a deletion and an insertion.
     """
@@ -32,13 +32,13 @@ def computeMinEditDistanceMatrix(x: str, y: str) -> npt.NDArray[np.int_]:
     for i in range(1, n+1):
         for j in range(1, m+1):
             editCosts = (D[i-1, j]+1, D[i, j-1]+1,
-                         D[i-1, j-1] + (0 if x[i-1] == y[j-1] else 1))
+                         D[i-1, j-1] + (0 if x[i-1].item() == y[j-1].item() else 1))
             D[i, j] = min(editCosts)
 
     return D
 
 
-def getMinEditPaths(x: str, y: str,
+def getMinEditPaths(x: Tensor, y: Tensor,
                     recursivityArgs: Optional[tuple[npt.NDArray[np.int_], int, int, EditsGraph,
                                                     Optional[Edit]]] = None) -> EditsGraph:
     """
@@ -46,9 +46,9 @@ def getMinEditPaths(x: str, y: str,
     list of edits (type Edit), which modelize an arbor.
 
     Arguments:
-        x (str): the first string to be compared
-        y (str): the second one
-        args (tuple[IntMatrix, int, int] | None) : (minEditDistanceMatrix, i_start, j_start, editsTree, parentEdit)
+        x (ByteTensor): the first string to be compared (in one-hot indexes format)
+        y (ByteTensor): the second one (in one-hot indexes format)
+        recursivityArgs (tuple[IntMatrix, int, int, EditsGraph, Edit] | None) : (minEditDistanceMatrix, i_start, j_start, editsTree, parentEdit)
     If mentionned, this recursive function figures out the minimal edit paths between x[:i_start]
     and y[:j_start] thanks to the minEditDistanceMatrix. Else, this is the minimal edit paths\
     between x and y.
@@ -116,14 +116,14 @@ class IncorrectResultsException(Exception):
         super().__init__(*args)
 
 
-def computeProposals(currentReconstruction: str, cognates: list[str]) -> Tensor:
+def computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> Tensor:
     """
     Returns a list of the proposals in one-hot indexes representation (sequences
     of indexes in the vocabulary)
 
     Arguments:
-        - currentReconstruction (str): the current sampled proto-form
-        - cognates (list[str]): its cognates\\
+        - currentReconstruction (ByteTensor): the current sampled proto-form
+        - cognates (list[ByteTensor]): its cognates\\
     """
     proposalsSet = torch.ByteTensor(size=(0, 0)).to(device)
 
@@ -156,12 +156,15 @@ def computeProposals(currentReconstruction: str, cognates: list[str]) -> Tensor:
     #                 Data: (/{x}/, /{y}/)")
     return proposalsSet
 
-def generateProposalsFromCurrentReconstructions(currentReconstructions: list[str], cognates: CognatesSet)->list[Tensor]:
+def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: CognatesSet_oneHotIdxs)->list[Tensor]:
     p = list()
     numberOfCognatePairs = len(cognates['french'])
+    print('-'*60)
     for i in range(numberOfCognatePairs):
         x = currentReconstructions[i]
         Y = [cognates[language][i] for language in cognates]
-        print(f'/{x}/ to ({Y}) \nCognate Set {str(i)}/{numberOfCognatePairs}'+''*10, end='\r')
         p.append(computeProposals(x, Y))
+        if (i+1)%(numberOfCognatePairs//100)==0:
+            print("Proposals generation:", 1+100*(i+1)//numberOfCognatePairs, '%'+' '*10, end='\r')
+    print('\n'+'-'*60+'\n')
     return p

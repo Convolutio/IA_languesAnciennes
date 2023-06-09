@@ -1,19 +1,16 @@
 from enum import Enum
-from typing import Union, TypedDict, Literal
+from typing import Union, Literal
 import numpy.typing as npt
 import numpy as np
+from torch import Tensor
 
 ModernLanguages = Literal['french', 'spanish', 'italian', 'portuguese', 'romanian']
 class op(Enum):
     sub='sub'
     ins='ins'
 
-class CognatesSet(TypedDict):
-    french:list[str]
-    spanish:list[str]
-    italian:list[str]
-    portuguese:list[str]
-    romanian:list[str]
+CognatesSet_str = dict[ModernLanguages, list[str]]
+CognatesSet_oneHotIdxs = dict[ModernLanguages, list[Tensor]]
 
 Form = str
 FormsSet = list[str] # a list of forms, 

@@ -1,30 +1,32 @@
 from typing import Literal
-from Types.articleModels import CognatesSet
+from Types.articleModels import CognatesSet_oneHotIdxs
+from data.vocab import wordToOneHots
+from torch import Tensor
 
-def getCognatesSet() -> CognatesSet:
-    cognates:CognatesSet = {"french":[], "spanish":[], "portuguese":[], "italian":[], "romanian":[]}
+def getCognatesSet() -> CognatesSet_oneHotIdxs:
+    cognates:CognatesSet_oneHotIdxs = {"french":[], "spanish":[], "portuguese":[], "italian":[], "romanian":[]}
     for modernLanguage in cognates:
-        with open(f"./recons_data/data/{modernLanguage}_ipa.txt", "r", encoding="utf-8") as file:
+        with open(f"./recons_data/data/{modernLanguage.capitalize()}_ipa.txt", "r", encoding="utf-8") as file:
             lines = file.readlines()
             for i in range(len(lines)-1):
-                cognates[modernLanguage].append(lines[i][1:-1]) # eliminate the escape and the \n
+                cognates[modernLanguage].append(wordToOneHots(lines[i][1:-1])) # eliminate the escape and the \n
     return cognates
 
-def getTargetsReconstruction()->list[str]:
-    l:list[str] = []
+def getTargetsReconstruction()->list[Tensor]:
+    l:list[Tensor] = []
     with open(f"./recons_data/data/latin_ipa.txt", "r", encoding="utf-8") as file:
         lines = file.readlines()
         for i in range(len(lines)-1):
-            l.append(lines[i][1:-1]) # eliminate the escape and the \n
+            l.append(wordToOneHots(lines[i][1:-1])) # eliminate the escape and the \n
     return l
 
-def getIteration(i:Literal[1,2,3,4]) -> list[str]:
+def getIteration(i:Literal[1,2,3,4]) -> list[Tensor]:
     """
-    Returns the i-th Bouchard's iteration.
+    Returns the i-th Bouchard's iteration in a list of ByteTensors, with one-hot indexes format.
     """
-    iteration = []
+    iteration:list[Tensor] = []
     with open(f'./recons_data/iteration3_{str(i)}.txt', 'r', encoding='utf-8') as file:
         lines = file.readlines()
         for j in range(len(lines)-1):
-            iteration.append(lines[j][:-1])
+            iteration.append(wordToOneHots(lines[j][:-1]))
     return iteration

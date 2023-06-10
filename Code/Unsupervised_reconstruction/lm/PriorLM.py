@@ -3,6 +3,7 @@ from math import log
 from itertools import permutations
 
 import torch
+from torch import Tensor
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW, optim, sgd
@@ -69,7 +70,7 @@ class NGramLM(PriorLM):
         batch = torch.tensor()
 
         for i, t in enumerate(self.ngramTensors):
-            self.distrib[i] += log(self.countSubtensorOccurrences(batch, t) / self.countSubtensorOccurrences(batch, t[:-1])) #Rework as Tensor
+            self.distrib[i] += log(self.countSubtensorOccurrences(batch, t)) - log(self.countSubtensorOccurrences(batch, t[:-1])) #Rework as Tensor
 
     def evaluation(self):
         # Returns : perplexity of the model.

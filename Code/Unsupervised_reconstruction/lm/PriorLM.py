@@ -6,12 +6,12 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
-from torch.optim import AdamW, optim, sgd
-from tqdm.auto import tqdm
+from torch.optim import AdamW, sgd
 
 from Types.models import InferenceData
-from Source.sampling import INFTY_NEG
 
+INFTY_NEG = -1e9
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class PriorLM:
     def __init__(self, vocabTensors: list[Tensor]):     # list[Tensor], in future maybe one big Tensor 
@@ -32,10 +32,10 @@ class NGramLM(PriorLM):
     def __init__(self, vocabTensors: list[Tensor], n: int):
         super().__init__(vocabTensors=vocabTensors)
         self.n: int = n 
-        self.ngramTensors: list[Tensor] = [torch.stack(p) for p in permutations(self.vocabTensors, self.n)]
+        # self.ngramTensors: list[Tensor] = [torch.stack(p) for p in permutations(self.vocabTensors, self.n)]
         
         # log distribution
-        self.distrib: dict[int, float] = {i: INFTY_NEG for i in range(len(self.ngramTensors))}   # Rework as Tensor 
+        #self.distrib: dict[int, float] = {i: INFTY_NEG for i in range(len(self.ngramTensors))}   # Rework as Tensor 
 
     @staticmethod
     def countSubtensorOccurrences(larger_tensor: Tensor, sub_tensor: Tensor) -> int:
@@ -76,21 +76,42 @@ class NGramLM(PriorLM):
         # Returns : perplexity of the model.
         pass
 
+    def padDataWithN(self, reconstructions:InferenceData):
+        """
+        Returns the reconstructions in one-hot vectors tensor format, with ensuring that sequences with a length smaller than n are padded with the ')' token.
+        Arguments :
+            - reconstructions (InferenceData) : a tuple whose the first term is a tensor of (L, B, V) shape.
+        """
+        data, lengths = nn.utils.rnn.pad_packed_sequence(reconstructions[0], padding_value=1.0) # ngrams with empty characters have a neutral probability of 1.
+        maxSequenceLength, batch_size, V = data.shape
+        if maxSequenceLength < self.n:
+            data = torch.cat((data, torch.zeros(self.n - maxSequenceLength, batch_size, V)), dim=0).to(device)
+            maxSequenceLength = self.n
+        a = torch.arange(maxSequenceLength).unsqueeze(0).expand(batch_size, -1)
+        condition = torch.logical_and(lengths.unsqueeze(1).expand(-1, maxSequenceLength) <= a, a < self.n).T.unsqueeze(-1).expand(-1,-1,V) # size = (L, B, V)
+        pad = torch.zeros((maxSequenceLength, batch_size, V), dtype=torch.float32).to(device)
+        pad[:,:,V-1] = 1
+        data = torch.where(condition, pad, data)
+        return torch.log(data)
+
     def inference(self, reconstructions: InferenceData) -> Tensor:
-        """
-        
-        """
+        data = self.padDataWithN(reconstructions)
+        maxSequenceLength, batch_size, V = data.size() 
+        probs: Tensor = torch.zeros(batch_size, dtype=torch.float64) # begin with the neutral prob 1
 
-        length, batch_size, _ = reconstructions.shape
-        probs: Tensor = torch.log(torch.zero(batch_size))   #Remove log
-
-        # For each word in the batch, get the probability of the word by the sum (cause we
+        # For each wordord by th in the batch, get the probability of the we sum (cause we
         # are in log) of all conditionnal probability of each character composed the word. 
-        for word in range(batch_size):
-            t = torch.split(reconstructions, self.n, dim=1)
-            for char in range(length):
-                probs[word] += torch.matmul(reconstructions[char, word, :], self.distrib).item()       #Rework
-        
+        for l in range(maxSequenceLength - self.n):
+            nGram = data[l:l+self.n]
+            nGramProb = nGramLogProbsTensor.unsqueeze(0).expand(batch_size, *(-1,)*self.n)
+            for k in range(self.n):
+                selected_nGram = nGram[k]
+                for _ in range(self.n-k-1):
+                    selected_nGram = selected_nGram.unsqueeze(-1)
+                print(selected_nGram.size())
+                selected_nGram = selected_nGram.expand(-1, -1, *(V,)*(self.n-k-1))
+                nGramProb = torch.logsumexp(selected_nGram + nGramProb, dim=1)
+            probs += torch.min(nGramProb, torch.zeros(batch_size)) # to neutralize the probability of ngrams with empty characters.
         return probs
 
 

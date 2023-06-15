@@ -11,7 +11,6 @@ from lm.PriorLM import PriorLM
 
 INFTY_NEG = -1e9
 
-
 def computeLaw(probs: np.ndarray) -> np.ndarray:
     """
     Returns a logarithmic probabilty distribution over all the probs.
@@ -35,7 +34,7 @@ def computeUnnormalizedProbs(models:dict[ModernLanguages, EditModel], priorLM:Pr
     batch = pad_sequence([proposalsSetsList[n][int(selectionIndexes[n].item())] for n in range(batch_size)], batch_first=True).to(dtype=torch.uint8)
     sourceInferenceData = computeInferenceData(batch)
 
-    probs = priorLM.inference(batch) #TODO: develop this method
+    probs = priorLM.inference(sourceInferenceData)
     for language in models:
         probs += compute_mutation_prob(models[language], sourceInferenceData, cognatesInferenceData[language]) #type:ignore
     return torch.as_tensor(probs)

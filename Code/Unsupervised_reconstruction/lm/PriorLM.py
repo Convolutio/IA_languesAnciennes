@@ -32,9 +32,12 @@ class NGramLM(PriorLM):
         super().__init__(vocabTensors=vocabTensors)
         self.n: int = n 
         self.ngramTensors: list[Tensor] = [torch.stack(p) for p in permutations(self.vocabTensors, self.n)]
-        
+
+        self.ngramCountTensor: Tensor = torch.zeros((len(self.vocabTensors),) * n)
+        self.ngramMinusCountTensor: Tensor = torch.zeros((len(self.vocabTensors)-1,) * n-1)
+
         # log distribution
-        self.distrib: dict[int, float] = {i: INFTY_NEG for i in range(len(self.ngramTensors))}   # Rework as Tensor 
+        self.distrib: Tensor    # Rework as Tensor 
 
     @staticmethod
     def countSubtensorOccurrences(larger_tensor: Tensor, sub_tensor: Tensor) -> int:

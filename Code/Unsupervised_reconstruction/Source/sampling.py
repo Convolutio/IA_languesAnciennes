@@ -62,7 +62,7 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:dict[ModernLanguag
     
     # Computes once the context of targets in the edits models
     for language in models:
-        models[language].cache_target_data(cognates[language])
+        models[language].cache_target_context(cognates[language][0])
     
     i = torch.zeros(batch_size, dtype=torch.int32)
     iProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, cognates, i)

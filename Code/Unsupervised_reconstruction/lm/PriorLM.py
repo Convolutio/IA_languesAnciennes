@@ -83,13 +83,15 @@ class NGramLM(PriorLM):
             - reconstructions (InferenceData) : a tuple whose the first term is a tensor of (L, B, V) shape.
         """
         data, lengths = nn.utils.rnn.pad_packed_sequence(reconstructions[0], padding_value=1.0) # ngrams with empty characters have a neutral probability of 1.
+        data = data.to(device)
+        lengths = lengths.to(device)
         maxSequenceLength, batch_size, V = data.shape
         if maxSequenceLength < self.n:
-            data = torch.cat((data, torch.zeros(self.n - maxSequenceLength, batch_size, V)), dim=0).to(device)
+            data = torch.cat((data, torch.zeros((self.n - maxSequenceLength, batch_size, V), device=device)), dim=0)
             maxSequenceLength = self.n
-        a = torch.arange(maxSequenceLength).unsqueeze(0).expand(batch_size, -1)
+        a = torch.arange(maxSequenceLength).to(device).unsqueeze(0).expand(batch_size, -1)
         condition = torch.logical_and(lengths.unsqueeze(1).expand(-1, maxSequenceLength) <= a, a < self.n).T.unsqueeze(-1).expand(-1,-1,V) # size = (L, B, V)
-        pad = torch.zeros((maxSequenceLength, batch_size, V), dtype=torch.float32).to(device)
+        pad = torch.zeros((maxSequenceLength, batch_size, V), dtype=torch.float32, device=device)
         pad[:,:,V-1] = 1
         data = torch.where(condition, pad, data)
         return torch.log(data)
@@ -143,14 +145,15 @@ class RNNLM(nn.Module, PriorLM):
 
         self.dropout = nn.Dropout(self.dropout_rate)
 
-        self.fc = nn.Linear(self.hidden_size, self.vocab_size)
+        self.fc = nn.Sequential(nn.Linear(self.hidden_size, self.vocab_size),
+                                nn.LogSoftmax(-1))
 
-    def forward(self, x, prev_state):
+    def forward(self, x):
         embedded = self.embedding(x)
-        output, state = self.lstm(embedded, prev_state)
+        output, state = self.lstm(embedded)
         output = self.dropout(output)
         output = self.fc(output)
-        return output, state
+        return output
 
     def init_hidden(self, batch_size, device):
         return (torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device),

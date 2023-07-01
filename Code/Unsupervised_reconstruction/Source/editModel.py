@@ -214,10 +214,10 @@ class EditModel(nn.Module):
 
             targetsLogOneHots = self.__cachedTargetsData.logarithmicOneHots
             # q(y[j]| x, i, y[:j]) = < onehot(y[j]), q(.| x, i, y[:j]) >
-            self.__cachedProbs['sub'][:-1, :-2] = torch.logsumexp(
-                sub_results[:, :-1, :, :-1] + targetsLogOneHots, dim=3).cpu().numpy()  # usefull space = (|x|+1, |y|, B)
-            self.__cachedProbs['ins'][:-1, :-2] = torch.logsumexp(
-                ins_results[:, :-1, :, :-1] + targetsLogOneHots, dim=3).cpu().numpy()  # usefull space = (|x|+1, |y|, B)
+            self.__cachedProbs['sub'][:-1, :-2] = torch.nan_to_num(torch.logsumexp(
+                sub_results[:, :-1, :, :-1] + targetsLogOneHots, dim=3), neginf=0.).cpu().numpy()  # usefull space = (|x|+1, |y|, B)
+            self.__cachedProbs['ins'][:-1, :-2] = torch.nan_to_num(torch.logsumexp(
+                ins_results[:, :-1, :, :-1] + targetsLogOneHots, dim=3), neginf=0.).cpu().numpy()  # usefull space = (|x|+1, |y|, B)
 
     def ins(self, i: int, j: int):
         return self.__cachedProbs['ins'][i, j]

@@ -84,7 +84,7 @@ def make_oneHotTensor(formsVec: Tensor, add_boundaries: bool, formsLengths: NDAr
     right_boundary_index = voc_size+1
 
     # need numpy for fast indexing in 91st line
-    t = torch.where(formsVec != 0, formsVec-1, formsVec).numpy()
+    t = torch.where(formsVec != 0, formsVec-1, formsVec).cpu().numpy()
     if add_boundaries:
         t = np.concatenate((
             np.full((batch_size, 1), left_boundary_index, dtype=np.uint8),
@@ -131,7 +131,7 @@ def getWordsLengthFromOneHot(t: Tensor) -> NDArray[np.uint8]:
     for j in range(t.shape[1]-1, -1, -1):
         jVec = j*torch.ones(batch_size, dtype=torch.uint8).to(device)
         lengths = torch.where(t[:, j] == 0, jVec, lengths)
-    return lengths.numpy().astype(np.uint8)
+    return lengths.cpu().numpy().astype(np.uint8)
 
 
 def oneHotsToWords(t: Tensor) -> list[str]:

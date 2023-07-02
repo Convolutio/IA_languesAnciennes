@@ -37,7 +37,7 @@ class CachedTargetsData():
     dim = (|y|+1, B, |Σ|+1)
     """
     
-    logarithmicOneHots: Tensor
+    nextOneHots: Tensor
     """
     This tensor is useful to get the inferred probabilities that some phonetic tokens sub or are inserted to a current building target.
     dim = (1, |y|, B, |Σ|)
@@ -64,7 +64,7 @@ class CachedTargetsData():
         self.inputOneHots = pack_padded_sequence(unpackedTargets[:-1, :, :-1], sequencesLengths-1, enforce_sorted=False)
         
         # dim = (1, |y|, B, |Σ|) : the boundaries and special tokens are not interesting values for y[j] (that is why they have been erased with the reduction)
-        self.logarithmicOneHots = torch.log(unpackedTargets[1:-1, :, :-2]).unsqueeze(0)
+        self.nextOneHots = unpackedTargets[1:-1, :, :-2].unsqueeze(0)
 
         self.arePaddingElements = torch.arange(self.maxSequenceLength-1).unsqueeze(0) < (sequencesLengths-1).unsqueeze(1)
 
@@ -123,7 +123,9 @@ class EditModel(nn.Module):
         
         self.__cachedProbs: dict[Literal['ins',
                                          'sub', 'end', 'del'], np.ndarray] = {}
-        
+    
+    #----------Inference---------------
+
     def update_cachedTargetContext(self, inferenceMode:bool = True):
         """
         Call this method at each EM iteration or at each training epoch to update the target's predicted context.
@@ -157,7 +159,7 @@ class EditModel(nn.Module):
 
         Arguments:
             - sourcesLengths: a cpu tensor containing the lengths of the samples with the boundaries (|x|+2)
-            - maxSourceLength: the value of maximum length.
+            - maxSourceLength: the value of the maximum sequence length (including the boundaries).
         """
         A = torch.arange(maxSourceLength-1).unsqueeze(0) < sourcesLengths.unsqueeze(1)-1 # dim = (B, |x|+1)
         B = self.__cachedTargetsData.arePaddingElements # dim = (B, |y|+1)
@@ -212,12 +214,12 @@ class EditModel(nn.Module):
             self.__cachedProbs['end'][:-1, :-1] = ins_results[:, :, :,
                                                     self.output_dim-1].cpu().numpy()  # usefull space = (|x|+1, |y|+1, B)
 
-            targetsLogOneHots = self.__cachedTargetsData.logarithmicOneHots
+            targetsOneHots = self.__cachedTargetsData.nextOneHots
             # q(y[j]| x, i, y[:j]) = < onehot(y[j]), q(.| x, i, y[:j]) >
             self.__cachedProbs['sub'][:-1, :-2] = torch.nan_to_num(torch.logsumexp(
-                sub_results[:, :-1, :, :-1] + targetsLogOneHots, dim=3), neginf=0.).cpu().numpy()  # usefull space = (|x|+1, |y|, B)
+                sub_results[:, :-1, :, :-1] * targetsOneHots, dim=3), nan=0.).cpu().numpy()  # usefull space = (|x|+1, |y|, B)
             self.__cachedProbs['ins'][:-1, :-2] = torch.nan_to_num(torch.logsumexp(
-                ins_results[:, :-1, :, :-1] + targetsLogOneHots, dim=3), neginf=0.).cpu().numpy()  # usefull space = (|x|+1, |y|, B)
+                ins_results[:, :-1, :, :-1] * targetsOneHots, dim=3), nan=0.).cpu().numpy()  # usefull space = (|x|+1, |y|, B)
 
     def ins(self, i: int, j: int):
         return self.__cachedProbs['ins'][i, j]
@@ -231,56 +233,80 @@ class EditModel(nn.Module):
     def dlt(self, i: int, j: int):
         return self.__cachedProbs['del'][i, j]
     
-    def __computeMaskedProbTargetProb(self, prob_targets:ProbCache):
-        """
-        dim = (|x|+2 * |y|+1 * B, 2*(|Σ|+1))
-        The results that are not computed are masked with 0 value.
-        """
-        masked_target_sub = torch.nan_to_num(self.__cachedTargetsData.logarithmicOneHots + torch.as_tensor(prob_targets.sub, device=device)[:,:-1].unsqueeze(-1), neginf=0.)
-        masked_target_ins = torch.nan_to_num(self.__cachedTargetsData.logarithmicOneHots + torch.as_tensor(prob_targets.ins, device=device)[:,:-1].unsqueeze(-1), neginf=0.)
-        masked_target_sub = torch.cat((masked_target_sub, torch.as_tensor(prob_targets.dlt, device=device)), dim=-1)
-        masked_target_ins = torch.cat((masked_target_ins, torch.as_tensor(prob_targets.end, device=device)), dim=-1)
-        return torch.cat((masked_target_sub, masked_target_ins), dim=-1).flatten(end_dim=-2)
-    
+    #----------Training----------------
+
     def __computeMaskedProbDistribs(self, sub_probs:Tensor, ins_probs:Tensor)->Tensor:
         """
-        Returns a tensor of shape (|x|+1 * |y|+1 * B, 2*(|Σ|+1)) with a mask applied on each probability in the distribution which are not defined in the target probabilities cache. This is done according to the one-hots of the characters of interest in the target batch.
+        Returns a tensor of shape (|x|+1, |y|+1, B, 2*(|Σ|+1)) with a mask applied on each probability in the distribution which are not defined in the target probabilities cache. This is done according to the one-hots of the characters of interest in the target batch.
 
         Arguments:
             - sub_probs (Tensor): the logits or the targets for q_sub probs, with at the end the deletion prob
                 dim = (|x|+1, |y|+1, B, |Σ|+1) or (|x|+1, |y|+1, B, 2) 
             - ins_probs (Tensor): the logits or the targets for q_ins probs, with at the end the insertion prob
                 dim = (|x|+1, |y|+1, B, |Σ|+1) or (|x|+1, |y|+1, B, 2)
+            - flatten (boolean): if the tensor has
+            It is assumed that the padding mask has already been applied on the probs in argument.
         """
-        B, V = self.__cachedTargetsData.logarithmicOneHots.shape[-2:]
-        logOneHots = torch.cat((self.__cachedTargetsData.logarithmicOneHots, torch.zeros((1,1,B,V), device=device)), dim=1)
-        masked_sub_probs = torch.nan_to_num(logOneHots + sub_probs[:,:,:,:-1], neginf=0.)
-        deletionProbs = sub_probs[:,:,:,-1]
-        masked_ins_probs = torch.nan_to_num(logOneHots + ins_probs[:,:,:,:-1], neginf=0.)
-        endingProbs = ins_probs[:,:,:,-1]
-        return torch.cat((masked_sub_probs, deletionProbs, masked_ins_probs, endingProbs), dim=-1).flatten(end_dim=-2)
+        B, V = self.__cachedTargetsData.nextOneHots.shape[-2:]
+        nextOneHots = torch.cat((self.__cachedTargetsData.nextOneHots, torch.zeros((1,1,B,V), device=device)), dim=1)
+        masked_sub_probs = torch.nan_to_num(nextOneHots * sub_probs[:,:,:,:-1], nan=0.)
+        masked_ins_probs = torch.nan_to_num(nextOneHots * ins_probs[:,:,:,:-1], nan=0.)
+        deletionProbs = sub_probs[:,:,:,-1:]
+        endingProbs = ins_probs[:,:,:,-1:]
+        return torch.cat((masked_sub_probs, deletionProbs, masked_ins_probs, endingProbs), dim=-1)
 
+    def renderTargetAndLogitsBeforeLossComputation(self, samples_:InferenceData, prob_targets_cache:ProbCache):
+        """
+        Debugging method. Render respectively the target probs tensor and the logits tensor with the needed masking (padding and distribution masking) before the loss computation.
+        tensor shape = (|x|+1, |y|+1, B, 2*(|Σ|+1))
 
-    def training(self, samples_:InferenceData, targets:PackedSequence, prob_targets_cache:ProbCache, test_loader, epochs=5, learning_rate=0.01):
+        The arguments are the same than with the `training` method.
+        """
+        with torch.no_grad():
+            samples = samples_[0]
+            paddingMask = self.__computeMask(pad_packed_sequence(samples_[0])[1], samples_[2]+2)
+            
+            prob_targets = self.__computeMaskedProbDistribs(
+                torch.nan_to_num(paddingMask*torch.as_tensor(np.concatenate((
+                                            np.expand_dims(prob_targets_cache.sub[:-1,:-1], -1), 
+                                            np.expand_dims(prob_targets_cache.dlt[:-1,:-1], -1)
+                                        ), axis=-1), device=device),nan=0.),
+                torch.nan_to_num(paddingMask*torch.as_tensor(np.concatenate((
+                                            np.expand_dims(prob_targets_cache.ins[:-1,:-1], -1),
+                                            np.expand_dims(prob_targets_cache.end[:-1,:-1], -1)
+                                        ), axis=-1), device=device),nan=0.)
+            )
+            sub_outputs, ins_outputs = self(samples, False)
+            masked_outputs = self.__computeMaskedProbDistribs(sub_outputs, ins_outputs)
+        return prob_targets, masked_outputs 
+
+    def training(self, samples_:InferenceData, prob_targets_cache:ProbCache, test_loader=None, epochs=5, learning_rate=0.01):
         samples = samples_[0]
-        # mask = self.__computeMask(torch.as_tensor(samples_[1], dtype=torch.int8, device=device), samples_[2])
-        # masked_prob_targets = prob_targets*mask
+        paddingMask = self.__computeMask(pad_packed_sequence(samples)[1], samples_[2]+2)
+        
         prob_targets = self.__computeMaskedProbDistribs(
-            torch.as_tensor(np.concatenate((np.expand_dims(prob_targets_cache.sub, -1), 
-                                            np.expand_dims(prob_targets_cache.dlt, -1)), axis=-1), device=device),
-            torch.as_tensor(np.concatenate((np.expand_dims(prob_targets_cache.ins, -1),
-                                            np.expand_dims(prob_targets_cache.end, -1)), axis=-1), device=device)
+            torch.nan_to_num(paddingMask*torch.as_tensor(np.concatenate((
+                                        np.expand_dims(prob_targets_cache.sub[:-1,:-1], -1), 
+                                        np.expand_dims(prob_targets_cache.dlt[:-1,:-1], -1)
+                                    ), axis=-1), device=device),nan=0.),
+            torch.nan_to_num(paddingMask*torch.as_tensor(np.concatenate((
+                                        np.expand_dims(prob_targets_cache.ins[:-1,:-1], -1),
+                                        np.expand_dims(prob_targets_cache.end[:-1,:-1], -1)
+                                    ), axis=-1), device=device),nan=0.).flatten(end_dim=-2)
         )
 
         optimizer = optim.Adam(self.parameters(), lr=learning_rate)
-        loss = nn.KLDivLoss(reduction="batchmean", log_target=True) # neutral if log(target) = log(logit) = 0
+        loss_function = nn.KLDivLoss(reduction="batchmean", log_target=True) # neutral if log(target) = log(logit) = 0
 
         for _ in range(epochs):
             optimizer.zero_grad()
             sub_outputs, ins_outputs = self(samples, False)
-            masked_outputs = self.__computeMaskedProbDistribs(sub_outputs, ins_outputs)
-            l = loss(masked_outputs, prob_targets)
-            l.backward()
+            masked_outputs = self.__computeMaskedProbDistribs(sub_outputs, ins_outputs).flatten(end_dim=-2)
+            
+            # shape of logits and targets in loss: (|x|+1 * |y|+1 * B, 2*(|Σ|+1))
+            loss = loss_function(masked_outputs, prob_targets)
+            loss.backward()
+            optimizer.step()
 
         # for epoch in range(epochs):
         #     running_loss = 0.0

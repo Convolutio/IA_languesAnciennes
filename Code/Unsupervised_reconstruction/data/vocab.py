@@ -56,7 +56,7 @@ def oneHotsToWord(vecSeq: Tensor) -> str:
     return w
 
 
-def make_oneHotTensor(formsVec: Tensor, add_boundaries: bool, formsLengths: NDArray[np.uint8]) -> PackedSequence:
+def make_oneHotTensor(formsVec: Tensor, add_boundaries: bool, formsLengths: NDArray[np.uint8]) -> Tensor:
     """
     Converts each string in the list to a tensor of one-hot vectors.
     Tensor's shape : (N, B, |Σ|+2) if add_boundaries = False, \
@@ -83,25 +83,27 @@ def make_oneHotTensor(formsVec: Tensor, add_boundaries: bool, formsLengths: NDAr
     left_boundary_index = voc_size
     right_boundary_index = voc_size+1
 
+    # t = torch.where(formsVec != 0, formsVec-1, formsVec).cpu().numpy()
+    t = formsVec
     # need numpy for fast indexing in 91st line
-    t = torch.where(formsVec != 0, formsVec-1, formsVec).cpu().numpy()
     if add_boundaries:
         t = np.concatenate((
             np.full((batch_size, 1), left_boundary_index, dtype=np.uint8),
-            t,
+            formsVec.cpu().numpy(),
             np.zeros((batch_size, 1), dtype=np.uint8)
         ), axis=1)
         t[range(batch_size), formsLengths+1] = np.full((batch_size,),
                                                        right_boundary_index, dtype=np.uint8)
-        t = torch.as_tensor(t, dtype=torch.uint8, device=device)
-    flat = t.flatten().to(torch.int64)
-    tensor = torch.nn.functional.one_hot(
-        flat, voc_size+2).to(torch.float32)  # for the LSTM module
-    tensor = tensor.reshape(
-        (batch_size, max_length + (2 if add_boundaries else 0), voc_size+2)
-    ).transpose(0, 1)
-    # type:ignore
-    return pack_padded_sequence(tensor, formsLengths + (2 if add_boundaries else 0), batch_first=False, enforce_sorted=False)
+        t = torch.as_tensor(t, dtype=torch.int32, device=device)
+    return t
+    # flat = t.flatten().to(torch.int64)
+    # tensor = torch.nn.functional.one_hot(
+    #     flat, voc_size+2).to(torch.float32)  # for the LSTM module
+    # tensor = tensor.reshape(
+    #     (batch_size, max_length + (2 if add_boundaries else 0), voc_size+2)
+    # ).transpose(0, 1)
+    # # type:ignore
+    # return pack_padded_sequence(tensor, formsLengths + (2 if add_boundaries else 0), batch_first=False, enforce_sorted=False)
 
 
 def reduceOneHotTensor(t: Tensor):

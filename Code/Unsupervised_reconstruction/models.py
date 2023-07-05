@@ -11,6 +11,11 @@ class ProbCache:
     Padding value : 0
     """
     def __init__(self, maxSourceLength:int, maxTargetLength:int, batch_size:int):
+        """
+        Arguments:
+            - maxSourceLength : the maximum source sequence length (with boundaries)
+            - maxTargetLength : the maximum target sequence length (with boundaries)
+        """
         self.sub = zeros((maxSourceLength, maxTargetLength, batch_size))
         self.ins = zeros((maxSourceLength, maxTargetLength, batch_size))
         self.dlt = zeros((maxSourceLength, maxTargetLength, batch_size))

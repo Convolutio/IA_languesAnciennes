@@ -17,13 +17,14 @@ from Source.cachedModernData import nextOneHots
 from Source.dynamicPrograms import compute_mutation_prob, compute_posteriors
 from models import ProbCache
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class ReconstructionModel(nn.Module):
     def __init__(self, cognatesSet:dict[ModernLanguages, InferenceData], voc_size:int, lstm_input_dim:int, lstm_hidden_dim:int):
         super().__init__()
         self.__languages: tuple[ModernLanguages, ...] = tuple(cognatesSet.keys())
         self.__voc_size = voc_size
-        self.shared_embedding_layer = PackingEmbedding(voc_size+3, lstm_input_dim, padding_idx=0)
+        self.shared_embedding_layer = PackingEmbedding(voc_size+3, lstm_input_dim, padding_idx=0, device=device)
         self.__editModels = nn.ModuleDict({
                 lang:EditModel(
                     targetInferenceData,
@@ -57,8 +58,8 @@ class ReconstructionModel(nn.Module):
         samples_miniBatches: list[InferenceData] = [(splits[0][i], splits[1][i], int(torch.max(splits[1][i]).item())) for i in range(len(splits[1]))]
         miniBatchesNumber = len(samples_miniBatches) # = batchSize // MINI_BATCH_SIZE
         
-        targets_loads = [torch.empty((0,miniBatchSize, 2*(self.__voc_size+1))) for _ in range(miniBatchesNumber-1)] # dim = (*, b, 2*(|Σ|+1))
-        targets_loads.append(torch.empty((0,batchSize%miniBatchSize, 2*(self.__voc_size+1))))
+        targets_loads = [torch.empty((0,miniBatchSize, 2*(self.__voc_size+1)), device=device) for _ in range(miniBatchesNumber-1)] # dim = (*, b, 2*(|Σ|+1))
+        targets_loads.append(torch.empty((0,batchSize%miniBatchSize, 2*(self.__voc_size+1)), device=device))
 
         modern_miniBatches: dict[ModernLanguages, list[TargetInferenceData]] = {}
         modernOneHotVectors_miniBatches: dict[ModernLanguages, list[Tensor]] = {}
@@ -97,7 +98,7 @@ class ReconstructionModel(nn.Module):
             targets_loads)
     
     def renderLogitsForMiniBatch(self, samples_:InferenceData, modern_miniBatches:dict[ModernLanguages, TargetInferenceData], modernOneHotVectors_miniBatches:dict[ModernLanguages, Tensor]):
-        logits_load = torch.empty((0, len(samples_[1]), 2*(self.__voc_size+1))) # dim = (*, b, 2*(|Σ|+1))
+        logits_load = torch.empty((0, len(samples_[1]), 2*(self.__voc_size+1)), device=device) # dim = (*, b, 2*(|Σ|+1))
                 
         samplesInput:SourceInferenceData = (self.shared_embedding_layer((samples_[0], samples_[1]+2, False)), samples_[1]+2, samples_[2]+2)
         
@@ -143,7 +144,7 @@ class ReconstructionModel(nn.Module):
             mean_loss, std_loss = losses.mean().item(), losses.std().item()
             trainingStats['average'][epochNumber] = mean_loss
             trainingStats['std'][epochNumber] = std_loss
-            print(f'Average loss: {mean_loss:>7f} ; Standard deviation: {std_loss:>7f}' + ' '*10 + '\n')
+            print(f'Average loss: {mean_loss:>7f} ; Standard deviation: {std_loss:>7f}' + ' '*10+'\n'+'-'*60+'\n')
 
         fig, ax = plt.subplots()
         ax.errorbar(np.arange(1,6), trainingStats['average'], trainingStats['std'],
@@ -182,7 +183,7 @@ class ReconstructionModel(nn.Module):
             
             return probs
     
-    def bacward_dynProg(self, sources_: InferenceData) -> dict[ModernLanguages, ProbCache]:
+    def backward_dynProg(self, sources_: InferenceData) -> dict[ModernLanguages, ProbCache]:
         with torch.no_grad():
             lengths = sources_[1]+2
             maxLength = sources_[2]+2

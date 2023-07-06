@@ -70,12 +70,12 @@ class EditModel(nn.Module):
         lstm_input_dim = shared_embedding_layer.embedding_dim
 
         self.encoder_prior = nn.Sequential(
-            nn.LSTM(lstm_input_dim, lstm_hidden_dim//2, bidirectional=True).to(device)
-        )
+            nn.LSTM(lstm_input_dim, lstm_hidden_dim//2, bidirectional=True)
+        ).to(device)
         self.encoder_modern = nn.Sequential(
             shared_embedding_layer,
-            nn.LSTM(lstm_input_dim, lstm_hidden_dim).to(device)
-        )
+            nn.LSTM(lstm_input_dim, lstm_hidden_dim)
+        ).to(device)
 
         self.sub_head = nn.Sequential(
             nn.Linear(lstm_hidden_dim, self.output_dim),

@@ -129,7 +129,7 @@ def reduceOneHotTensor(t: Tensor):
 
 def getWordsLengthFromOneHot(t: Tensor) -> Tensor:
     """
-    Returns a uint8 ndarray (dim = (batch_size)) with the length of each one-hot indexes-represented words in the tensor.
+    Returns an int8 CPU Tensor (dim = (batch_size)) with the length of each one-hot indexes-represented words in the tensor.
     The ndarray choice is because we need cpu to fastly execute indexing with this kind of array (and also in with the method 'torch.nn.utils.rnn.pack_padded_sequebce')
 
     Arguments:
@@ -140,7 +140,7 @@ def getWordsLengthFromOneHot(t: Tensor) -> Tensor:
     for j in range(t.shape[1]-1, -1, -1):
         jVec = j*torch.ones(batch_size, dtype=torch.uint8).to(device)
         lengths = torch.where(t[:, j] == 0, jVec, lengths)
-    return lengths
+    return lengths.cpu()
 
 
 def oneHotsToWords(t: Tensor) -> list[str]:

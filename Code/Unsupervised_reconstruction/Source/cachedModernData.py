@@ -39,8 +39,8 @@ def nextOneHots(targets_:TargetInferenceData, voc_size:int):
     targets, sequencesLengths = targets_[:2]
     oneHots = torch.where(targets == 0, 0, targets - 1)[1:].to(torch.int64)
     original_shape = oneHots.size() # (|y|, B)
-    # dim = (1, |y|, B, |Σ|) : the boundaries and special tokens are not interesting values for y[j] (that is why they have been erased with the reduction)
-    return pad_packed_sequence(pack_padded_sequence(nn.functional.one_hot(oneHots.flatten(), num_classes=voc_size).view(original_shape+(voc_size,)), sequencesLengths-1, False, False), False)[0]
+    # dim = (1, |y|, B, |Σ|+1) : the boundaries and special tokens are not interesting values for y[j] (that is why they have been erased with the reduction)
+    return pad_packed_sequence(pack_padded_sequence(nn.functional.one_hot(oneHots.flatten(), num_classes=voc_size).view(original_shape+(voc_size,)), sequencesLengths-1, False, False), False)[0].unsqueeze(0)
 
 class CachedTargetsData():
     """
@@ -101,11 +101,11 @@ class CachedTargetsData():
 
         closing_boundary_index = int(torch.max(targets).item())
         voc_size = closing_boundary_index - 2
-        targetsInput = targets.where(targets == closing_boundary_index, 0)[:-1]
-        targetsInput.requires_grad_(True)
+        targetsInput = targets.where(targets != closing_boundary_index, 0)[:-1]
+        
         self.targetsInputData = targetsInput, targets_[1] + 1
         
         # dim = (1, |y|, B, |Σ|) : the boundaries and special tokens are not interesting values for y[j] (that is why they have been erased with the reduction)
-        self.nextOneHots = nextOneHots(targets_, voc_size)
+        self.nextOneHots = nextOneHots((*self.targetsInputData, self.maxSequenceLength-1), voc_size)
         
         self.arePaddingElements = isElementOutOfRange(sequencesLengths, self.maxSequenceLength)

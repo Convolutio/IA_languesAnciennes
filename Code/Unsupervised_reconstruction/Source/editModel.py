@@ -115,7 +115,7 @@ class EditModel(nn.Module):
         Before each inference stage (during the sampling and the backward dynamic program running), call this method to cache the current inferred context for the modern forms.
         """
         targetsInputData = self.__cachedTargetsData.targetsInputData
-        self.__cachedTargetsData.modernContext = pad_packed_sequence(self.encoder_modern(*targetsInputData, False)[0])[0]
+        self.__cachedTargetsData.modernContext = pad_packed_sequence(self.encoder_modern((*targetsInputData, False))[0])[0]
 
     def __computePaddingMask(self, sourceLengthData:tuple[Tensor, int], targetLengthData:Optional[tuple[Tensor, int]]):
         """
@@ -153,18 +153,17 @@ class EditModel(nn.Module):
         
         The value for padded sequence elements is 0, which infers an undefined and neutral probability distribution for these elements. Moreover, if log(logit) = log(target) = 0, so the contribution of padded tokens in the chosen loss is neutralized.
         
-        Arguments:
+        Arguments :
             - sources_ : (sources, lengths, maxSequenceLength), with sources a ByteTensor of dim = (|x|+2, B)
             - targets_ : if not specified (with None, in inference stage), the context and mask will be got from the cached data.
         """
-        priorContext, sourcesLengths = pad_packed_sequence(self.encoder_prior(
-            sources_[0], sources_[1], False)[0])
+        priorContext, sourcesLengths = pad_packed_sequence(self.encoder_prior(sources_[0])[0])
         priorMaxSequenceLength = priorContext.size()[0] # |x|+2
         priorContext = priorContext[:-1] # dim = (|x|+1, B, hidden_dim)
 
         modernContext:Tensor # dim = (|y|+1, B, hidden_dim)
         if targets_ is not None:
-            modernContext = pad_packed_sequence(self.encoder_modern(targets_[0], targets_[1], False)[0])[0]
+            modernContext = pad_packed_sequence(self.encoder_modern((targets_[0], targets_[1], False))[0])[0]
         else:
             modernContext = self.__cachedTargetsData.modernContext
 
@@ -273,10 +272,7 @@ class EditModel(nn.Module):
         """
         In training mode, computes the logits in a training step, from the specified samples and targets minibatch.
         logits tensor shape: (|x|+1 , |y|+1 , b, 2*(|Σ|+1)).
-        As the sources are common over all the EditModels, it is assumed that the samples's gradient
-        has already been externally set up to tracking mode.
         """
-        assert(self.training), "This method must be called in training mode."
         
         sub_outputs, ins_outputs = self(samples_, targets_)
         masked_outputs = self.__computeMaskedProbDistribs(sub_outputs, ins_outputs, targetOneHotVectors)

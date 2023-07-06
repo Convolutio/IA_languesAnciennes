@@ -45,15 +45,22 @@ def wordToOneHots(word: str) -> torch.Tensor:
     1 <= i <= |Σ|: IPA character index\n
     |Σ|+k: additional special character index
     """
-    return torch.ByteTensor([SIGMA[c]+1 for c in word]).to(device=device)
+    return torch.ByteTensor([SIGMA[c] for c in word]).to(device=device)
 
 
-def oneHotsToWord(vecSeq: Tensor) -> str:
-    w = ""
-    for vocIdx in vecSeq:
-        if vocIdx != 0:
-            w += SIGMA_INV[vocIdx.item()-1]  # type: ignore
-    return w
+def oneHotsToWord(batch: Tensor):
+    """
+    Arguments:
+        - batch (Tensor): an IntTensor/LongTensor representing words in sequences of one hot indexes.
+        dim = (B, L) 
+    """
+    # TODO
+    pass
+    # w = ""
+    # for vocIdx in batch:
+    #     if vocIdx != 0:
+    #         w += SIGMA_INV[vocIdx.item()]  # type: ignore
+    # return w
 
 
 def make_oneHotTensor(formsVec: Tensor, add_boundaries: bool, formsLengths: NDArray[np.uint8]) -> Tensor:
@@ -79,9 +86,9 @@ def make_oneHotTensor(formsVec: Tensor, add_boundaries: bool, formsLengths: NDAr
     """
     voc_size = V_SIZE
     batch_size, max_length = formsVec.shape
-    # empty_char_index := -1
-    left_boundary_index = voc_size
-    right_boundary_index = voc_size+1
+    # empty_char_index := 0
+    left_boundary_index = voc_size+1
+    right_boundary_index = voc_size+2
 
     # t = torch.where(formsVec != 0, formsVec-1, formsVec).cpu().numpy()
     t = formsVec
@@ -94,7 +101,7 @@ def make_oneHotTensor(formsVec: Tensor, add_boundaries: bool, formsLengths: NDAr
         ), axis=1)
         t[range(batch_size), formsLengths+1] = np.full((batch_size,),
                                                        right_boundary_index, dtype=np.uint8)
-        t = torch.as_tensor(t, dtype=torch.int32, device=device)
+        t = torch.as_tensor(t, dtype=torch.int32, device=device).T
     return t
     # flat = t.flatten().to(torch.int64)
     # tensor = torch.nn.functional.one_hot(
@@ -120,7 +127,7 @@ def reduceOneHotTensor(t: Tensor):
     return t[:, :i+1]
 
 
-def getWordsLengthFromOneHot(t: Tensor) -> NDArray[np.uint8]:
+def getWordsLengthFromOneHot(t: Tensor) -> Tensor:
     """
     Returns a uint8 ndarray (dim = (batch_size)) with the length of each one-hot indexes-represented words in the tensor.
     The ndarray choice is because we need cpu to fastly execute indexing with this kind of array (and also in with the method 'torch.nn.utils.rnn.pack_padded_sequebce')
@@ -133,7 +140,7 @@ def getWordsLengthFromOneHot(t: Tensor) -> NDArray[np.uint8]:
     for j in range(t.shape[1]-1, -1, -1):
         jVec = j*torch.ones(batch_size, dtype=torch.uint8).to(device)
         lengths = torch.where(t[:, j] == 0, jVec, lengths)
-    return lengths.cpu().numpy().astype(np.uint8)
+    return lengths
 
 
 def oneHotsToWords(t: Tensor) -> list[str]:
@@ -155,6 +162,6 @@ def computeInferenceData(byteTensor: Tensor) -> InferenceData:
     """
     batch = reduceOneHotTensor(byteTensor)
     samples_lengths = getWordsLengthFromOneHot(batch)
-    return (make_oneHotTensor(batch, True, samples_lengths), samples_lengths, batch.shape[1])
+    return (make_oneHotTensor(batch, True, samples_lengths.cpu().numpy().astype(np.uint8)), samples_lengths, batch.shape[1])
 
 # TODO convertir les cognats en vecteurs one-hot une seule fois

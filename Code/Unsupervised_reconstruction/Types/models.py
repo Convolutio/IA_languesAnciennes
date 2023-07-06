@@ -2,7 +2,7 @@ from typing import Literal
 from numpy.typing import NDArray
 from numpy import uint8
 from torch import Tensor
-
+from torch.nn.utils.rnn import PackedSequence
 
 EditNDArray = Tensor
 EditsCombination = Tensor
@@ -33,4 +33,21 @@ This tuple contains :
       See data.vocab.py for the meaning of each one-hot indexes. 
     - the CPU IntTensor with the lengths of the raw sequences (i.e. without their boundaries). The numpy format enables CPU optimisation for the indexing in the dynamic program.
     - The max length of a raw sequence in the batch, for avoiding computing again this information for ndarray creations.
+"""
+
+SourceInferenceData = tuple[PackedSequence, Tensor, int]
+"""
+It is expected the source input data to be passed in an EditModel with the PackingEmbedding conversion which has already been externally applied.
+
+Tuple arguments:
+    * PackedSequence of the samples' embeddings, which are sequences of tokens with the boundaries. shape = (|x|+2, B)
+    * CPU IntTensor with the lengths of sequences (with boundaries, so |x|+2)
+    * int with the maximum one
+"""
+TargetInferenceData = tuple[Tensor, Tensor, int]
+"""
+Tuple arguments:
+    * IntTensor with the modern forms with one-hot indexes format. They are sequences of tokens with IPA chararacters and only the opening boundary. shape = (|y|+1, B)
+    * CPU IntTensor with the lengths of sequences (with the opening boundary, so |y|+1)
+    * int with the maximum one
 """

@@ -5,7 +5,7 @@ from torch.nn.utils.rnn import pad_sequence
 from Types.articleModels import ModernLanguages
 from Types.models import InferenceData
 from Source.dynamicPrograms import compute_mutation_prob
-from Source.editModel import EditModel
+from Source.reconstructionModel import ReconstructionModel
 from data.vocab import computeInferenceData
 from lm.PriorLM import PriorLM
 
@@ -26,7 +26,7 @@ def computeLaw(probs: np.ndarray) -> np.ndarray:
     return np.array([prob-totalProb for prob in probs], dtype=float)
 
 
-def computeUnnormalizedProbs(models:dict[ModernLanguages, EditModel], priorLM:PriorLM, proposalsSetsList:list[Tensor], cognatesInferenceData:dict[ModernLanguages, InferenceData], selectionIndexes:Tensor)->Tensor:
+def computeUnnormalizedProbs(models:ReconstructionModel, priorLM:PriorLM, proposalsSetsList:list[Tensor], selectionIndexes:Tensor) -> Tensor:
     """
     Run the dynamic inferences in the neural edit models and inferences in the prior language model to compute p(x|{y_l : l \\in L}) over the proposals batch which will be built from the sampled indexes.
     """
@@ -35,20 +35,20 @@ def computeUnnormalizedProbs(models:dict[ModernLanguages, EditModel], priorLM:Pr
     sourceInferenceData = computeInferenceData(batch)
 
     probs = priorLM.inference(sourceInferenceData)
-    for language in models:
-        probs += compute_mutation_prob(models[language], sourceInferenceData, cognatesInferenceData[language]) #type:ignore
+    mutationProbs = models.forward_dynProg(sourceInferenceData)
+    for branch_mutationProbs in mutationProbs.values():
+        probs += branch_mutationProbs
     return torch.as_tensor(probs)
 
     
-def metropolisHasting(proposalsSetsList: list[Tensor], models:dict[ModernLanguages, EditModel], priorLM:PriorLM, cognates:dict[ModernLanguages, InferenceData], iteration: int = 10**4) -> Tensor:
+def metropolisHasting(proposalsSetsList: list[Tensor], models:ReconstructionModel, priorLM:PriorLM, iteration: int = 10**4) -> Tensor:
     """
     Sample proposals randomly from a probability distribution which will be computed progressively from forward dynamic program (so the language model, the edit models and the cognates are required).
 
     Arguments:
         proposalsSetsInfos (list[ByteTensor]) : a list of the proposals sets for each reconstruction
-        models (dict[Languages, EditModel]): the dictionnary containing the EditModels for each modern language.
+        models (dict[Languages, EditModel]): the dictionnary containing the ReconstructionModel for each modern language.
         priorLM (PriorLM): a language model of the proto-language
-        cognates (dict[Languages, BoolTensor]) : a tensor of one-hot vectors representing the cognates of the training dataset in each language.
         iteration (int) : the number of proposal sampling iterations.
     """
     batch_size = len(proposalsSetsList)
@@ -61,11 +61,10 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:dict[ModernLanguag
         if l > maxWordLength: maxWordLength=l
     
     # Computes once the context of targets in the edits models
-    for language in models:
-        models[language].update_cachedTargetContext()
+    models.update_modernForm_context()
     
     i = torch.zeros(batch_size, dtype=torch.int32)
-    iProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, cognates, i)
+    iProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, i)
     
     for _ in range(iteration):
         # random j index for each sample
@@ -74,7 +73,7 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:dict[ModernLanguag
             ).to(dtype=torch.int32)
         j = torch.where(j>=i, j+1, j)
         
-        jProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, cognates, j)
+        jProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, j)
         
         acceptation = jProbs - iProbs
         u = torch.log(torch.rand(batch_size))

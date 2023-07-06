@@ -1,129 +1,21 @@
 #!/usr/local/bin/python3.9.10
 from typing import Optional
+
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence, PackedSequence
+
+from torch.nn.utils.rnn import pad_packed_sequence
 from torch import Tensor
+
 from models import ProbCache
 from Types.articleModels import *
-from Types.models import InferenceData
+from Types.models import InferenceData, SourceInferenceData, TargetInferenceData
 from Source.packingEmbedding import PackingEmbedding
+from Source.cachedModernData import CachedTargetsData, isElementOutOfRange
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 BIG_NEG = -1e9
-
-SourceInferenceData = tuple[PackedSequence, Tensor, int]
-"""
-It is expected the source input data to be passed in an EditModel with the PackingEmbedding conversion which has already been externally applied.
-
-Tuple arguments:
-    * PackedSequence of the samples' embeddings, which are sequences of tokens with the boundaries. shape = (|x|+2, B)
-    * CPU IntTensor with the lengths of sequences (with boundaries, so |x|+2)
-    * int with the maximum one
-"""
-TargetInferenceData = tuple[Tensor, Tensor, int]
-"""
-Tuple arguments:
-    * IntTensor with the modern forms with one-hot indexes format. They are sequences of tokens with IPA chararacters and only the opening boundary. shape = (|y|+1, B)
-    * CPU IntTensor with the lengths of sequences (with the opening boundary, so |y|+1)
-    * int with the maximum one
-"""
-
-def isElementOutOfRange(sequencesLengths:Tensor, maxSequenceLength:int) -> Tensor:
-    """
-    Return a BoolTensor with the same dimension as a tensor representing a batch of tokens sequences with variable lengths.
-    False value is at the positions of closing_boundaries and padding tokens and True value at the others.
-    dim = (B, L+1)
-
-    ## Example:
-
-    4 and 5 are the respectives one-hot indexes for ( and )
-    >>> batch = torch.tensor([
-        [4,1,1,2,5,0],
-        [4,1,3,5,0,0],
-        [4,2,2,3,5,0],
-        [4,3,5,0,0,0]])
-    >>> batch_sequencesLengths = torch.tensor([3,2,3,1], dtype=int) + 2
-    >>> maxSequenceLength = 3+2 # torch.max(batch_sequencesLengths)
-    >>> isElementOutOfRange(batch_sequencesLengths, maxSequenceLength)
-    tensor([[True, True, True, True, False, False],
-            [True, True, True, False, False, False],
-            [True, True, True, True, False, False],
-            [True, True, False, False, False, False]])
-
-    ## Arguments:
-        - sequencesLengths: a CPU IntTensor or LongTensor of B elements (B is the batch size) with the length of each batch's sequences (with boundaries).
-        - maxSequenceLength: an integer with the max sequence length (with boundaries)
-    """
-    return torch.arange(maxSequenceLength-1).unsqueeze(0) < (sequencesLengths-1).unsqueeze(1)
-
-def nextOneHots(targets_:TargetInferenceData, voc_size:int):
-    targets, sequencesLengths = targets_[:2]
-    oneHots = torch.where(targets == 0, 0, targets - 1)[1:].to(torch.int64)
-    original_shape = oneHots.size() # (|y|, B)
-    # dim = (1, |y|, B, |Σ|) : the boundaries and special tokens are not interesting values for y[j] (that is why they have been erased with the reduction)
-    return pad_packed_sequence(pack_padded_sequence(nn.functional.one_hot(oneHots.flatten(), num_classes=voc_size).view(original_shape+(voc_size,)), sequencesLengths-1, False, False), False)[0]
-
-class CachedTargetsData():
-    """
-    Contains :
-        * modernContext (Tensor) : the context embeddings computed from the targets
-        * logarithmicOneHots (Tensor) : the logarithmics targets' one-hot vectors
-        * sequencesLengths (ByteTensor) : the lengths of each sequence
-        * maxSequenceLength (int)
-        * arePaddingElements(BoolTensor) : A coefficient equals True if its position is not in a padding zone
-    """
-    modernContext: Tensor
-    """
-    Context of y, ready to be summed with the context of x.
-
-    dim = (B, 2*hidden_dim, 1, |y|+1)
-    """
-
-    targetsInputData: tuple[Tensor, Tensor]
-    """
-        - (IntTensor/LongTensor) The input one-hot indexes of the target cognates, without their ) closing boundary.
-            dim = (|y|+1, B) ; indexes between 0 and |Σ|+1 included
-        - The CPU IntTensor with the sequence lengths (with opening boundary, so |y|+1). (dim = B)
-    """
-    
-    nextOneHots: Tensor
-    """
-    This tensor is useful to get the inferred probabilities that some phonetic tokens sub or are inserted to a current building target.
-    dim = (1, |y|, B, |Σ|)
-    """
-
-    maxSequenceLength: int
-    """
-    The maximal length of a sequence (with the boundaries) in the target cognates batch.
-    """
-    
-    arePaddingElements: Tensor
-    """
-    dim = (B, |y|+1)
-    """
-
-    def __init__(self, targets_:InferenceData) -> None:
-        """
-        Optimisation method : computes once the usefull data for the targets at the EditModel's initialisation.
-        The gradient of the targets input data is set in the method to be tracked.
-        """
-        self.maxSequenceLength = targets_[2]+2
-        
-        targets, sequencesLengths = targets_[0], targets_[1]
-
-        closing_boundary_index = int(torch.max(targets).item())
-        voc_size = closing_boundary_index - 2
-        targetsInput = targets.where(targets == closing_boundary_index, 0)[:-1]
-        targetsInput.requires_grad_(True)
-        self.targetsInputData = targetsInput, targets_[1] + 1
-        
-        # dim = (1, |y|, B, |Σ|) : the boundaries and special tokens are not interesting values for y[j] (that is why they have been erased with the reduction)
-        self.nextOneHots = nextOneHots(targets_, voc_size)
-        
-        self.arePaddingElements = isElementOutOfRange(sequencesLengths, self.maxSequenceLength)
 
 
 class EditModel(nn.Module):
@@ -133,9 +25,9 @@ class EditModel(nn.Module):
     ### This class gathers the neural insertion and substitution models, specific to a branch between the\
           proto-language and a modern language.
     `q_ins` and `q_sub` are defined as followed:
-        * Reconstruction input (samples): a batch of packed sequences of one-hot indexes from 0 to |Σ|+2 representing phonetic or special tokens\
-        in Σ ∪ {`'('`, `')'`}
-        * Targets input (cognates): a batch of packed sequences of one-hot indexes from 0 to |Σ|+1 representing phonetic or special tokens in Σ ∪ {`'('`, `')'`}. The processing of the closing boundary at the end of the sequence will be avoided by the model thanks to the unidirectionnality of the context. 
+        * Reconstruction input (samples): a batch of packed sequences of embeddings representing phonetic or special tokens\
+        in Σ ∪ {`'('`, `')'`, `'<pad>'`}
+        * Targets input (cognates): a batch of padded sequences of one-hot indexes from 0 to |Σ|+1 representing phonetic or special tokens in Σ ∪ {`'('`, `')'`}. The processing of the closing boundary at the end of the sequence will be avoided by the model thanks to the unidirectionnality of the context. 
         * Output: a tensor of dimension |Σ|+1 representing a probability distribution over\
         Σ ∪ {`'<del>'`} for `q_sub` or Σ ∪ {`'<end>'`} for `q_ins`. The usefull output batch has a dimension of (|x|+1, |y|+1, B) 
 
@@ -207,9 +99,18 @@ class EditModel(nn.Module):
         """
         return self.__cachedTargetsData.targetsInputData
     
+    @property
+    def cachedTargetDataForDynProg(self):
+        """
+        A tuple with:
+            * the ndarray with batch's raw sequence lengths
+            * an integer equalling the maximum one
+        """
+        return self.__cachedTargetsData.lengthDataForDynProg
+    
     #----------Inference---------------
 
-    def update_cachedTargetContext(self, targets:tuple[Tensor, Tensor]):
+    def update_cachedTargetContext(self):
         """
         Before each inference stage (during the sampling and the backward dynamic program running), call this method to cache the current inferred context for the modern forms.
         """
@@ -381,106 +282,3 @@ class EditModel(nn.Module):
         masked_outputs = self.__computeMaskedProbDistribs(sub_outputs, ins_outputs, targetOneHotVectors)
         
         return masked_outputs
-    
-
-class EditModels(nn.Module):
-    def __init__(self, cognatesSet:dict[ModernLanguages, InferenceData], voc_size:int, lstm_input_dim:int, lstm_hidden_dim:int):
-        super().__init__()
-        self.__languages: tuple[ModernLanguages, ...] = tuple(cognatesSet.keys())
-        self.__voc_size = voc_size
-        self.shared_embedding_layer = PackingEmbedding(voc_size+3, lstm_input_dim, padding_idx=0)
-        self.__editModels =  nn.ModuleDict[ModernLanguages, EditModel]({ # type: ignore
-                lang:EditModel(
-                    targetInferenceData,
-                    lang,
-                    self.shared_embedding_layer,
-                    voc_size,
-                    lstm_hidden_dim
-                ) for (lang, targetInferenceData) in cognatesSet.items()
-            })
-    
-    @property
-    def models(self):
-        return self.__editModels
-    
-    @property
-    def languages(self):
-        return self.__languages
-    
-    
-    def train_models(self, samples_:InferenceData, prob_targets_cache:dict[ModernLanguages, ProbCache], miniBatchSize = 30, epochs=5, learning_rate=0.01):
-        samples_[0].requires_grad_(True)
-        
-        ## Mini-batching
-
-        batchSize = len(samples_[1])
-        splits:tuple[list[Tensor], list[Tensor]] = (samples_[0].split(miniBatchSize, 1), samples_[1].split(miniBatchSize))
-        samples_miniBatches: list[InferenceData] = [(splits[0][i], splits[1][i], int(torch.max(splits[1][i]).item())) for i in range(len(splits[1]))]
-        miniBatchesNumber = len(samples_miniBatches) # = batchSize // MINI_BATCH_SIZE
-        
-        targets_loads = [torch.empty((0,miniBatchSize,self.__voc_size+1)) for _ in range(miniBatchesNumber-1)] # dim = (*, b, 2*(|Σ|+1))
-        targets_loads.append(torch.empty((0,batchSize%miniBatchSize,self.__voc_size+1)))
-
-        modern_miniBatches: dict[ModernLanguages, list[TargetInferenceData]] = {}
-        modernOneHotVectors_miniBatches: dict[ModernLanguages, list[Tensor]] = {}
-
-        for lang in self.__languages:
-            model:EditModel = self.models[lang] #type: ignore
-            
-            modern_splits = (model.cachedTargetInputData[0].split(miniBatchSize, 1), model.cachedTargetInputData[1].split(miniBatchSize))
-            modern_miniBatches[lang] = [(modern_splits[0][i], modern_splits[1][i], int(torch.max(modern_splits[1][i]).item())) for i in range(len(modern_splits[1]))]
-            modernOneHotVectors_miniBatches[lang] = [nextOneHots(inpt, self.__voc_size) for inpt in modern_miniBatches[lang]]
-            
-            
-            for i, (samples_, moderns_, modernOneHots) in enumerate(zip(samples_miniBatches, modern_miniBatches[lang], modernOneHotVectors_miniBatches[lang])):
-                maxSourceLength = samples_[2] + 2 # max |x|+2
-                maxModernLength = moderns_[2] + 1 # max |y|+2
-                thisMiniBatchSize = len(samples_[1]) # = MINI_BATCH_SIZE or (batchSize % MINI_BATCH_SIZE)
-                
-                mini_targetProbCache = ProbCache(maxSourceLength, maxModernLength, thisMiniBatchSize)
-                mini_targetProbCache.dlt = prob_targets_cache[lang].dlt[:maxSourceLength, :maxModernLength, miniBatchSize*i : miniBatchSize*i + thisMiniBatchSize]
-                mini_targetProbCache.end = prob_targets_cache[lang].end[:maxSourceLength, :maxModernLength, miniBatchSize*i : miniBatchSize*i + thisMiniBatchSize]
-                mini_targetProbCache.sub = prob_targets_cache[lang].sub[:maxSourceLength, :maxModernLength, miniBatchSize*i : miniBatchSize*i + thisMiniBatchSize]
-                mini_targetProbCache.ins = prob_targets_cache[lang].ins[:maxSourceLength, :maxModernLength, miniBatchSize*i : miniBatchSize*i + thisMiniBatchSize]
-
-
-
-                targets_loads[i] = torch.cat((targets_loads[i], model.get_targets(mini_targetProbCache,
-                                                                                  (samples_[1]+2, maxSourceLength),
-                                                                                  (moderns_[1]+1, maxModernLength),
-                                                                                  modernOneHots).flatten(end_dim=2)), dim=0)
-        
-        
-        optimizer = optim.Adam(self.parameters(), lr=learning_rate)
-        #TODO: experimenting smoothing values for this loss function.
-        loss_function = nn.KLDivLoss(reduction="batchmean", log_target=True) # neutral if log(target) = log(logit) = 0
-        
-        self.train()
-
-        for _ in range(epochs):
-
-            for i, (samples_, targets_load) in enumerate(zip(samples_miniBatches, targets_loads)):
-                logits_load = torch.empty((0, len(samples_[1]) ,self.__voc_size+1)) # dim = (*, b, 2*(|Σ|+1))
-                
-                optimizer.zero_grad()
-
-                samplesInput:SourceInferenceData = (self.shared_embedding_layer(samples_[0], samples_[1]+2, False), samples_[1]+2, samples_[2]+2)
-                
-                for lang in self.__languages:
-                    modern_, modernOneHots = modern_miniBatches[lang][i], modernOneHotVectors_miniBatches[lang][i]
-                    model:EditModel = self.models[lang] #type: ignore
-                    
-                    logits_load = torch.cat((logits_load, model.get_logits(samplesInput, modern_, modernOneHots).flatten(end_dim=2)), dim=0)
-                
-                loss = loss_function(logits_load, targets_load)
-                loss.backward()
-                optimizer.step()
-    
-    def inference(self, samples_:InferenceData) -> dict[ModernLanguages, Tensor]:
-        """
-        Computes p(y_l|x) for each l in L.
-
-        Each value tensor of the dictionnary has a dimension of B
-        """
-        #TODO
-        pass

@@ -8,6 +8,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from torch.optim import AdamW, sgd
 
+from numpy import ndarray
+
 from Types.models import InferenceData
 
 INFTY_NEG = -1e9
@@ -24,7 +26,7 @@ class PriorLM:
     def evaluation(self) -> float:
         pass
 
-    def inference(self, reconstructions: InferenceData) -> Tensor:
+    def inference(self, reconstructions: InferenceData) -> ndarray:
         pass
 
 

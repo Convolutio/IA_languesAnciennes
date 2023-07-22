@@ -133,7 +133,7 @@ def getWordsLengthFromOneHot(t: Tensor) -> Tensor:
     The ndarray choice is because we need cpu to fastly execute indexing with this kind of array (and also in with the method 'torch.nn.utils.rnn.pack_padded_sequebce')
 
     Arguments:
-        t (ByteTensor): a matrix representing a word at each rows. Empty characters could be present at the right. 
+        t (ByteTensor): a matrix representing a word at each row. Empty characters could be present at the right. 
     """
     batch_size = t.shape[0]
     lengths = t.shape[1]*torch.ones(batch_size, dtype=torch.uint8).to(device)
@@ -158,10 +158,23 @@ def computeInferenceData(byteTensor: Tensor) -> InferenceData:
     the one-hot vector encoding is carried out.
 
     Arguments:
-        byteTensor (ByteTensor, dim=(batch_size, ArbitrarySequenceLength)) : the tensor with the encoded words.  
+        byteTensor (ByteTensor, dim=(ArbitrarySequenceLength, *)) : the tensor with the encoded words.  
     """
-    batch = reduceOneHotTensor(byteTensor)
-    samples_lengths = getWordsLengthFromOneHot(batch)
-    return (make_oneHotTensor(batch, True, samples_lengths.cpu().numpy().astype(np.uint8)), samples_lengths, batch.shape[1])
+    voc_size = V_SIZE
+    left_boundary_index = voc_size+1
+    right_boundary_index = voc_size+2
+
+    rawShape = byteTensor.size()
+    withBoundariesTensor = torch.cat((
+            torch.full((1, *rawShape[1:]), left_boundary_index, device=device, dtype=torch.int32),
+            byteTensor,
+            torch.zeros((1, *rawShape[1:]), device=device, dtype=torch.int32)
+        ))
+    t = torch.logical_xor(withBoundariesTensor[:-1], withBoundariesTensor[1:])
+    withBoundariesTensor[1:] = torch.where(t, right_boundary_index, withBoundariesTensor[1:])
+    lengths = (torch.argwhere(t)[:, 0]).view(*rawShape[1:])
+    maxLength = int(torch.max(lengths).item())
+
+    return (withBoundariesTensor[:maxLength+2], lengths.cpu(), maxLength)
 
 # TODO convertir les cognats en vecteurs one-hot une seule fois

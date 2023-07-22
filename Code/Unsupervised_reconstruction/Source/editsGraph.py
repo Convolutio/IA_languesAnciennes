@@ -160,7 +160,7 @@ class EditsGraph:
         return j - self.__insertionInfos[i+1][1] + 1
 
     def __rollTensor(self, t: Tensor, j: int):
-        t[:, j:] = torch.where((t[:, j] == 0).repeat(t.shape[1]-j, 1).T,
+        t[:, j:] = torch.where((t[:, j] == 0).unsqueeze(1),
                                (t[:, j:]).roll(-1, 1),
                                t[:, j:])
 

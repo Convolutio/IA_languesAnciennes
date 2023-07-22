@@ -20,6 +20,34 @@ from models import ProbCache
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class ReconstructionModel(nn.Module):
+    """
+    Let C be the number of cognates pairs in the unsupervised training dataset.
+    Let B be the number of samples given for the inference for each cognates pair.
+
+    # Cognates data caching
+    In the model initialisation.
+
+    Input cognates tensor shape: (|y|+2, C, 1)\\
+    Input cognates' lengths tensor shape: (C, 1)
+
+    # Inference
+    This section is about the following methods:
+        - forward dynamic programs
+
+    Input samples tensor shape: (|x|+2, C, B)\\
+    Input samples' lengths tensor shape: (C, B)
+
+    # Maximisation
+    This section is about the following methods:
+        - bacward dynamic programs
+        - EditModels training
+        - logits and targets rendering (debug)
+    
+    One sample is selected for each cognate pair so B = 1
+
+    Input samples tensor shape: (|x|+2, C, 1)\\
+    Input samples' lengths tensor shape: (C, 1)
+    """
     def __init__(self, cognatesSet:dict[ModernLanguages, InferenceData], voc_size:int, lstm_input_dim:int, lstm_hidden_dim:int):
         super().__init__()
         self.__languages: tuple[ModernLanguages, ...] = tuple(cognatesSet.keys())
@@ -34,6 +62,7 @@ class ReconstructionModel(nn.Module):
                     lstm_hidden_dim
                 ) for (lang, targetInferenceData) in cognatesSet.items()
             })
+        self.cachedBatchSize = len(list(cognatesSet.values())[0][1]) # the size C for the inferences
     
     def getModel(self, language:ModernLanguages):
         return self.__editModels[language]
@@ -41,6 +70,14 @@ class ReconstructionModel(nn.Module):
     @property
     def languages(self):
         return self.__languages
+    
+    def __computeSourceInferenceData(self,samples_:InferenceData) -> SourceInferenceData:
+        lengths = samples_[1]+2
+        maxLength = samples_[2]+2
+        return (self.shared_embedding_layer((
+            samples_[0].flatten(start_dim=1), lengths.flatten(), False
+        )),
+        lengths, maxLength)
     
     #-----------TRAINING----------------
     
@@ -100,7 +137,7 @@ class ReconstructionModel(nn.Module):
     def renderLogitsForMiniBatch(self, samples_:InferenceData, modern_miniBatches:dict[ModernLanguages, TargetInferenceData], modernOneHotVectors_miniBatches:dict[ModernLanguages, Tensor]):
         logits_load = torch.empty((0, len(samples_[1]), 2*(self.__voc_size+1)), device=device) # dim = (*, b, 2*(|Σ|+1))
                 
-        samplesInput:SourceInferenceData = (self.shared_embedding_layer((samples_[0], samples_[1]+2, False)), samples_[1]+2, samples_[2]+2)
+        samplesInput:SourceInferenceData = self.__computeSourceInferenceData(samples_)
         
         for lang in self.__languages:
             modern_, modernOneHots = modern_miniBatches[lang], modernOneHotVectors_miniBatches[lang]
@@ -162,18 +199,19 @@ class ReconstructionModel(nn.Module):
     #------------INFERENCE------------------
     
     def update_modernForm_context(self):
-        for language in self.languages:
-            model:EditModel = self.__editModels[language] #type: ignore
-            model.update_cachedTargetContext()
+        self.eval()
+        with torch.no_grad():
+            for language in self.languages:
+                model:EditModel = self.__editModels[language] #type: ignore
+                model.update_cachedTargetContext()
     
     def forward_dynProg(self, sources_:InferenceData) -> dict[ModernLanguages, np.ndarray]:
         """
         Returns (p(y_l)|x) for all the batch
         """
+        self.eval()
         with torch.no_grad():
-            lengths = sources_[1]+2
-            maxLength = sources_[2]+2
-            sources:SourceInferenceData = (self.shared_embedding_layer((sources_[0], lengths, False)), lengths, maxLength)
+            sources:SourceInferenceData = self.__computeSourceInferenceData(sources_)
 
             probs:dict[ModernLanguages, np.ndarray] = {}
             for language in self.languages:
@@ -184,10 +222,10 @@ class ReconstructionModel(nn.Module):
             return probs
     
     def backward_dynProg(self, sources_: InferenceData) -> dict[ModernLanguages, ProbCache]:
+        self.eval()
+        assert(sources_[0].size()[1:]==(self.cachedBatchSize,1)), "The expected shape is (C,1), with C the number of cognates pairs passed in the initialisation of the model."
         with torch.no_grad():
-            lengths = sources_[1]+2
-            maxLength = sources_[2]+2
-            sources:SourceInferenceData = (self.shared_embedding_layer((sources_[0], lengths, False)), lengths, maxLength)
+            sources:SourceInferenceData = self.__computeSourceInferenceData(sources_)
 
             cache:dict[ModernLanguages, ProbCache] = {}
             for language in self.languages:

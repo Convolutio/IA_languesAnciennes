@@ -29,9 +29,9 @@ The data in a language for inferring into an edit model with the dynamic program
 
 This tuple contains :
     - the tensor with the batch's words with their boundaries, encoded into one-hot indexes sequence.
-      (dim = (N+2, B), with B the batch size, N the variable raw sequences lengths).
+      (shape = (N+2, C, B)), with C the number of cognate pairs, B the number of input linked to each cognate pair (1 if it is a cognate, else it is a number of proposals linked to each cognate), N the variable raw sequences lengths).
       See data.vocab.py for the meaning of each one-hot indexes. 
-    - the CPU IntTensor with the lengths of the raw sequences (i.e. without their boundaries). The numpy format enables CPU optimisation for the indexing in the dynamic program.
+    - the CPU IntTensor with the lengths of the raw sequences (i.e. without their boundaries). The numpy format enables CPU optimisation for the indexing in the dynamic program. (shape = (C, B) or (C))
     - The max length of a raw sequence in the batch, for avoiding computing again this information for ndarray creations.
 """
 
@@ -40,14 +40,14 @@ SourceInferenceData = tuple[PackedSequence, Tensor, int]
 It is expected the source input data to be passed in an EditModel with the PackingEmbedding conversion which has already been externally applied.
 
 Tuple arguments:
-    * PackedSequence of the samples' embeddings, which are sequences of tokens with the boundaries. shape = (|x|+2, B)
-    * CPU IntTensor with the lengths of sequences (with boundaries, so |x|+2)
+    * PackedSequence of the samples' embeddings, which are sequences of tokens with the boundaries. shape = (|x|+2, C*B, input_dim)
+    * CPU IntTensor with the lengths of sequences (with boundaries, so |x|+2). shape = (C, B)
     * int with the maximum one
 """
 TargetInferenceData = tuple[Tensor, Tensor, int]
 """
 Tuple arguments:
-    * IntTensor with the modern forms with one-hot indexes format. They are sequences of tokens with IPA chararacters and only the opening boundary. shape = (|y|+1, B)
-    * CPU IntTensor with the lengths of sequences (with the opening boundary, so |y|+1)
+    * IntTensor with the modern forms with one-hot indexes format. They are sequences of tokens with IPA chararacters and only the opening boundary. shape = (|y|+1, C)
+    * CPU IntTensor with the lengths of sequences (with the opening boundary, so |y|+1). shape = (C)
     * int with the maximum one
 """

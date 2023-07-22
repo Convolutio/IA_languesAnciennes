@@ -24,12 +24,12 @@ class EditModel(nn.Module):
 
     ### This class gathers the neural insertion and substitution models, specific to a branch between the\
           proto-language and a modern language.
-    `q_ins` and `q_sub` are defined as followed:
+    `q_ins` and `q_sub` are defined as followed (considering Σ as the IPA characters vocabulary):
         * Reconstruction input (samples): a batch of packed sequences of embeddings representing phonetic or special tokens\
         in Σ ∪ {`'('`, `')'`, `'<pad>'`}
-        * Targets input (cognates): a batch of padded sequences of one-hot indexes from 0 to |Σ|+1 representing phonetic or special tokens in Σ ∪ {`'('`, `')'`}. The processing of the closing boundary at the end of the sequence will be avoided by the model thanks to the unidirectionnality of the context. 
+        * Targets input (cognates): a batch of padded sequences of one-hot indexes from 0 to |Σ|+1 representing phonetic or special tokens in Σ ∪ {`'('`, `'<pad>'`}. The processing of the closing boundary at the end of the sequence will be avoided by the model thanks to the unidirectionnality of the context. 
         * Output: a tensor of dimension |Σ|+1 representing a probability distribution over\
-        Σ ∪ {`'<del>'`} for `q_sub` or Σ ∪ {`'<end>'`} for `q_ins`. The usefull output batch has a dimension of (|x|+1, |y|+1, B) 
+        Σ ∪ {`'<del>'`} for `q_sub` or Σ ∪ {`'<end>'`} for `q_ins`. The usefull output batch has a dimension of (|x|+1, |y|+1, B)
 
     ### Instructions for targets' data caching
         * At the beginning of the Monte-Carlo training, cache the initial targets' background data by adding an InferenceData object in __init__'s argument
@@ -38,11 +38,14 @@ class EditModel(nn.Module):
     ### Inference in the model
     With the `cache_probs` method. Then, use the `sub`, `ins`, `del` and `end` method to get the cached probs.
 
-    #### About the padding
-    In the cached probs, some probabilities are undefined and has the neutral logarithmic probability equaling 0.
-
     ### Training
-    TODO: correctly defining it
+    Compute the logits with mini batches of samples and cognates input data (so the cache will not be used here).
+
+    Expected input samples tensor shape (in a PackedSequence): (|x|+2, C*B, input_dim)\\
+    Expected input samples' lengths tensor shape: (C, B)
+
+    Expected input cognates tensor shape: (|y|+1, C)
+    Expected input cognates' lengths tensor shape: (C)
     """
 
     def __init__(self, targets_:InferenceData, language: ModernLanguages, shared_embedding_layer:PackingEmbedding, voc_size:int, lstm_hidden_dim: int):
@@ -115,32 +118,7 @@ class EditModel(nn.Module):
         Before each inference stage (during the sampling and the backward dynamic program running), call this method to cache the current inferred context for the modern forms.
         """
         targetsInputData = self.__cachedTargetsData.targetsInputData
-        self.__cachedTargetsData.modernContext = pad_packed_sequence(self.encoder_modern((*targetsInputData, False))[0])[0]
-
-    def __computePaddingMask(self, sourceLengthData:tuple[Tensor, int], targetLengthData:Optional[tuple[Tensor, int]]):
-        """
-        Computes a mask for the padded elements from the reconstructions x and the targets y.
-        
-        Mask dim = (|x|+1, |y|+1, B, 1)
-
-        Apply the mask with broadcasting as below
-        >>> mask = self.__computeMask(sourcesLengths, maxSourceLength)
-        >>> masked_ctx = mask*ctx
-
-        Arguments:
-            * sourceLengthData: a tuple with the following elements:
-                - sourcesLengths: a cpu tensor containing the lengths of the samples with the boundaries (|x|+2)
-                - maxSourceLength: the value of the maximum sequence length (including the boundaries).
-            * targetLengthData: if None, this data is not computed and got from the cache. Else, the tuple with the following elements must be given:
-                - targetsLengths: a cpu tensor containing the lengths of the modern forms with the boundaries (|y|+2)
-                - maxTargetLength: the value of the maximum sequence length (including the boundaries)
-        """
-        A = isElementOutOfRange(*sourceLengthData) # dim = (B, |x|+1)
-        B = self.__cachedTargetsData.arePaddingElements # dim = (B, |y|+1)
-        if targetLengthData is not None:
-            B = isElementOutOfRange(*targetLengthData) # dim = (B, |y|+1)
-        return torch.logical_and(A.unsqueeze(-1), B.unsqueeze(-2)).to(device).movedim((1, 2), (0, 1)).unsqueeze(-1) # dim = (|x|+1, |y|+1, B, 1)
-    
+        self.__cachedTargetsData.modernContext = pad_packed_sequence(self.encoder_modern((*targetsInputData, False))[0])[0].unsqueeze(2).unsqueeze(0)
     
     def __call__(self, sources_:SourceInferenceData, targets_:Optional[TargetInferenceData] = None) -> tuple[Tensor, Tensor]:
         return super().__call__(sources_, targets_)
@@ -149,32 +127,34 @@ class EditModel(nn.Module):
         """
         Returns a tuple of tensors representing respectively log q_sub(. |x,.,y[:.]) and log q_ins(.|x,.,y[:.]) , for each (x,y) sample-target couple in the batch.
 
-        Tensors dimension = (|x|+1, |y|+1, B, |Σ|+1)
+        Tensors dimension = (|x|+1, |y|+1, C, B, |Σ|+1)
         
-        The value for padded sequence elements is 0, which infers an undefined and neutral probability distribution for these elements. Moreover, if log(logit) = log(target) = 0, so the contribution of padded tokens in the chosen loss is neutralized.
+        The value for padded elements are not neutralized. Please, apply a padding mask to the results if needed.
         
         Arguments :
-            - sources_ : (sources, lengths, maxSequenceLength), with sources a ByteTensor of dim = (|x|+2, B)
-            - targets_ : if not specified (with None, in inference stage), the context and mask will be got from the cached data.
+            - sources_
+            - targets_ : if not specified (with None, in inference stage), the context will be got from the cached data.
         """
-        priorContext, sourcesLengths = pad_packed_sequence(self.encoder_prior(sources_[0])[0])
-        priorMaxSequenceLength = priorContext.size()[0] # |x|+2
-        priorContext = priorContext[:-1] # dim = (|x|+1, B, hidden_dim)
-
-        modernContext:Tensor # dim = (|y|+1, B, hidden_dim)
+        modernContext:Tensor # dim = (1, |y|+1, C, 1, hidden_dim)
         if targets_ is not None:
-            modernContext = pad_packed_sequence(self.encoder_modern((targets_[0], targets_[1], False))[0])[0]
+            modernContext = pad_packed_sequence(self.encoder_modern((targets_[0], targets_[1], False))[0])[0].unsqueeze(2).unsqueeze(0)
         else:
             modernContext = self.__cachedTargetsData.modernContext
-
-        ctx = priorContext.unsqueeze(1) + modernContext.unsqueeze(0) # dim = (|x|+1, |y|+1, B, hidden_dim)
         
-        mask = self.__computePaddingMask((sourcesLengths, priorMaxSequenceLength),
-                                         (targets_[1]+1, targets_[2]+1) if targets_ is not None else None)
-        masked_ctx = mask*ctx
+        cognatePairsNumber = modernContext.size()[2]
+        
+        priorContext = pad_packed_sequence(self.encoder_prior(sources_[0])[0])[0][:-1] # shape = (|x|+1, C*B, hidden_dim)
+        currentShape = priorContext.size()
+        priorContext = priorContext.view(currentShape[0],
+                                         cognatePairsNumber, currentShape[1]//cognatePairsNumber,
+                                         currentShape[2]
+                                        ).unsqueeze(1) # dim = (|x|+1, 1, C, B, hidden_dim)
 
-        sub_results:Tensor = self.sub_head(masked_ctx)*mask  # dim = (|x|+1, |y|+1, B, |Σ|+1)
-        ins_results:Tensor = self.ins_head(masked_ctx)*mask  # dim = (|x|+1, |y|+1, B, |Σ|+1)
+
+        ctx = priorContext + modernContext # dim = (|x|+1, |y|+1, C, B, hidden_dim)
+
+        sub_results:Tensor = self.sub_head(ctx)  # dim = (|x|+1, |y|+1, C, B, |Σ|+1)
+        ins_results:Tensor = self.ins_head(ctx)  # dim = (|x|+1, |y|+1, C, B, |Σ|+1)
         
         return sub_results, ins_results
 
@@ -186,22 +166,22 @@ class EditModel(nn.Module):
         self.eval()
         with torch.no_grad():
             sub_results, ins_results = self(sources)
-            x_l, y_l, batch_size = sub_results.size()[:-1] # |x|+1, |y|+1, batch_size
+            x_l, y_l, C, B = sub_results.size()[:-1] # |x|+1, |y|+1, C, B
 
-            # dim = (|x|+2, |y|+2, B)
-            self.__cachedProbs = {key:np.zeros((x_l+1, y_l+1, batch_size)) for key in ('del', 'end', 'sub', 'ins')}
+            # dim = (|x|+2, |y|+2, C, B)
+            self.__cachedProbs = {key:np.zeros((x_l+1, y_l+1, C, B)) for key in ('del', 'end', 'sub', 'ins')}
 
-            self.__cachedProbs['del'][:-1, :-1] = sub_results[:, :, :,
-                                                    self.output_dim-1].cpu().numpy()  # usefull space = (|x|+1, |y|+1, B)
-            self.__cachedProbs['end'][:-1, :-1] = ins_results[:, :, :,
-                                                    self.output_dim-1].cpu().numpy()  # usefull space = (|x|+1, |y|+1, B)
+            self.__cachedProbs['del'][:-1, :-1] = sub_results[...,
+                                                    self.output_dim-1].cpu().numpy()  # usefull space = (|x|+1, |y|+1, C, B)
+            self.__cachedProbs['end'][:-1, :-1] = ins_results[...,
+                                                    self.output_dim-1].cpu().numpy()  # usefull space = (|x|+1, |y|+1, C, B)
 
             targetsOneHots = self.__cachedTargetsData.nextOneHots
             # q(y[j]| x, i, y[:j]) = < onehot(y[j]), q(.| x, i, y[:j]) >
             self.__cachedProbs['sub'][:-1, :-2] = torch.nan_to_num(torch.logsumexp(
-                sub_results[:, :-1, :, :-1] * targetsOneHots, dim=3), nan=0.).cpu().numpy()  # usefull space = (|x|+1, |y|, B)
+                sub_results[:, :-1, ..., :-1] * targetsOneHots, dim=-1), nan=0.).cpu().numpy()  # usefull space = (|x|+1, |y|, C, B)
             self.__cachedProbs['ins'][:-1, :-2] = torch.nan_to_num(torch.logsumexp(
-                ins_results[:, :-1, :, :-1] * targetsOneHots, dim=3), nan=0.).cpu().numpy()  # usefull space = (|x|+1, |y|, B)
+                ins_results[:, :-1, ..., :-1] * targetsOneHots, dim=-1), nan=0.).cpu().numpy()  # usefull space = (|x|+1, |y|, C, B)
 
     def ins(self, i: int, j: int):
         return self.__cachedProbs['ins'][i, j]
@@ -216,6 +196,27 @@ class EditModel(nn.Module):
         return self.__cachedProbs['del'][i, j]
     
     #----------Training----------------
+    def __computePaddingMask(self, sourceLengthData:tuple[Tensor, int], targetLengthData:tuple[Tensor, int]):
+        """
+        Computes a mask for the padded elements from the reconstructions x and the targets y.
+        
+        Mask dim = (|x|+1, |y|+1, b, 1)
+
+        Apply the mask with broadcasting as below
+        >>> mask = self.__computeMask(sourcesLengths, maxSourceLength)
+        >>> masked_ctx = mask*ctx
+
+        Arguments:
+            * sourceLengthData: a tuple with the following elements:
+                - sourcesLengths: a cpu tensor containing the lengths of the samples with the boundaries (|x|+2)
+                - maxSourceLength: the value of the maximum sequence length (including the boundaries).
+            * targetLengthData: if None, this data is not computed and got from the cache. Else, the tuple with the following elements must be given:
+                - targetsLengths: a cpu tensor containing the lengths of the modern forms with the boundaries (|y|+2)
+                - maxTargetLength: the value of the maximum sequence length (including the boundaries)
+        """
+        A = isElementOutOfRange(*sourceLengthData) # dim = (b, |x|+1)
+        B = isElementOutOfRange(*targetLengthData) # dim = (b, |y|+1)
+        return torch.logical_and(A.unsqueeze(-1), B.unsqueeze(-2)).to(device).movedim((1, 2), (0, 1)).unsqueeze(-1) # dim = (|x|+1, |y|+1, b, 1)
 
     def __computeMaskedProbDistribs(self, sub_probs:Tensor, ins_probs:Tensor, targetOneHotVectors:Tensor)->Tensor:
         """
@@ -230,7 +231,6 @@ class EditModel(nn.Module):
             It is assumed that the padding mask has already been applied on the probs in argument.
         """
         b, V = targetOneHotVectors.shape[-2:]
-        #TODO: computing one hots from targets mini batch
         nextOneHots = torch.cat((targetOneHotVectors, torch.zeros((1,1,b,V), device=device)), dim=1)
         masked_sub_probs = torch.nan_to_num(nextOneHots * sub_probs[:,:,:,:-1], nan=0.)
         masked_ins_probs = torch.nan_to_num(nextOneHots * ins_probs[:,:,:,:-1], nan=0.)
@@ -275,6 +275,8 @@ class EditModel(nn.Module):
         """
         
         sub_outputs, ins_outputs = self(samples_, targets_)
-        masked_outputs = self.__computeMaskedProbDistribs(sub_outputs, ins_outputs, targetOneHotVectors)
+        paddingMask = self.__computePaddingMask((samples_[1], samples_[2]),
+                                         (targets_[1]+1, targets_[2]+1))
+        masked_outputs = self.__computeMaskedProbDistribs(sub_outputs*paddingMask, ins_outputs*paddingMask, targetOneHotVectors)
         
         return masked_outputs

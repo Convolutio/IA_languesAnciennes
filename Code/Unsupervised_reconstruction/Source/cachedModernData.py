@@ -55,20 +55,20 @@ class CachedTargetsData():
     """
     Context of y, ready to be summed with the context of x.
 
-    dim = (B, 2*hidden_dim, 1, |y|+1)
+    dim = (1, |y|+1, C, 1, hidden_dim)
     """
 
     targetsInputData: tuple[Tensor, Tensor]
     """
         - (IntTensor/LongTensor) The input one-hot indexes of the target cognates, without their ) closing boundary.
-            dim = (|y|+1, B) ; indexes between 0 and |Σ|+1 included
-        - The CPU IntTensor with the sequence lengths (with opening boundary, so |y|+1). (dim = B)
+            dim = (|y|+1, C, 1) ; indexes between 0 and |Σ|+1 included
+        - The CPU IntTensor with the sequence lengths (with opening boundary, so |y|+1). (dim = C)
     """
     
     nextOneHots: Tensor
     """
     This tensor is useful to get the inferred probabilities that some phonetic tokens sub or are inserted to a current building target.
-    dim = (1, |y|, B, |Σ|)
+    dim = (1, |y|, C, 1, |Σ|)
     """
 
     maxSequenceLength: int
@@ -78,7 +78,7 @@ class CachedTargetsData():
     
     arePaddingElements: Tensor
     """
-    dim = (B, |y|+1)
+    dim = (C, 1, |y|+1)
     """
 
     lengthDataForDynProg: tuple[np.ndarray, int]
@@ -105,7 +105,7 @@ class CachedTargetsData():
         
         self.targetsInputData = targetsInput, targets_[1] + 1
         
-        # dim = (1, |y|, B, |Σ|) : the boundaries and special tokens are not interesting values for y[j] (that is why they have been erased with the reduction)
-        self.nextOneHots = nextOneHots((*self.targetsInputData, self.maxSequenceLength-1), voc_size)
+        # dim = (1, |y|, C, 1, |Σ|) : the boundaries and special tokens are not interesting values for y[j] (that is why they have been erased with the reduction)
+        self.nextOneHots = nextOneHots((*self.targetsInputData, self.maxSequenceLength-1), voc_size).unsqueeze(3)
         
         self.arePaddingElements = isElementOutOfRange(sequencesLengths, self.maxSequenceLength)

@@ -8,6 +8,8 @@ from torch.utils.data import DataLoader, Dataset
 from torch.optim import Adam
 from tqdm.auto import tqdm
 
+from numpy import ndarray
+
 from Types.models import InferenceData
 from data.vocab import wordToOneHots, reduceOneHotTensor, make_oneHotTensor, SIGMA
 

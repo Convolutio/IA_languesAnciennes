@@ -10,6 +10,7 @@ from data.vocab import computeInferenceData
 from lm.PriorLM import PriorLM
 
 INFTY_NEG = -1e9
+device = "cuda" if torch.cuda.is_available() else 'cpu'
 
 def computeLaw(probs: np.ndarray) -> np.ndarray:
     """
@@ -31,7 +32,7 @@ def computeUnnormalizedProbs(models:ReconstructionModel, priorLM:PriorLM, propos
     Run the dynamic inferences in the neural edit models and inferences in the prior language model to compute p(x|{y_l : l \\in L}) over the proposals batch which will be built from the sampled indexes.
     """
     batch_size = len(proposalsSetsList)
-    batch = pad_sequence([proposalsSetsList[n][int(selectionIndexes[n].item())] for n in range(batch_size)], batch_first=True).to(dtype=torch.uint8)
+    batch = pad_sequence([proposalsSetsList[n][int(selectionIndexes[n].item())] for n in range(batch_size)], batch_first=True).to(dtype=torch.uint8, device=device)
     sourceInferenceData = computeInferenceData(batch)
 
     probs = priorLM.inference(sourceInferenceData)
@@ -52,24 +53,20 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:ReconstructionMode
         iteration (int) : the number of proposal sampling iterations.
     """
     batch_size = len(proposalsSetsList)
-    proposalsNumbers = tensor([len(proposalsSet) for proposalsSet in proposalsSetsList], dtype=torch.int32)
-    maxWordLength = 0
-    maxWordLengths = torch.zeros(batch_size, dtype=torch.uint8)
-    for n in range(batch_size):
-        l = len(proposalsSetsList[n])
-        maxWordLengths[n] = l
-        if l > maxWordLength: maxWordLength=l
+    proposalsNumbers = tensor([len(proposalsSet) for proposalsSet in proposalsSetsList], dtype=torch.float)
     
     # Computes once the context of targets in the edits models
     models.update_modernForm_context()
+
+    print("-"*60)
     
     i = torch.zeros(batch_size, dtype=torch.int32)
     iProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, i)
     
-    for _ in range(iteration):
+    for it in range(iteration):
         # random j index for each sample
         j = torch.floor(
-            torch.dot(torch.rand(batch_size), proposalsNumbers-1)
+            torch.rand(batch_size) * (proposalsNumbers-1)
             ).to(dtype=torch.int32)
         j = torch.where(j>=i, j+1, j)
         
@@ -80,7 +77,9 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:ReconstructionMode
         i = torch.where(u<=acceptation, j, i)
         iProbs = torch.where(u<=acceptation, jProbs, iProbs)
 
-    samples = torch.zeros((batch_size, maxWordLength), dtype=torch.uint8)
-    for n in range(batch_size): samples[n, :maxWordLengths[n]] = proposalsSetsList[n][i[n]]
+        
+        if it%(iteration//100)==0:
+            print(f'Sampling: {it//(iteration//100)}%'+' '*10, end='\r')
+    print('\n'+'-'*60+'\n')
     
-    return samples
+    return pad_sequence([proposalsSetsList[n][i[n]] for n in range(batch_size)])

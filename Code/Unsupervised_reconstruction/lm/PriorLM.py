@@ -11,7 +11,8 @@ from tqdm.auto import tqdm
 from numpy import ndarray
 
 from Types.models import InferenceData
-from data.vocab import wordToOneHots, reduceOneHotTensor, make_oneHotTensor, SIGMA
+from data.vocab import wordToOneHots, reduceOneHotTensor, computeInferenceData, SIGMA
+from Source.packingEmbedding import PackingEmbedding
 
 INFTY_NEG = -1e9
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -119,72 +120,36 @@ class NGramLM(PriorLM):
         # TODO: Perplexity
         return -1.0
 
-    def padDataWithN(self, reconstructions: InferenceData) -> Tensor:
-        # TODO: Remove (Deprecated)! 
-        """
-        Returns the reconstructions in one-hot vectors tensor format, with ensuring that sequences with a length smaller than n are padded with the ')' token.
-
-        Args:
-            reconstructions (InferenceData) : a tuple whose the first term is a tensor of (L, B, V) shape.
-        """
-        # ngrams with empty characters have a neutral probability of 1.
-        data, lengths = nn.utils.rnn.pad_packed_sequence(
-            reconstructions[0], padding_value=1.0)  # type:ignore (Tensor!=PackedSequence)
-        data, lengths = data.to(device), lengths.to(device)
-        maxSequenceLength, batch_size, V = data.shape
-
-        if maxSequenceLength < self.n:
-            data = torch.cat((data, torch.zeros(
-                (self.n - maxSequenceLength, batch_size, V), device=device)), dim=0)
-            maxSequenceLength = self.n
-
-        a = torch.arange(maxSequenceLength).to(
-            device).unsqueeze(0).expand(batch_size, -1)
-
-        condition = torch.logical_and(lengths.unsqueeze(
-            1).expand(-1, maxSequenceLength) <= a, a < self.n).T.unsqueeze(-1).expand(-1, -1, V)  # size = (L, B, V)
-
-        pad = torch.zeros((maxSequenceLength, batch_size, V),
-                          dtype=torch.float32, device=device)
-        pad[:, :, V-1] = 1
-
-        data = torch.where(condition, pad, data)
-
-        return torch.log(data)  # Why log ? Data aren't already in log ?
-
     def padDataToNgram(self, reconstructions: Tensor) -> Tensor:
         """
         Returns the padded reconstructions at the beginning and end of each sequence to conform to the calculation in ngram. 
-        The final shape of the tensor is (L+2*(n-2), B, V)
+        The final shape of the tensor is (L+2*(n-2), B)
 
         Args:
-            reconstructions (Tensor) : tensor of (L, B, V) shape.
+            reconstructions (Tensor) : tensor of (L, B) shape.
         """
-
-        # TODO: Remove the V dimension
-
-        L, B, V = reconstructions.shape
+        L, B = reconstructions.shape
 
         first_padding = torch.full(
-            (self.n-2, B, V), self.vocab['('], device=device)
-        # extra 0 padding for torch.where
-        end_padding = torch.full((self.n-2, B, V), 0, device=device)
+            (self.n-2, B), self.vocab['('], device=device)
 
-        # shape: (L+2*(self.n-2), B, V)
+        end_padding = torch.full((self.n-2, B), 0, device=device)
+
+        # shape: (L+2*(self.n-2), B)
         padded_tensor = torch.cat(
             (first_padding, reconstructions[0], end_padding), dim=0)
 
         # Indices of the first occurrence of 0 along the L dimension
         indices = torch.argmax(padded_tensor == 0,
-                               dim=0)  # TODO: Check validity
+                               dim=0)
 
         t = torch.arange(padded_tensor.shape[0], device=device).unsqueeze(1)
         mask = (t >= indices) & (t < indices +
-                                 self.n-2)  # TODO: Check validity
+                                 self.n-2)
 
         output = torch.where(mask, self.vocab[')'], padded_tensor)
 
-        return output.to(device)
+        return output
 
     def inference(self, reconstructions: InferenceData) -> Tensor:
         data = self.padDataToNgram(reconstructions[0])
@@ -264,17 +229,19 @@ class CharLM(nn.Module, PriorLM):
         self.num_layers = num_layers
         self.dropout_rate = dropout_rate
 
-        self.embedding = nn.Embedding(num_embeddings=self.vocab_size,
-                                      embedding_dim=self.embedding_size)
+        self.embedding = PackingEmbedding(num_embeddings=self.vocab_size,
+                                          embedding_dim=self.embedding_size, padding_idx=-1)
 
         self.lstm = nn.LSTM(self.embedding_size, self.hidden_size, num_layers=self.num_layers,
                             dropout=self.dropout_rate)
 
-        self.fc = nn.Linear(self.hidden_size, self.vocab_size)
+        self.fc = nn.Sequential(nn.Linear(self.hidden_size, self.vocab_size),
+                                nn.LogSoftmax(dim=-1))
 
     def forward(self, x, h):
         embedded = self.embedding(x)
         output, h = self.lstm(embedded, h)
+        output, _ = torch.nn.utils.rnn.pad_packed_sequence(output)
         output = self.fc(output)
         # Detach to avoid backpropagation through time
         return output, (h[0].detach(), h[1].detach())
@@ -283,69 +250,51 @@ class CharLM(nn.Module, PriorLM):
         return (torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device),
                 torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device))
 
-    def prepare(self, data: str) -> tuple[int, tuple[Tensor, Tensor]]:
-        """
-        Prepare the data for the character level language model training.
-
-        Args:
-            data (str): The data to prepare.
-
-        Returns:
-            tuple[int, tuple[Tensor, Tensor]]: The batch size with the input and target tensors. 
-        """
-        # Split by space
-        # TODO: Add boundaries for each word ?
-        words = data.split(' ')
-        batch_size = len(words)
-
-        # Convert each word into a one-hot (binary) tensor
-        one_hot_tensors = [CharLMDataset.word_to_one_hot(word) for word in words]     # TODO: Vocab?
-
-        # Pad the tensor (it will return a tensor of LxBxV shape)
-        padded_tensor = pad_sequence(one_hot_tensors, batch_first=False)
-
-        # Create the training dataset (not memory healthy, but ok cause the dataset is pretty small)
-        # (input_tensor, target_tensor) with a shape of (L-1)xBxV
-        training_data = (padded_tensor[1:, :, :].to(device),
-                         padded_tensor[:-1, :, :].to(device))
-
-        return batch_size, training_data
-
     def training(self, data: str, epochs: int, save_path: str, learning_rate: float = 0.001):
-        criter = nn.CrossEntropyLoss()
+        criter = nn.NLLLoss(ignore_index=-1)  # TODO: Change padding index
         optim = Adam(self.parameters(), lr=learning_rate)
 
-        batch_size, training_data = self.prepare(data)
+        indices_tensor = pad_sequence([wordToOneHots(word) for word in data.split(' ')],
+                                      padding_value=-1)
+
+        MINI_BATCH_SIZE = 32
+        def adjust_seq_lengths(x, l, l_max): return (x, l+1)
+        training_data = [adjust_seq_lengths(
+            *computeInferenceData(tData)) for tData in indices_tensor.split(MINI_BATCH_SIZE, dim=1)]
+
+        mini_batches_number = len(training_data)
 
         self.to(device)
-        self.train()  # TODO: Correct this line / Train mode
+        self.train()
 
         print('Training starts!')
+
         for epoch in tqdm(range(epochs)):
             total_loss = 0.0
-            hidden = self.init_hidden(batch_size)
 
-            for i in range(batch_size):
-                # TODO: Can optimise this!    Loop over string ; transform at the moment in one hot
-                inpt, trgt = training_data[0][:, i, :], training_data[1][:, i, :]
+            for (i, mini_training_data) in enumerate(training_data):
                 optim.zero_grad()
+                # MINI_BATCH_SIZE or batch_size % MINI_BATCH_SIZE
+                mini_batch_size = len(mini_training_data[1])
+                hidden = self.init_hidden(mini_batch_size)
 
-                scores, hidden = self(inpt, hidden)
+                scores, hidden = self(mini_training_data[0], hidden)
+                trgt = mini_training_data[0][1:]
 
-                loss = criter(scores.view(-1, self.vocab_size), trgt.view(-1))      # TODO: Check if it is the good dim
+                loss = criter(scores.view(-1, self.vocab_size), trgt.view(-1))
                 loss.backward()
-                # nn.utils.clip_grad_norm_(self.parameters(), clip)
+                # nn.utils.clip_grad_norm_(self.parameters(), clip) ?
                 optim.step()
 
                 total_loss += loss.item()
 
                 print(f'epoch: {epoch}/{epochs} ; \
-                        step: {i + 1}/{batch_size} ; \
+                        step: {i + 1}/{mini_batches_number} ; \
                         loss: {loss.item()}')
 
-            average_loss = total_loss / batch_size
+            average_loss = total_loss / mini_batches_number
             print(f'epoch: {epoch}/{epochs} ; average loss: {average_loss}')
-            torch.save(self.state_dict(), save_path)        # TODO: Correct save path
+            torch.save(self.state_dict(), f'{save_path}_{epoch}.pt')
 
         print('Training ends!')
 
@@ -353,25 +302,20 @@ class CharLM(nn.Module, PriorLM):
         # TODO: Perplexity
         return -1.0
 
-    # TODO
-    def indicesToOneHot(self, t: Tensor) -> Tensor: ...
-
     def inference(self, reconstructions: InferenceData) -> Tensor:
         self.eval()
 
         with torch.no_grad():
-            #TODO: Convert indices reconstructions into one hot reconstructions
-            eval_data: Tensor = self.indicesToOneHot(reconstructions[0]).to(device)
-            seq_length, batch_size, vocab_size = eval_data.shape
+            eval_data = reconstructions[0].to(device)
+            seq_length, batch_size = eval_data.shape
 
             hidden = self.init_hidden(batch_size)
 
-            log_probs = torch.zeros(seq_length, batch_size, vocab_size, device=device)
+            output, _ = self(eval_data, hidden)  # shape = (L, B, output_dim)
 
-            for i in range(batch_size):
-                inpt = eval_data[:, i, :]
-                output, hidden = self(inpt, hidden)
-                log_probs_t = nn.functional.log_softmax(output, dim=1)
-                log_probs[:, i, :] = log_probs_t
+            # TODO: fix the index error for padding tokens (for which the one hot index will be out of range for the distribution)
+            output = output[torch.arange(seq_length-1).unsqueeze(1), torch.arange(
+                batch_size).unsqueeze(0), eval_data[1:]]  # shape = (L-1, B)
+            output = torch.sum(output, dim=0)  # shape = (B)
 
-        return log_probs
+        return output

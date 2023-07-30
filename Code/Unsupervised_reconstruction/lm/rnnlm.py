@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
-from torch.optim import AdamW, optim, sgd
+from torch.optim import AdamW, sgd
 
 from ipa_tokenizer import tokenize_ipa
 

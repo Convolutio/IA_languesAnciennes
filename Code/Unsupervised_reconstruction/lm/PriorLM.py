@@ -10,7 +10,7 @@ from torch.optim import Adam
 from tqdm.auto import tqdm
 
 from Types.models import InferenceData
-from data.vocab import wordToOneHots, computeInferenceData, vocabulary
+from data.vocab import wordsToOneHots, computeInferenceData, vocabulary
 from Source.packingEmbedding import PackingEmbedding
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -52,7 +52,7 @@ class NGramLM(PriorLM):
         assert len(d := set(data).difference(self.vocab.keys())) != 0, \
             f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}"
 
-        batch = wordToOneHots(list(map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(" "))), self.vocab)
+        batch = wordsToOneHots(list(map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(" "))), self.vocab)
 
         return batch.to(device)
 
@@ -148,7 +148,7 @@ class CharLMDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        return wordToOneHots(self.data[idx], self.vocab)
+        return wordsToOneHots(self.data[idx], self.vocab)
 
     @staticmethod
     def word_tokenization(data: str, sep: str = ' ') -> list[str]:
@@ -218,7 +218,7 @@ class CharLM(nn.Module, PriorLM):
         criter = nn.NLLLoss(ignore_index=-1)  # TODO: Change padding index
         optim = Adam(self.parameters(), lr=learning_rate)
 
-        indices_tensor = wordToOneHots(data.split(' '), vocabulary)
+        indices_tensor = wordsToOneHots(data.split(' '), vocabulary)
 
         MINI_BATCH_SIZE = 32
         def adjust_seq_lengths(x, l, l_max): return (x, l+1)

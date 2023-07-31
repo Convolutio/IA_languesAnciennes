@@ -21,7 +21,7 @@ from Types.models import InferenceData
 
 device = "cuda" if cuda.is_available() else "cpu"
 
-SIGMA: dict[str, int] = {}  # the IPA vocabulary
+SIGMA: dict[str, int] = {"": 0}  # the IPA vocabulary
 SIGMA_INV: NDArray[np.str_] = np.array([''])
 V_SIZE: int = 0
 
@@ -39,13 +39,13 @@ INPUT_VOCABULARY = SIGMA.copy()
 INPUT_VOCABULARY["("], INPUT_VOCABULARY[")"] = i, i+1
 
 
-def wordToOneHots(word: str, inventory: dict[str, int] = SIGMA) -> torch.Tensor:
+def wordToOneHots(word: str, inventory: dict[str, int]) -> torch.Tensor:
     """
     0: empty character\n
     1 <= i <= |Σ|: IPA character index\n
     |Σ|+k: additional special character index
     """
-    return torch.ByteTensor([inventory[c] for c in word]).to(device=device)
+    return torch.ByteTensor([inventory[c] for c in word]).to(device)
 
 
 def oneHotsToWord(batch: Tensor):

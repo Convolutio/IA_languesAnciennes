@@ -1,15 +1,16 @@
 from typing import Literal
-from Types.articleModels import CognatesSet_oneHotIdxs
-from data.vocab import wordToOneHots
+from Types.articleModels import ModernLanguages
+from data.vocab import wordsToOneHots
 from torch import Tensor
 
-def getCognatesSet() -> CognatesSet_oneHotIdxs:
-    cognates:CognatesSet_oneHotIdxs = {"french":[], "spanish":[], "portuguese":[], "italian":[], "romanian":[]}
-    for modernLanguage in cognates:
+def getCognatesSet() -> dict[ModernLanguages, Tensor]:
+    """
+    Returns a dictionnary with the raw cognates in padded IntTensors with one-hot indices format (without boundaries).
+    """
+    cognates: dict[ModernLanguages, Tensor] = {}
+    for modernLanguage in ('french', 'spanish', 'portuguese', 'romanian', 'italian'):
         with open(f"./recons_data/data/{modernLanguage.capitalize()}_ipa.txt", "r", encoding="utf-8") as file:
-            lines = file.readlines()
-            for i in range(len(lines)-1):
-                cognates[modernLanguage].append(wordToOneHots(lines[i][1:-1])) # eliminate the escape and the \n
+            cognates[modernLanguage] = wordsToOneHots([line[1:-1] for line in file.readlines()[:-1]])
     return cognates
 
 def getTargetsReconstruction()->list[Tensor]:
@@ -17,16 +18,14 @@ def getTargetsReconstruction()->list[Tensor]:
     with open(f"./recons_data/data/latin_ipa.txt", "r", encoding="utf-8") as file:
         lines = file.readlines()
         for i in range(len(lines)-1):
-            l.append(wordToOneHots(lines[i][1:-1])) # eliminate the escape and the \n
+            l.append(wordsToOneHots([lines[i][1:-1]]).squeeze(1)) # eliminate the escape and the \n
     return l
 
-def getIteration(i:Literal[1,2,3,4]) -> list[Tensor]:
+def getIteration(i:Literal[1,2,3,4]) -> Tensor:
     """
-    Returns the i-th Bouchard's iteration in a list of ByteTensors, with one-hot indexes format.
+    Returns the samples from the i-th Bouchard-Côte et al.'s model iteration in a padded IntTensor, with one-hot indexes format (without boundaries).
     """
-    iteration:list[Tensor] = []
+    iteration:Tensor
     with open(f'./recons_data/iteration3_{str(i)}.txt', 'r', encoding='utf-8') as file:
-        lines = file.readlines()
-        for j in range(len(lines)-1):
-            iteration.append(wordToOneHots(lines[j][:-1]))
+        iteration = wordsToOneHots([line[:-1] for line in file.readlines()[:-1]])
     return iteration

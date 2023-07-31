@@ -4,8 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from Types.models import *
-from Types.articleModels import CognatesSet_oneHotIdxs
-from data.vocab import wordToOneHots, oneHotsToWord
+from Types.articleModels import ModernLanguages
 from Source.editsGraph import EditsGraph
 
 import torch
@@ -156,7 +155,7 @@ def computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> T
     #                 Data: (/{x}/, /{y}/)")
     return proposalsSet
 
-def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: CognatesSet_oneHotIdxs)->list[Tensor]:
+def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: dict[ModernLanguages, list[Tensor]]) -> list[Tensor]:
     p = list()
     numberOfCognatePairs = len(cognates['french'])
     print('-'*60)

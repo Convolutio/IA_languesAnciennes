@@ -2,11 +2,8 @@ import numpy as np
 from torch import Tensor, tensor
 import torch
 from torch.nn.utils.rnn import pad_sequence
-from Types.articleModels import ModernLanguages
-from Types.models import InferenceData
-from Source.dynamicPrograms import compute_mutation_prob
 from Source.reconstructionModel import ReconstructionModel
-from data.vocab import computeInferenceData
+from data.vocab import computeInferenceData, vocabulary, PADDING_TOKEN
 from lm.PriorLM import PriorLM
 
 INFTY_NEG = -1e9
@@ -32,7 +29,7 @@ def computeUnnormalizedProbs(models:ReconstructionModel, priorLM:PriorLM, propos
     Run the dynamic inferences in the neural edit models and inferences in the prior language model to compute p(x|{y_l : l \\in L}) over the proposals batch which will be built from the sampled indexes.
     """
     batch_size = len(proposalsSetsList)
-    batch = pad_sequence([proposalsSetsList[n][int(selectionIndexes[n].item())] for n in range(batch_size)], batch_first=True).to(dtype=torch.uint8, device=device)
+    batch = pad_sequence([proposalsSetsList[n][int(selectionIndexes[n].item())] for n in range(batch_size)], batch_first=False, padding_value = vocabulary[PADDING_TOKEN]).to(dtype=torch.int32, device=device)
     sourceInferenceData = computeInferenceData(batch)
 
     probs = priorLM.inference(sourceInferenceData)
@@ -82,4 +79,4 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:ReconstructionMode
             print(f'Sampling: {it//(iteration//100)}%'+' '*10, end='\r')
     print('\n'+'-'*60+'\n')
     
-    return pad_sequence([proposalsSetsList[n][i[n]] for n in range(batch_size)])
+    return pad_sequence([proposalsSetsList[n][i[n]] for n in range(batch_size)], batch_first=False, padding_value=vocabulary[PADDING_TOKEN])

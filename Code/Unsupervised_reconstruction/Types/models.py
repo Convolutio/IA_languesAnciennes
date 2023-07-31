@@ -29,9 +29,9 @@ The data in a language for inferring into an edit model with the dynamic program
 
 This tuple contains :
     - the tensor with the batch's words with their boundaries, encoded into one-hot indexes sequence.
-      (shape = (N+2, C, B)), with C the number of cognate pairs, B the number of input linked to each cognate pair (1 if it is a cognate, else it is a number of proposals linked to each cognate), N the variable raw sequences lengths).
+      (shape = (N+2, C, B) or (N+2, C)), with C the number of cognate pairs, B the number of input linked to each cognate pair (1 if it is a cognate, else it is a number of proposals linked to each cognate), N the variable raw sequences lengths).
       See data.vocab.py for the meaning of each one-hot indexes. 
-    - the CPU IntTensor with the lengths of the raw sequences (i.e. without their boundaries). The numpy format enables CPU optimisation for the indexing in the dynamic program. (shape = (C, B))
+    - the CPU IntTensor with the lengths of the raw sequences (i.e. without their boundaries). The numpy format enables CPU optimisation for the indexing in the dynamic program. (shape = (C, B) or (C))
     - The max length of a raw sequence in the batch, for avoiding computing again this information for ndarray creations.
 """
 

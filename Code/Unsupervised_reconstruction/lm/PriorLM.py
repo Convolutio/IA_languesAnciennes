@@ -9,7 +9,7 @@ from torch.optim import Adam
 from tqdm.auto import tqdm
 
 from Types.models import InferenceData
-from data.vocab import wordsToOneHots, computeInferenceData, vocabulary
+from data.vocab import wordsToOneHots, computeInferenceData, vocabulary, PADDING_TOKEN
 from Source.packingEmbedding import PackingEmbedding
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -139,7 +139,7 @@ class NGramLM(PriorLM):
 
 
 class CharLMDataset(Dataset):
-    def __init__(self, data: str, vocab: Vocab=vocabulary):
+    def __init__(self, data: str, vocab: Vocab = vocabulary):
         self.data = self.word_tokenization(data)
         self.vocab = vocab
 
@@ -160,7 +160,7 @@ class CharLMDataset(Dataset):
 
         Args:
             word (str): The input word to convert.
-            vocab (dict): A dictionary that maps characters to their corresponding indices in the one-hot vector.
+            vocab (Vocab): A Vocab that maps characters to their corresponding indices in the one-hot vector.
 
         Returns:
             Tensor: A one-hot tensor representation of the input word.
@@ -193,7 +193,7 @@ class CharLM(nn.Module, PriorLM):
         self.dropout_rate = dropout_rate
 
         self.embedding = PackingEmbedding(num_embeddings=self.vocab_size,
-                                          embedding_dim=self.embedding_size, padding_idx=-1)
+                                          embedding_dim=self.embedding_size, padding_idx=vocabulary[PADDING_TOKEN])
 
         self.lstm = nn.LSTM(self.embedding_size, self.hidden_size, num_layers=self.num_layers,
                             dropout=self.dropout_rate)
@@ -214,7 +214,7 @@ class CharLM(nn.Module, PriorLM):
                 torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device))
 
     def training(self, data: str, epochs: int, save_path: str, learning_rate: float = 0.001):
-        criter = nn.NLLLoss(ignore_index=-1)  # TODO: Change padding index
+        criter = nn.NLLLoss(ignore_index=vocabulary[PADDING_TOKEN])  # TODO: Change padding index
         optim = Adam(self.parameters(), lr=learning_rate)
 
         indices_tensor = wordsToOneHots(data.split(' '), vocabulary)

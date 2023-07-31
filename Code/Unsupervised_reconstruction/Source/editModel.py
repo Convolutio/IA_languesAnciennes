@@ -160,8 +160,8 @@ class EditModel(nn.Module):
 
     def cache_probs(self, sources: list[SourceInferenceData]):
         """
-        Runs inferences in the model from given sources. It is supposed that the context of the targets and their one-hots have already been computed in the model.
-        
+        Runs inferences in the model from given sources. 
+        It is supposed that the context of the targets and their one-hots have already been computed in the model.
         """
         self.eval()
         with torch.no_grad():

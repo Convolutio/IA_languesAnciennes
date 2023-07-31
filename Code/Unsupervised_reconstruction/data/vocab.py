@@ -39,13 +39,13 @@ INPUT_VOCABULARY = SIGMA.copy()
 INPUT_VOCABULARY["("], INPUT_VOCABULARY[")"] = i, i+1
 
 
-def wordToOneHots(word: str) -> torch.Tensor:
+def wordToOneHots(word: str, inventory: dict[str, int] = SIGMA) -> torch.Tensor:
     """
     0: empty character\n
     1 <= i <= |Σ|: IPA character index\n
     |Σ|+k: additional special character index
     """
-    return torch.ByteTensor([SIGMA[c] for c in word]).to(device=device)
+    return torch.ByteTensor([inventory[c] for c in word]).to(device=device)
 
 
 def oneHotsToWord(batch: Tensor):

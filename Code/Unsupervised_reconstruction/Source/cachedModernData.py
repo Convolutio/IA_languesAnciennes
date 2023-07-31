@@ -3,8 +3,6 @@ from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 import torch.nn as nn
 import torch
 
-import numpy as np
-
 from Types.models import InferenceData, TargetInferenceData
 
 def isElementOutOfRange(sequencesLengths:Tensor, maxSequenceLength:int) -> Tensor:
@@ -61,7 +59,7 @@ class CachedTargetsData():
     targetsInputData: tuple[Tensor, Tensor]
     """
         - (IntTensor/LongTensor) The input one-hot indexes of the target cognates, without their ) closing boundary.
-            dim = (|y|+1, C, 1) ; indexes between 0 and |Σ|+1 included
+            dim = (|y|+1, C) ; indexes between 0 and |Σ|+1 included
         - The CPU IntTensor with the sequence lengths (with opening boundary, so |y|+1). (dim = C)
     """
     
@@ -81,10 +79,10 @@ class CachedTargetsData():
     dim = (C, 1, |y|+1)
     """
 
-    lengthDataForDynProg: tuple[np.ndarray, int]
+    lengthDataForDynProg: tuple[Tensor, int]
     """
     A tuple with:
-        * the ndarray with batch's raw sequence lengths
+        * the IntTensor with batch's raw sequence lengths
         * an integer equalling the maximum one
     """
 
@@ -93,7 +91,7 @@ class CachedTargetsData():
         Optimisation method : computes once the usefull data for the targets at the EditModel's initialisation.
         The gradient of the targets input data is set in the method to be tracked.
         """
-        self.lengthDataForDynProg = (targets_[1].numpy(), targets_[2])
+        self.lengthDataForDynProg = (targets_[1], targets_[2])
 
         self.maxSequenceLength = targets_[2]+2
         

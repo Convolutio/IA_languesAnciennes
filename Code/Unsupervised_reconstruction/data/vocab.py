@@ -172,7 +172,7 @@ def computeInferenceData(byteTensor: Tensor) -> InferenceData:
         ))
     t = torch.logical_xor(withBoundariesTensor[:-1], withBoundariesTensor[1:])
     withBoundariesTensor[1:] = torch.where(t, right_boundary_index, withBoundariesTensor[1:])
-    lengths = (torch.argwhere(t)[:, 0]).view(*rawShape[1:])
+    lengths = torch.argmax(t.to(torch.uint8), dim=0)
     maxLength = int(torch.max(lengths).item())
 
     return (withBoundariesTensor[:maxLength+2], lengths.cpu(), maxLength)

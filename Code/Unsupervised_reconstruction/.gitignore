@@ -7,3 +7,4 @@ __pycache__
 # Exclude these files which are not from us
 recons_data
 Source/dynamicPrograms.py
+Tests/samples.pt

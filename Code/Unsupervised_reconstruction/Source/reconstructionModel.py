@@ -114,7 +114,7 @@ class ReconstructionModel(nn.Module):
                 maxModernLength = moderns_[2] + 1 # max |y|+2
                 thisMiniBatchSize = len(samples_[1]) # = MINI_BATCH_SIZE or (batchSize % MINI_BATCH_SIZE)
                 
-                mini_targetProbCache = ProbCache(maxSourceLength, maxModernLength, thisMiniBatchSize)
+                mini_targetProbCache = ProbCache(maxSourceLength, maxModernLength, (thisMiniBatchSize, 1))
                 mini_targetProbCache.dlt = prob_targets_cache[lang].dlt[:maxSourceLength, :maxModernLength, miniBatchSize*i : miniBatchSize*i + thisMiniBatchSize]
                 mini_targetProbCache.end = prob_targets_cache[lang].end[:maxSourceLength, :maxModernLength, miniBatchSize*i : miniBatchSize*i + thisMiniBatchSize]
                 mini_targetProbCache.sub = prob_targets_cache[lang].sub[:maxSourceLength, :maxModernLength, miniBatchSize*i : miniBatchSize*i + thisMiniBatchSize]
@@ -123,7 +123,7 @@ class ReconstructionModel(nn.Module):
 
 
                 targets_loads[i] = torch.cat((targets_loads[i], model.get_targets(mini_targetProbCache,
-                                                                                  (samples_[1]+2, maxSourceLength),
+                                                                                  (samples_[1].squeeze(-1)+2, maxSourceLength),
                                                                                   (moderns_[1]+1, maxModernLength),
                                                                                   modernOneHots).flatten(end_dim=1)), dim=0)
         return (
@@ -211,7 +211,8 @@ class ReconstructionModel(nn.Module):
         """
         self.eval()
         with torch.no_grad():
-            sources:SourceInferenceData = self.__computeSourceInferenceData(sources_)
+            MINI_BATCH_SIZE = 2
+            sources:list[SourceInferenceData] = [self.__computeSourceInferenceData((*s, sources_[2])) for s in zip(sources_[0].split(MINI_BATCH_SIZE, -1), sources_[1].split(MINI_BATCH_SIZE, -1))]
 
             probs:dict[ModernLanguages, np.ndarray] = {}
             for language in self.languages:
@@ -230,6 +231,6 @@ class ReconstructionModel(nn.Module):
             cache:dict[ModernLanguages, ProbCache] = {}
             for language in self.languages:
                 model:EditModel = self.__editModels[language] #type: ignore
-                cache[language] = compute_posteriors(model, sources, model.cachedTargetDataForDynProg)
+                cache[language] = compute_posteriors(model, [sources], model.cachedTargetDataForDynProg)
                 
             return cache

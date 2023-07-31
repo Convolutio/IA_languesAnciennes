@@ -1,7 +1,5 @@
 import time
-import itertools
 from time import time
-from Tests.ngramOperations import *
 
 def functionToRun():
     """

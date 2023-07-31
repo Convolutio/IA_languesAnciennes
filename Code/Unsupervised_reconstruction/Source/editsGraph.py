@@ -2,10 +2,10 @@ from typing import Optional
 from collections import deque
 
 from Types.models import *
-from data.vocab import wordToOneHots, reduceOneHotTensor, oneHotsToWord
+from data.vocab import vocabulary, PADDING_TOKEN, oneHotsToWords
 
 import torch
-from torch import Tensor, uint8, ByteTensor
+from torch import Tensor, ByteTensor
 
 import graphviz
 
@@ -160,11 +160,11 @@ class EditsGraph:
         return j - self.__insertionInfos[i+1][1] + 1
 
     def __rollTensor(self, t: Tensor, j: int):
-        t[:, j:] = torch.where((t[:, j] == 0).unsqueeze(1),
+        t[:, j:] = torch.where((t[:, j] == vocabulary[PADDING_TOKEN]).unsqueeze(1),
                                (t[:, j:]).roll(-1, 1),
                                t[:, j:])
 
-    def __moveZeros(self, t: Tensor) -> Tensor:
+    def __movePaddingIndices(self, t: Tensor) -> Tensor:
         """
         Rewrite each tensor's row for the zeros to all be on the right.
 
@@ -183,7 +183,9 @@ class EditsGraph:
         #             if not torch.all(t[:,k]==0).item():
         #                 raise Exception("The algorithm is wrong.")
         #         break
-        return reduceOneHotTensor(t)
+
+        j_max = torch.max(torch.argmax(t==vocabulary[PADDING_TOKEN], 1)).item()
+        return t[:,:j_max-1]
 
     def __addCombinations(self, combinationsList: list[Tensor], fromNode_id: int, toNode_id: int):
         combinationsList[toNode_id] = torch.cat(
@@ -215,11 +217,11 @@ class EditsGraph:
             f_i.append(nonConcatenatedProposalLength)
             nonConcatenatedProposalLength += 1+self.__insertionInfos[i][0]
 
-        combinationsByAlreadySeenNodes = [torch.zeros(
-            (0, nonConcatenatedProposalLength), dtype=uint8, device=device) for _ in range(numberOfNodes)]
+        combinationsByAlreadySeenNodes = [torch.empty(
+            (0, nonConcatenatedProposalLength), dtype=torch.uint8, device=device) for _ in range(numberOfNodes)]
 
-        emptyCombination = torch.zeros(
-            (1, nonConcatenatedProposalLength), dtype=uint8, device=device)
+        emptyCombination = torch.full(
+            (1, nonConcatenatedProposalLength), vocabulary[PADDING_TOKEN], dtype=torch.uint8, device=device)
 
         for i in range(1, len(self.__x)+1):
             emptyCombination[0, f_i[i]] = oneHotX[i-1]
@@ -262,18 +264,18 @@ class EditsGraph:
             if edit[0] == 2:
                 indexWhereApplyingEdit += self.__computeInsertionIndex(edit)
 
-            combinationsByAlreadySeenNodes[currentNodeId][:, indexWhereApplyingEdit] = newChar*torch.ones(
-                combinationsByAlreadySeenNodes[currentNodeId].shape[0], dtype=uint8, device=device)
+            combinationsByAlreadySeenNodes[currentNodeId][:, indexWhereApplyingEdit] = torch.full(
+                (combinationsByAlreadySeenNodes[currentNodeId].shape[0],), newChar, dtype=torch.uint8, device=device)
 
         # Gather all the computed combinations and translate all the sparsed zeros to the right of the proposals matrix
-        proposals = torch.zeros(
-            (0, nonConcatenatedProposalLength), dtype=uint8, device=device)
+        proposals = torch.empty(
+            (0, nonConcatenatedProposalLength), dtype=torch.uint8, device=device)
 
         for _ in range(numberOfNodes):
             proposals = torch.cat(
                 (proposals, combinationsByAlreadySeenNodes.pop()), dim=0)
 
-        proposals = self.__moveZeros(proposals)
+        proposals = self.__movePaddingIndices(proposals)
         return proposals
 
     def displayGraph(self, filename: str):
@@ -281,7 +283,7 @@ class EditsGraph:
         Debugging method. Build the adjacent matrix and use graphviz to display the graph.
         Make a in-depth walk in this graph to process each node and build the matrix. 
         """
-        x, y = oneHotsToWord(self.__x), oneHotsToWord(self.__y)
+        x, y = oneHotsToWords(self.__x.unsqueeze(1))[0], oneHotsToWords(self.__y.unsqueeze(1))[0]
         G = graphviz.Digraph(comment=f'/{x}/ to /{y}/', node_attr={
                              'style': 'filled', 'fillcolor': 'lightgoldenrod1'})
         G.attr(bgcolor="transparent")

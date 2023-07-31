@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from torchtext.vocab import Vocab
-from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, Dataset
 from torch.optim import Adam
 from tqdm.auto import tqdm
@@ -49,7 +48,7 @@ class NGramLM(PriorLM):
         Returns:
             Tensor of shape L x B.
         """
-        assert len(d := set(data).difference(self.vocab.keys())) != 0, \
+        assert len(d := set(data).difference(self.vocab.get_stoi().keys())) != 0, \
             f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}"
 
         batch = wordsToOneHots(list(map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(" "))), self.vocab)

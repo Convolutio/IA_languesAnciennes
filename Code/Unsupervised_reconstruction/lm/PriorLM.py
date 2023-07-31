@@ -3,13 +3,14 @@ from itertools import permutations
 import torch
 import torch.nn as nn
 from torch import Tensor
+from torchtext.vocab import Vocab
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, Dataset
 from torch.optim import Adam
 from tqdm.auto import tqdm
 
 from Types.models import InferenceData
-from data.vocab import wordToOneHots, computeInferenceData, INPUT_VOCABULARY
+from data.vocab import wordToOneHots, computeInferenceData, vocabulary
 from Source.packingEmbedding import PackingEmbedding
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -27,7 +28,7 @@ class PriorLM:
 
 
 class NGramLM(PriorLM):
-    def __init__(self, n: int, vocab: dict[str, int] = INPUT_VOCABULARY):
+    def __init__(self, n: int, vocab: Vocab = vocabulary):
         self.n = n
         self.vocab = vocab
         self.vocabSize = len(vocab)
@@ -51,8 +52,7 @@ class NGramLM(PriorLM):
         assert len(d := set(data).difference(self.vocab.keys())) != 0, \
             f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}"
 
-        batch = pad_sequence([wordToOneHots(
-            '('*(self.n-1) + w + ')'*(self.n-1), self.vocab) for w in data.split(" ")])
+        batch = wordToOneHots(list(map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(" "))), self.vocab)
 
         return batch.to(device)
 
@@ -140,7 +140,7 @@ class NGramLM(PriorLM):
 
 
 class CharLMDataset(Dataset):
-    def __init__(self, data: str, vocab: dict[str, int]=INPUT_VOCABULARY):
+    def __init__(self, data: str, vocab: Vocab=vocabulary):
         self.data = self.word_tokenization(data)
         self.vocab = vocab
 
@@ -155,7 +155,7 @@ class CharLMDataset(Dataset):
         return data.split(sep=sep)
 
     @staticmethod
-    def word_to_one_hot(word: str, vocab: dict[str, int] = INPUT_VOCABULARY, device=device) -> Tensor:
+    def word_to_one_hot(word: str, vocab: Vocab = vocabulary, device=device) -> Tensor:
         """
         Convert a word into a one-hot tensor using a predefined vocabulary.
 
@@ -218,8 +218,7 @@ class CharLM(nn.Module, PriorLM):
         criter = nn.NLLLoss(ignore_index=-1)  # TODO: Change padding index
         optim = Adam(self.parameters(), lr=learning_rate)
 
-        indices_tensor = pad_sequence([wordToOneHots(word, INPUT_VOCABULARY) for word in data.split(' ')],
-                                      padding_value=-1)
+        indices_tensor = wordToOneHots(data.split(' '), vocabulary)
 
         MINI_BATCH_SIZE = 32
         def adjust_seq_lengths(x, l, l_max): return (x, l+1)

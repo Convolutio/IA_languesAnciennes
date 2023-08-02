@@ -16,7 +16,7 @@ with open('./data/IPA_vocabulary.txt', 'r', encoding='utf-8') as vocFile:
     vocabulary = build_vocab_from_iterator(vocFile.read().split(", "), specials=[EOS_TOKEN, SOS_TOKEN, PADDING_TOKEN], special_first=False)
 IPA_charsNumber = len(vocabulary)-3
 
-def wordsToOneHots(words: list[str], inventory: Vocab = vocabulary) -> torch.Tensor:
+def wordsToOneHots(words: list[str], inventory: Vocab = vocabulary) -> Tensor:
     """
     Arguments:
         - words (list[str]): a list of words

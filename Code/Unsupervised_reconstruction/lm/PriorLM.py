@@ -1,20 +1,17 @@
 from itertools import permutations
 
 import torch
-from torch import Tensor
 import torch.nn as nn
-from torch.nn.utils.rnn import pad_sequence
+from torch import Tensor
+from torchtext.vocab import Vocab
 from torch.utils.data import DataLoader, Dataset
 from torch.optim import Adam
 from tqdm.auto import tqdm
 
-from numpy import ndarray
-
 from Types.models import InferenceData
-from data.vocab import wordToOneHots, reduceOneHotTensor, computeInferenceData, SIGMA
+from data.vocab import wordsToOneHots, computeInferenceData, vocabulary, PADDING_TOKEN
 from Source.packingEmbedding import PackingEmbedding
 
-INFTY_NEG = -1e9
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -30,47 +27,15 @@ class PriorLM:
 
 
 class NGramLM(PriorLM):
-    def __init__(self, n: int, vocab: str, boundaries: str = "()", device=device):
-        self.device = device
-        self.n: int = n
-        self.vocab: dict[str, int] = {
-            c: i+1 for i, c in enumerate("" + vocab + boundaries)}  # ...+1 cause empty char is 0
-        self.vocabSize: int = len(vocab) + len(boundaries) + 1
+    def __init__(self, n: int, vocab: Vocab = vocabulary):
+        self.n = n
+        self.vocab = vocab
+        self.vocabSize = len(vocab)
 
-        self.nGramCount: Tensor = torch.zeros(
+        self.nGramCount = torch.zeros(
             (self.vocabSize,) * self.n, device=device)
-        self.nGramLogProbs: Tensor = torch.log(
+        self.nGramLogProbs = torch.log(
             torch.zeros((self.vocabSize,) * self.n, device=device))
-
-    @staticmethod
-    def countSubtensorOccurrences(larger_tensor: Tensor, sub_tensor: Tensor) -> int:
-        # TODO: Removes (deprecated)
-        """
-        Count the number of sub-tensors that can exist in a large tensor (n-gram batch).
-
-        *This function was designed to count n-grams in a large tensor of size (L x B x V),
-        each row (L) of which corresponds to a character in a word in a column (B),
-        and the depth (V) of which corresponds to the one-hot tensor associated with that character.*
-
-        >>> bigTensor = torch.tensor([[[0,0,1], [0,1,0], [0,0,1]],
-                                        [[0,0,1], [0,1,0], [0,0,0]]])
-        >>> littleTensor = torch.tensor([[0,0,1], [0,1,0]])
-        >>> countSubtensorOccurrences(bigTensor, littleTensor)
-        2
-        """
-
-        # Forms the n-grams.
-        larger_reshaped = larger_tensor.unfold(
-            1, sub_tensor.size()[0], 1).unfold(2, sub_tensor.size()[1], 1)
-
-        t = torch.all(larger_reshaped == sub_tensor, dim=2)
-        mask = torch.all(t, dim=3)
-        t_masked = t[mask]  # To keep only full True one hot character tensor.
-
-        occurrences = torch.sum(t_masked).item(
-        )//(sub_tensor.size()[0]*sub_tensor.size()[1])
-
-        return int(occurrences)
 
     def prepare(self, data: str) -> Tensor:
         """
@@ -78,18 +43,15 @@ class NGramLM(PriorLM):
         of the vocabulary and setting the tensor to the shape (L x B).
 
         Args:
-            data (str): the training data 
+            data (str): the training data.
 
         Returns:
-            Tensor (shape: L x B)
+            Tensor of shape L x B.
         """
-        assert len(d := set(data).difference(self.vocab.keys())) != 0, \
+        assert len(d := set(data).difference(self.vocab.get_stoi().keys())) != 0, \
             f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}"
 
-        wordsList = data.split(" ")
-
-        batch = reduceOneHotTensor(pad_sequence(
-            [wordToOneHots('('*(self.n-1) + w + ')'*(self.n-1), self.vocab) for w in wordsList], batch_first=False))  # shape: (L x B)
+        batch = wordsToOneHots(list(map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(" "))), self.vocab)
 
         return batch.to(device)
 
@@ -98,19 +60,16 @@ class NGramLM(PriorLM):
         Train the n-gram language model on the `data` (str) 
         """
         batch = self.prepare(data)
-        batch_ngram = batch.unfold(
-            1, self.vocabSize, 1)  # TODO: Check dim
-        batch_ngram_id = torch.sum(batch_ngram, dim=-1)  # TODO: Check dim
+        # shape : ((L-self.n)/1)+1 x B x self.n
+        batch_ngram = batch.unfold(0, self.n, 1)
 
         # avoids all zeros cause it is the empty char so the prob in log is always null
-        for i, idx in enumerate(permutations(range(1, self.vocabSize), self.n)):
-            self.nGramCount[idx] = torch.sum(
-                batch_ngram_id == i).item()  # += or = ?
+        for p in permutations(range(1, self.vocabSize), self.n):
+            self.nGramCount[p] += torch.sum(
+                torch.all(batch_ngram == torch.tensor(p), dim=-1)).item()
 
-        countDivisor = torch.sum(
-            self.nGramCount, dim=-1).expand(self.nGramCount.shape)
+        countDivisor = torch.sum(self.nGramCount, dim=-1, keepdim=True)
 
-        # TODO: Check division (especially -inf values)
         self.nGramLogProbs = torch.log(self.nGramCount/countDivisor)
 
         return self.nGramLogProbs
@@ -128,7 +87,7 @@ class NGramLM(PriorLM):
         Args:
             reconstructions (Tensor) : tensor of (L, B) shape.
         """
-        L, B = reconstructions.shape
+        B = reconstructions.shape[1]
 
         first_padding = torch.full(
             (self.n-2, B), self.vocab['('], device=device)
@@ -176,28 +135,32 @@ class NGramLM(PriorLM):
 
             # to neutralize the probability of ngrams with empty characters.
             probs += torch.min(nGramProb, torch.zeros(batch_size))
-        return probs.to(device)
+        return probs
 
 
 class CharLMDataset(Dataset):
-    def __init__(self, data: list[str], vocab: dict):
-        self.data = data
+    def __init__(self, data: str, vocab: Vocab = vocabulary):
+        self.data = self.word_tokenization(data)
         self.vocab = vocab
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        return self.word_to_one_hot(self.data[idx], self.vocab)
+        return wordsToOneHots(self.data[idx], self.vocab)
 
     @staticmethod
-    def word_to_one_hot(word: str, vocab: dict[str, int] = SIGMA) -> Tensor:
+    def word_tokenization(data: str, sep: str = ' ') -> list[str]:
+        return data.split(sep=sep)
+
+    @staticmethod
+    def word_to_one_hot(word: str, vocab: Vocab = vocabulary, device=device) -> Tensor:
         """
         Convert a word into a one-hot tensor using a predefined vocabulary.
 
         Args:
             word (str): The input word to convert.
-            vocab (dict): A dictionary that maps characters to their corresponding indices in the one-hot vector.
+            vocab (Vocab): A Vocab that maps characters to their corresponding indices in the one-hot vector.
 
         Returns:
             Tensor: A one-hot tensor representation of the input word.
@@ -230,7 +193,7 @@ class CharLM(nn.Module, PriorLM):
         self.dropout_rate = dropout_rate
 
         self.embedding = PackingEmbedding(num_embeddings=self.vocab_size,
-                                          embedding_dim=self.embedding_size, padding_idx=-1)
+                                          embedding_dim=self.embedding_size, padding_idx=vocabulary[PADDING_TOKEN])
 
         self.lstm = nn.LSTM(self.embedding_size, self.hidden_size, num_layers=self.num_layers,
                             dropout=self.dropout_rate)
@@ -251,11 +214,10 @@ class CharLM(nn.Module, PriorLM):
                 torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device))
 
     def training(self, data: str, epochs: int, save_path: str, learning_rate: float = 0.001):
-        criter = nn.NLLLoss(ignore_index=-1)  # TODO: Change padding index
+        criter = nn.NLLLoss(ignore_index=vocabulary[PADDING_TOKEN])  # TODO: Change padding index
         optim = Adam(self.parameters(), lr=learning_rate)
 
-        indices_tensor = pad_sequence([wordToOneHots(word) for word in data.split(' ')],
-                                      padding_value=-1)
+        indices_tensor = wordsToOneHots(data.split(' '), vocabulary)
 
         MINI_BATCH_SIZE = 32
         def adjust_seq_lengths(x, l, l_max): return (x, l+1)

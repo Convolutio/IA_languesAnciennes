@@ -5,13 +5,9 @@ from torch.nn.utils.rnn import pad_sequence, unpad_sequence
 from torch import cuda
 import re
 
-from Types.models import InferenceData
+from Types.models import InferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
 
 device = "cuda" if cuda.is_available() else "cpu"
-
-PADDING_TOKEN = '-'
-SOS_TOKEN = '('
-EOS_TOKEN = ')'
 
 specialTokensPattern = re.compile('|'.join(['(' + specialToken + ')' for specialToken in (PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN)]))
 

@@ -2,8 +2,9 @@ from torch import Tensor
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 import torch.nn as nn
 import torch
+from torchtext.vocab import Vocab
 
-from Types.models import InferenceData, TargetInferenceData
+from Types.models import InferenceData, TargetInferenceData, EOS_TOKEN, PADDING_TOKEN
 
 def isElementOutOfRange(sequencesLengths:Tensor, maxSequenceLength:int) -> Tensor:
     """
@@ -33,12 +34,14 @@ def isElementOutOfRange(sequencesLengths:Tensor, maxSequenceLength:int) -> Tenso
     """
     return torch.arange(maxSequenceLength-1).unsqueeze(0) < (sequencesLengths-1).unsqueeze(1)
 
-def nextOneHots(targets_:TargetInferenceData, voc_size:int):
-    targets, sequencesLengths = targets_[:2]
-    oneHots = torch.where(targets == 0, 0, targets - 1)[1:].to(torch.int64)
+def nextOneHots(targets_:TargetInferenceData, vocab:Vocab):
+    IPA_length = len(vocab)-3
+    vocSize = len(vocab)
+    targets = targets_[0]
+    oneHots = targets[1:].to(torch.int64)
     original_shape = oneHots.size() # (|y|, B)
     # dim = (1, |y|, B, |Σ|+1) : the boundaries and special tokens are not interesting values for y[j] (that is why they have been erased with the reduction)
-    return pad_packed_sequence(pack_padded_sequence(nn.functional.one_hot(oneHots.flatten(), num_classes=voc_size).view(original_shape+(voc_size,)), sequencesLengths-1, False, False), False)[0].unsqueeze(0)
+    return nn.functional.one_hot(oneHots.flatten(), num_classes=vocSize).view(original_shape+(vocSize,))[..., :IPA_length].unsqueeze(0)
 
 class CachedTargetsData():
     """
@@ -86,7 +89,7 @@ class CachedTargetsData():
         * an integer equalling the maximum one
     """
 
-    def __init__(self, targets_:InferenceData) -> None:
+    def __init__(self, targets_:InferenceData, vocab:Vocab) -> None:
         """
         Optimisation method : computes once the usefull data for the targets at the EditModel's initialisation.
         The gradient of the targets input data is set in the method to be tracked.
@@ -97,13 +100,11 @@ class CachedTargetsData():
         
         targets, sequencesLengths = targets_[0], targets_[1]
 
-        closing_boundary_index = int(torch.max(targets).item())
-        voc_size = closing_boundary_index - 2
-        targetsInput = targets.where(targets != closing_boundary_index, 0)[:-1]
+        targetsInput = targets.where(targets != vocab[EOS_TOKEN], vocab[PADDING_TOKEN])[:-1]
         
         self.targetsInputData = targetsInput, targets_[1] + 1
         
         # dim = (1, |y|, C, 1, |Σ|) : the boundaries and special tokens are not interesting values for y[j] (that is why they have been erased with the reduction)
-        self.nextOneHots = nextOneHots((*self.targetsInputData, self.maxSequenceLength-1), voc_size).unsqueeze(3)
+        self.nextOneHots = nextOneHots((*self.targetsInputData, self.maxSequenceLength-1), vocab).unsqueeze(3)
         
         self.arePaddingElements = isElementOutOfRange(sequencesLengths, self.maxSequenceLength)

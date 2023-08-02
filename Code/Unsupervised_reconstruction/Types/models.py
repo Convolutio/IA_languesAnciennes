@@ -1,6 +1,4 @@
 from typing import Literal
-from numpy.typing import NDArray
-from numpy import uint8
 from torch import Tensor
 from torch.nn.utils.rnn import PackedSequence
 
@@ -51,3 +49,7 @@ Tuple arguments:
     * CPU IntTensor with the lengths of sequences (with the opening boundary, so |y|+1). shape = (C)
     * int with the maximum one
 """
+
+PADDING_TOKEN = '-'
+SOS_TOKEN = '('
+EOS_TOKEN = ')'

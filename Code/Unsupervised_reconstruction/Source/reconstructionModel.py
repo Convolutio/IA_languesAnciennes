@@ -2,14 +2,14 @@ from torch import Tensor
 import torch.optim as optim
 import torch.nn as nn
 import torch
+from torchtext.vocab import Vocab
 
 import numpy as np
 
 import matplotlib.pyplot as plt
 
 from Types.articleModels import ModernLanguages
-from Types.models import InferenceData, TargetInferenceData, SourceInferenceData
-
+from Types.models import InferenceData, TargetInferenceData, SourceInferenceData, PADDING_TOKEN
 
 from Source.editModel import EditModel
 from Source.packingEmbedding import PackingEmbedding
@@ -48,17 +48,18 @@ class ReconstructionModel(nn.Module):
     Input samples tensor shape: (|x|+2, C, 1)\\
     Input samples' lengths tensor shape: (C, 1)
     """
-    def __init__(self, cognatesSet:dict[ModernLanguages, InferenceData], voc_size:int, lstm_input_dim:int, lstm_hidden_dim:int):
+    def __init__(self, cognatesSet:dict[ModernLanguages, InferenceData], vocab:Vocab, lstm_input_dim:int, lstm_hidden_dim:int):
         super().__init__()
         self.__languages: tuple[ModernLanguages, ...] = tuple(cognatesSet.keys())
-        self.__voc_size = voc_size
-        self.shared_embedding_layer = PackingEmbedding(voc_size+3, lstm_input_dim, padding_idx=0, device=device)
+        self.IPA_length = len(vocab)-3
+        self.vocab = vocab
+        self.shared_embedding_layer = PackingEmbedding(len(vocab), lstm_input_dim, padding_idx=vocab[PADDING_TOKEN], device=device)
         self.__editModels = nn.ModuleDict({
                 lang:EditModel(
                     targetInferenceData,
                     lang,
                     self.shared_embedding_layer,
-                    voc_size,
+                    vocab,
                     lstm_hidden_dim
                 ) for (lang, targetInferenceData) in cognatesSet.items()
             })
@@ -95,8 +96,8 @@ class ReconstructionModel(nn.Module):
         samples_miniBatches: list[InferenceData] = [(splits[0][i], splits[1][i], int(torch.max(splits[1][i]).item())) for i in range(len(splits[1]))]
         miniBatchesNumber = len(samples_miniBatches) # = batchSize // MINI_BATCH_SIZE
         
-        targets_loads = [torch.empty((0,miniBatchSize, 2*(self.__voc_size+1)), device=device) for _ in range(miniBatchesNumber-1)] # dim = (*, b, 2*(|Σ|+1))
-        targets_loads.append(torch.empty((0,batchSize%miniBatchSize, 2*(self.__voc_size+1)), device=device))
+        targets_loads = [torch.empty((0,miniBatchSize, 2*(self.IPA_length+1)), device=device) for _ in range(miniBatchesNumber-1)] # dim = (*, b, 2*(|Σ|+1))
+        targets_loads.append(torch.empty((0,batchSize%miniBatchSize, 2*(self.IPA_length+1)), device=device))
 
         modern_miniBatches: dict[ModernLanguages, list[TargetInferenceData]] = {}
         modernOneHotVectors_miniBatches: dict[ModernLanguages, list[Tensor]] = {}
@@ -105,8 +106,15 @@ class ReconstructionModel(nn.Module):
             model:EditModel = self.getModel(lang) #type: ignore
             
             modern_splits = (model.cachedTargetInputData[0].split(miniBatchSize, 1), model.cachedTargetInputData[1].split(miniBatchSize))
-            modern_miniBatches[lang] = [(modern_splits[0][i], modern_splits[1][i], int(torch.max(modern_splits[1][i]).item())) for i in range(len(modern_splits[1]))]
-            modernOneHotVectors_miniBatches[lang] = [nextOneHots(inpt, self.__voc_size) for inpt in modern_miniBatches[lang]]
+            modern_miniBatches[lang] = []
+            for i in range(len(modern_splits)):
+                maxRawLength = int(torch.max(modern_splits[1][i]).item())
+                modern_miniBatches[lang].append((
+                    modern_splits[0][i][:maxRawLength],
+                    modern_splits[1][i],
+                    maxRawLength
+                ))
+            modernOneHotVectors_miniBatches[lang] = [nextOneHots(inpt, self.vocab) for inpt in modern_miniBatches[lang]]
             
             
             for i, (samples_, moderns_, modernOneHots) in enumerate(zip(samples_miniBatches, modern_miniBatches[lang], modernOneHotVectors_miniBatches[lang])):
@@ -135,7 +143,7 @@ class ReconstructionModel(nn.Module):
             targets_loads)
     
     def renderLogitsForMiniBatch(self, samples_:InferenceData, modern_miniBatches:dict[ModernLanguages, TargetInferenceData], modernOneHotVectors_miniBatches:dict[ModernLanguages, Tensor]):
-        logits_load = torch.empty((0, len(samples_[1]), 2*(self.__voc_size+1)), device=device) # dim = (*, b, 2*(|Σ|+1))
+        logits_load = torch.empty((0, len(samples_[1]), 2*(self.IPA_length+1)), device=device) # dim = (*, b, 2*(|Σ|+1))
                 
         samplesInput:SourceInferenceData = self.__computeSourceInferenceData(samples_)
         
@@ -205,7 +213,7 @@ class ReconstructionModel(nn.Module):
                 model:EditModel = self.__editModels[language] #type: ignore
                 model.update_cachedTargetContext()
     
-    def forward_dynProg(self, sources_:InferenceData) -> dict[ModernLanguages, np.ndarray]:
+    def forward_dynProg(self, sources_:InferenceData) -> dict[ModernLanguages, Tensor]:
         """
         Returns (p(y_l)|x) for all the batch
         """
@@ -214,11 +222,11 @@ class ReconstructionModel(nn.Module):
             MINI_BATCH_SIZE = 2
             sources:list[SourceInferenceData] = [self.__computeSourceInferenceData((*s, sources_[2])) for s in zip(sources_[0].split(MINI_BATCH_SIZE, -1), sources_[1].split(MINI_BATCH_SIZE, -1))]
 
-            probs:dict[ModernLanguages, np.ndarray] = {}
+            probs:dict[ModernLanguages, Tensor] = {}
             for language in self.languages:
                 model:EditModel = self.__editModels[language] #type: ignore
-                mutation_prob = compute_mutation_prob(model, sources, model.cachedTargetDataForDynProg)
-                probs[language] = mutation_prob #type: ignore
+                mutation_prob:Tensor = compute_mutation_prob(model, sources, model.cachedTargetDataForDynProg) #type: ignore
+                probs[language] = mutation_prob
             
             return probs
     

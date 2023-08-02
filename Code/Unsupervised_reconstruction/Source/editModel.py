@@ -5,11 +5,12 @@ import torch
 import torch.nn as nn
 
 from torch.nn.utils.rnn import pad_packed_sequence, pad_sequence
+from torchtext.vocab import Vocab
 from torch import Tensor
 
 from models import ProbCache
 from Types.articleModels import *
-from Types.models import InferenceData, SourceInferenceData, TargetInferenceData
+from Types.models import InferenceData, SourceInferenceData, TargetInferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
 from Source.packingEmbedding import PackingEmbedding
 from Source.cachedModernData import CachedTargetsData, isElementOutOfRange
 
@@ -48,28 +49,23 @@ class EditModel(nn.Module):
     Expected input cognates' lengths tensor shape: (C)
     """
 
-    def __init__(self, targets_:InferenceData, language: ModernLanguages, shared_embedding_layer:PackingEmbedding, voc_size:int, lstm_hidden_dim: int):
+    def __init__(self, targets_:InferenceData, language: ModernLanguages, shared_embedding_layer:PackingEmbedding, vocab:Vocab, lstm_hidden_dim: int):
         """
         Arguments:
-            - embedding_layer (Embedding): the shared embedding layer between all of the EditModels. It hosts an input containing one-hot indexes between 0 and voc_size+2 included (with 
-
-                        - 0 the empty padding token (must be ignored with the padding_idx=0 parameter setting),
-                        - voc_size + 1 the `(` opening boundary token,
-                        - voc_size + 2 the `)` closing boundary token
-                
-                )
+            - embedding_layer (Embedding): the shared embedding layer between all of the EditModels. It hosts an input containing tokens in the vocabulary passed in the 'vocab' argument object.
             The embeddings will be passed in input of the lstm models.
             - voc_size (int): the size of the IPA characters vocabulary (without special tokens), to compute the dimension of the one-hot vectors that the model will have to host in input, but to also figure out the number of classes in the output distribution.
             - lstm_hidden_dim (int): the arbitrary dimension of the hidden layer computed by the lstm models, the unidirectional as well as the bidirectional. Therefore, this dimension must be an even integer. 
         """
         assert(lstm_hidden_dim % 2 ==0), "The dimension of the lstm models' hidden layer must be an even integer"
-        assert(shared_embedding_layer.padding_idx==0 and shared_embedding_layer.num_embeddings==voc_size+3), "The shared embedding layer has been wrongly set."
+        assert(shared_embedding_layer.num_embeddings==len(vocab)), "The shared embedding layer has been wrongly set."
 
         self.language = language
         
         super(EditModel, self).__init__()
         
-        self.output_dim = voc_size + 1  # must equals |Σ|+1 for the <end>/<del> special output tokens
+        IPA_length = len(vocab)-3
+        self.output_dim = IPA_length + 1  # must equals |Σ|+1 for the <end>/<del> special output tokens
         lstm_input_dim = shared_embedding_layer.embedding_dim
 
         self.encoder_prior = nn.Sequential(
@@ -89,7 +85,7 @@ class EditModel(nn.Module):
             nn.LogSoftmax(dim=-1)
         ).to(device)
 
-        self.__cachedTargetsData = CachedTargetsData(targets_)
+        self.__cachedTargetsData = CachedTargetsData(targets_, vocab)
         
         self.__cachedProbs: dict[Literal['ins',
                                          'sub', 'end', 'del'], Tensor] = {}
@@ -165,7 +161,7 @@ class EditModel(nn.Module):
         """
         self.eval()
         with torch.no_grad():
-            convertForIndexing = lambda t: torch.cat((torch.zeros((*t.size()[:-1], 1), device=device), t), dim=-1)
+            convertForIndexing = lambda t: torch.cat((t, torch.zeros((*t.size()[:-1], 1), device=device)), dim=-1)
             lengthen = lambda t, padding_x, padding_y: torch.cat((
                 torch.cat((t, torch.zeros((padding_x, *t.size()[1:]), device=device)), dim=0),
                 torch.zeros((t.size()[0]+1, padding_y, *t.size()[2:]), device=device)
@@ -181,10 +177,11 @@ class EditModel(nn.Module):
                 sub_results, ins_results = (convertForIndexing(t) for t in self(miniSources))
                 x_l, y_l, C, b = sub_results.shape[:-1] # |x|+1, |y|+1, C, b
 
-                cachedProbsNotConcatenated['del'] += lengthen(sub_results[...,-1], 1, 1).chunk(b,-1)  # usefull space = (|x|+1, |y|+1, C, b)
-                cachedProbsNotConcatenated['end'] += lengthen(ins_results[...,-1], 1, 1).chunk(b,-1)  # usefull space = (|x|+1, |y|+1, C, b)
+                cachedProbsNotConcatenated['del'] += lengthen(sub_results[...,-2], 1, 1).chunk(b,-1)  # usefull space = (|x|+1, |y|+1, C, b)
+                cachedProbsNotConcatenated['end'] += lengthen(ins_results[...,-2], 1, 1).chunk(b,-1)  # usefull space = (|x|+1, |y|+1, C, b)
 
-                targetsOneHots = self.__cachedTargetsData.targetsInputData[0][1:] # shape = (|y|, C)
+                neutralizeOutOfRangeClasses: Callable[[Tensor], Tensor] = lambda t: t.where(t < self.output_dim, self.output_dim)
+                targetsOneHots = neutralizeOutOfRangeClasses(self.__cachedTargetsData.targetsInputData[0][1:]) # shape = (|y|, C)
                 indexes = torch.meshgrid(torch.arange(x_l), torch.arange(y_l-1), torch.arange(C), torch.arange(b), indexing='ij') + (targetsOneHots.unsqueeze(0).unsqueeze(-1),)
 
                 # q(y[j]| x, i, y[:j]) = q(.| x, i, y[:j])[onehot_idx(y[j])]
@@ -242,7 +239,7 @@ class EditModel(nn.Module):
                 dim = (|x|+1, |y|+1, b, |Σ|+1) or (|x|+1, |y|+1, b, 2) 
             - ins_probs (Tensor): the logits or the targets for q_ins probs, with at the end the insertion prob
                 dim = (|x|+1, |y|+1, b, |Σ|+1) or (|x|+1, |y|+1, b, 2)
-            - targetsOneHotVectors : dim = (1, |y|, b, |Σ|), the one hot vectors of the IPA characters in the modern forms mini batch.
+            - targetOneHotVectors (Tensor): dim = (1, |y|, b, |Σ|), the one hot vectors of the IPA characters in the modern forms mini batch.
             It is assumed that the padding mask has already been applied on the probs in argument.
         """
         b, V = targetOneHotVectors.shape[-2:]

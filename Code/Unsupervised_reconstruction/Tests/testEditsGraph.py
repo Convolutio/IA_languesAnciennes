@@ -1,5 +1,4 @@
 from Source.generateProposals import getMinEditPaths, computeProposals, computeMinEditDistanceMatrix
-from data.vocab import make_oneHotTensor
 import torch
 
 def bigDataTest():

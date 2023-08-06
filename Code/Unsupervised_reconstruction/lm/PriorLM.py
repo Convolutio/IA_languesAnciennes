@@ -61,14 +61,20 @@ class NGramLM(PriorLM):
         Train the n-gram language model on the `data` (str) 
         """
         batch = self.prepare(data)
-        # shape : ((L-self.n)/1)+1 x B x self.n
-        batch_ngram = batch.unfold(0, self.n, 1)
+
+        batch_ngram = batch.unfold(0, self.n, 1)    # shape: ( T:=((L-self.n)/1)+1, B, self.n)
+        flatten_ngram = batch_ngram.view(-1, self.n)    # shape: (T*B, self.n)
+
+        unique_counts_ngram: tuple[Tensor, Tensor] = torch.unique(flatten_ngram, sorted = False, return_counts = True, dim=0)   # shape: (*, self.n), (*)
+        non_zeros_ngram = torch.any(unique_counts_ngram[0] == 0, dim=1)     # shape: (*)
+
+        for i, t, c in zip(non_zeros_ngram, *unique_counts_ngram):  #type:ignore
+            if i: self.nGramCount[tuple(t)] += c
 
         # avoids all zeros cause it is the empty char so the prob in log is always null
-        # TODO: product OR build_ngram_from_list
-        for p in product(range(1, self.vocabSize), repeat=self.n):
-            self.nGramCount[p] += torch.sum(                            # TODO: Look torch.unique to count ngrams
-                torch.all(batch_ngram == torch.tensor(p), dim=-1)).item()
+        # for p in product(range(1, self.vocabSize), repeat=self.n):
+        #     self.nGramCount[p] += torch.sum(
+        #         torch.all(batch_ngram == torch.tensor(p), dim=-1)).item()
 
         countDivisor = torch.sum(self.nGramCount, dim=-1, keepdim=True)
 

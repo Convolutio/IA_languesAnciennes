@@ -37,16 +37,18 @@ class NGramLM(PriorLM):
         self.nGramLogProbs = torch.log(
             torch.zeros((self.vocabSize,) * self.n, device=device))
 
-    def prepare(self, data: str) -> Tensor:
+    def prepare(self, data: str) -> tuple[Tensor, Tensor, Tensor]:
         """
-        Prepare the data in a batch by checking the validity \
-        of the vocabulary and setting the tensor to the shape (L x B).
+        Prepare the data in a ngram batch (shape: (*, self.n)) by checking the validity \
+        of the vocabulary and giving the count of each unique ngram in the batch (shape: (*)).
+        The last tensor corresponds to a BoolTensor (shape: (*)) checking for each unique ngram if containing a 0.
 
         Args:
             data (str): the training data.
 
         Returns:
-            (Tensor, dim=L x B).
+            tuple[Tensor, Tensor, Tensor]: one containing each unique ngram, \
+            an other containing the counts for each ngram and the last one checking if a ngram contains a 0.
         """
         assert len(d := set(data).difference(self.vocab.get_stoi().keys())) != 0, \
             f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}"
@@ -54,22 +56,27 @@ class NGramLM(PriorLM):
         batch = wordsToOneHots(list(
             map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(" "))), self.vocab)
 
-        return batch.to(device)
+        # shape: ( T:=((L-self.n)/1)+1, B, self.n)
+        batch_ngram = batch.unfold(0, self.n, 1)
+
+        # shape: (T*B, self.n) ; shape: (*, self.n), (*)
+        unique_ngrams, count_ngrams = torch.unique(
+            batch_ngram.view(-1, self.n), sorted=False, return_counts=True, dim=0)
+
+        non_zeros_ngram = torch.any(
+            unique_ngrams[0] == 0, dim=1)     # shape: (*)
+
+        return unique_ngrams, count_ngrams, non_zeros_ngram
 
     def train(self, data: str) -> Tensor:
         """
         Train the n-gram language model on the `data` (str) 
         """
-        batch = self.prepare(data)
+        training_data = self.prepare(data)
 
-        batch_ngram = batch.unfold(0, self.n, 1)    # shape: ( T:=((L-self.n)/1)+1, B, self.n)
-        flatten_ngram = batch_ngram.view(-1, self.n)    # shape: (T*B, self.n)
-
-        unique_counts_ngram: tuple[Tensor, Tensor] = torch.unique(flatten_ngram, sorted = False, return_counts = True, dim=0)   # shape: (*, self.n), (*)
-        non_zeros_ngram = torch.any(unique_counts_ngram[0] == 0, dim=1)     # shape: (*)
-
-        for i, t, c in zip(non_zeros_ngram, *unique_counts_ngram):  #type:ignore
-            if i: self.nGramCount[tuple(t)] += c
+        for t, c, i in zip(*training_data):
+            if i:
+                self.nGramCount[tuple(t)] += c
 
         # avoids all zeros cause it is the empty char so the prob in log is always null
         # for p in product(range(1, self.vocabSize), repeat=self.n):

@@ -66,7 +66,7 @@ class NGramLM(PriorLM):
         non_zeros_ngram = torch.any(
             unique_ngrams[0] == 0, dim=1)     # shape: (*)
 
-        return unique_ngrams, count_ngrams, non_zeros_ngram
+        return unique_ngrams.to(device), count_ngrams.to(device), non_zeros_ngram.to(device)
 
     def train(self, data: str) -> Tensor:
         """
@@ -76,7 +76,7 @@ class NGramLM(PriorLM):
 
         for t, c, i in zip(*training_data):
             if i:
-                self.nGramCount[tuple(t)] += c
+                self.nGramCount[tuple(t)] += c.item()
 
         # avoids all zeros cause it is the empty char so the prob in log is always null
         # for p in product(range(1, self.vocabSize), repeat=self.n):

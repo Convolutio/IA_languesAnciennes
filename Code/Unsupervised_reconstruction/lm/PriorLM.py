@@ -156,41 +156,6 @@ class NGramLM(PriorLM):
         return probs
 
 
-# TODO: Complete
-class CharLMDataset(Dataset):
-    def __init__(self, data: str, vocab: Vocab = vocabulary):
-        self.data = self.word_tokenization(data)
-        self.vocab = vocab
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        return wordsToOneHots(self.data[idx], self.vocab)
-
-    @staticmethod
-    def word_tokenization(data: str, sep: str = ' ') -> list[str]:
-        return data.split(sep=sep)
-
-    @staticmethod
-    def word_to_one_hot(word: str, vocab: Vocab = vocabulary, device=device) -> Tensor:
-        """
-        Convert a word into a one-hot tensor using a predefined vocabulary.
-
-        Args:
-            word (str): The input word to convert.
-            vocab (Vocab): A Vocab that maps characters to their corresponding indices in the one-hot vector.
-
-        Returns:
-            Tensor: A one-hot tensor representation of the input word.
-        """
-        one_hot = torch.zeros(len(word), len(vocab), device=device)
-        for i, char in enumerate(word):
-            char_index = vocab[char]
-            one_hot[i][char_index] = 1
-        return one_hot
-
-
 class CharLM(nn.Module, PriorLM):
     """
     Character level language model.

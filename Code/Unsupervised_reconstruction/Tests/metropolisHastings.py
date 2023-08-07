@@ -1,4 +1,4 @@
-from Source.sampling import computeLaw
+from source.sampling import computeLaw
 import numpy as np
 import torch
 

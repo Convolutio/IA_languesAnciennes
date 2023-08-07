@@ -8,14 +8,14 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from Types.articleModels import ModernLanguages
-from Types.models import InferenceData, TargetInferenceData, SourceInferenceData, PADDING_TOKEN
+from models.articleModels import ModernLanguages
+from models.models import InferenceData, TargetInferenceData, SourceInferenceData, PADDING_TOKEN
 
-from Source.editModel import EditModel
-from Source.packingEmbedding import PackingEmbedding
-from Source.cachedModernData import nextOneHots
-from Source.dynamicPrograms import compute_mutation_prob, compute_posteriors
-from models import ProbCache
+from source.editModel import EditModel
+from source.packingEmbedding import PackingEmbedding
+from source.cachedModernData import nextOneHots
+from source.dynamicPrograms import compute_mutation_prob, compute_posteriors
+from probcache import ProbCache
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

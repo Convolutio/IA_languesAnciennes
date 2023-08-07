@@ -3,9 +3,9 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 
-from Types.models import *
-from Types.articleModels import ModernLanguages
-from Source.editsGraph import EditsGraph
+from models.models import *
+from models.articleModels import ModernLanguages
+from source.editsGraph import EditsGraph
 
 import torch
 from torch import Tensor

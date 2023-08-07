@@ -1,6 +1,6 @@
 from typing import Literal
-from Types.articleModels import ModernLanguages
-from Data.vocab import wordsToOneHots
+from models.articleModels import ModernLanguages
+from data.vocab import wordsToOneHots
 from torch import Tensor
 
 def getCognatesSet() -> dict[ModernLanguages, Tensor]:

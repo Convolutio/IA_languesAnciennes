@@ -5,7 +5,7 @@ from torch.nn.utils.rnn import pad_sequence, unpad_sequence
 from torch import cuda
 import re
 
-from Types.models import InferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
+from models.models import InferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
 
 device = "cuda" if cuda.is_available() else "cpu"
 

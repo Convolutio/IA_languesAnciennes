@@ -1,8 +1,8 @@
 from typing import Optional
 from collections import deque
 
-from Types.models import *
-from Data.vocab import vocabulary, PADDING_TOKEN, oneHotsToWords
+from models.models import *
+from data.vocab import vocabulary, PADDING_TOKEN, oneHotsToWords
 
 import torch
 from torch import Tensor, ByteTensor

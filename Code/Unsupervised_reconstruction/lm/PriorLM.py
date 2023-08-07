@@ -8,9 +8,9 @@ from torch.utils.data import DataLoader, Dataset
 from torch.optim import Adam
 from tqdm.auto import tqdm
 
-from Types.models import InferenceData
-from Data.vocab import wordsToOneHots, computeInferenceData, vocabulary, PADDING_TOKEN
-from Source.packingEmbedding import PackingEmbedding
+from models.models import InferenceData
+from data.vocab import wordsToOneHots, computeInferenceData, vocabulary, PADDING_TOKEN
+from source.packingEmbedding import PackingEmbedding
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

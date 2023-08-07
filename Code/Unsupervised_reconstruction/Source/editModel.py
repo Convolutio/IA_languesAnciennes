@@ -8,11 +8,11 @@ from torch.nn.utils.rnn import pad_packed_sequence, pad_sequence
 from torchtext.vocab import Vocab
 from torch import Tensor
 
-from models import ProbCache
-from Types.articleModels import *
-from Types.models import InferenceData, SourceInferenceData, TargetInferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
-from Source.packingEmbedding import PackingEmbedding
-from Source.cachedModernData import CachedTargetsData, isElementOutOfRange
+from probcache import ProbCache
+from models.articleModels import *
+from models.models import InferenceData, SourceInferenceData, TargetInferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
+from source.packingEmbedding import PackingEmbedding
+from source.cachedModernData import CachedTargetsData, isElementOutOfRange
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 

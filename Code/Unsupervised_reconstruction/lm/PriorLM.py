@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from torchtext.vocab import Vocab
-from torch.utils.data import DataLoader, Dataset
 from torch.optim import Adam
 from tqdm.auto import tqdm
 
@@ -37,27 +36,33 @@ class NGramLM(PriorLM):
         self.nGramLogProbs = torch.log(
             torch.zeros((self.vocabSize,) * self.n, device=device))
 
-    def prepare(self, data: str) -> tuple[Tensor, Tensor, Tensor]:
+    def batch_ngram(self, data: list[str]) -> Tensor:
         """
-        Prepare the data in a ngram batch (shape: (*, self.n)) by checking the validity \
-        of the vocabulary and giving the count of each unique ngram in the batch (shape: (*)).
-        The last tensor corresponds to a BoolTensor (shape: (*)) checking for each unique ngram if containing a 0.
+        Prepare the data into a ngram batch (shape: (((L-self.n)/1)+1, B, self.n) by checking the validity
+        of the vocabulary.
 
         Args:
-            data (str): the training data.
+            data (list[str]): the training data.
 
         Returns:
-            tuple[Tensor, Tensor, Tensor]: one containing each unique ngram, \
-            an other containing the counts for each ngram and the last one checking if a ngram contains a 0.
+            Tensor: ngram batch data.
         """
         assert len(d := set(data).difference(self.vocab.get_stoi().keys())) != 0, \
             f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}"
 
         batch = wordsToOneHots(list(
-            map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(" "))), self.vocab)
+            map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data)), self.vocab)
 
         # shape: ( T:=((L-self.n)/1)+1, B, self.n)
         batch_ngram = batch.unfold(0, self.n, 1)
+
+        return batch_ngram.to(device)
+
+    def train(self, data: str) -> Tensor:
+        """
+        Train the n-gram language model on the `data` (str) 
+        """
+        batch_ngram = self.batch_ngram(data.split(' '))
 
         # shape: (T*B, self.n) ; shape: (*, self.n), (*)
         unique_ngrams, count_ngrams = torch.unique(
@@ -66,15 +71,7 @@ class NGramLM(PriorLM):
         non_zeros_ngram = torch.any(
             unique_ngrams[0] == 0, dim=1)     # shape: (*)
 
-        return unique_ngrams.to(device), count_ngrams.to(device), non_zeros_ngram.to(device)
-
-    def train(self, data: str) -> Tensor:
-        """
-        Train the n-gram language model on the `data` (str) 
-        """
-        training_data = self.prepare(data)
-
-        for t, c, i in zip(*training_data):
+        for t, c, i in zip(unique_ngrams, count_ngrams, non_zeros_ngram):
             if i:
                 self.nGramCount[tuple(t)] += c.item()
 
@@ -92,6 +89,7 @@ class NGramLM(PriorLM):
     def evaluation(self, data: str) -> float:
         """Perplexity evaluation"""
         # TODO: Perplexity
+
         return -1.0
 
     def padDataToNgram(self, reconstructions: Tensor) -> Tensor:

@@ -62,9 +62,9 @@ def oneHotsToWords(batch: Tensor, removeSpecialTokens: bool = False, inventory: 
         [58,  2, 30, 14,  6,  8, 43, 57, 59, 59, 59]], dtype=torch.int32).T
     >>> t.size()
     torch.Size([11, 2])
-    >>> oneHotsToWords(t, vocabulary)
+    >>> oneHotsToWords(t, False, vocabulary)
     ['(notifikar)', '(dɔrikʊ)---']
-    >>> oneHotsToWords(t, vocabulary, True)
+    >>> oneHotsToWords(t, True, vocabulary)
     ['notifikar', 'dɔrikʊ']
     """
     wordsLst = ["".join(inventory.lookup_tokens(wordInLst))

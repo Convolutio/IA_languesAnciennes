@@ -8,7 +8,7 @@ from torch.nn.utils.rnn import pad_packed_sequence, pad_sequence
 from torchtext.vocab import Vocab
 from torch import Tensor
 
-from probcache import ProbCache
+from models.probcache import ProbCache
 from models.articleModels import *
 from models.models import InferenceData, SourceInferenceData, TargetInferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
 from source.packingEmbedding import PackingEmbedding

@@ -3,6 +3,7 @@ import torch.optim as optim
 import torch.nn as nn
 import torch
 from torchtext.vocab import Vocab
+from torch.nn.utils.rnn import PackedSequence
 
 import numpy as np
 
@@ -80,8 +81,8 @@ class ReconstructionModel(nn.Module):
     def __computeSourceInferenceData(self, samples_: InferenceData) -> SourceInferenceData:
         lengths = samples_[1]+2
         maxLength = samples_[2]+2
-        return (self.shared_embedding_layer((
-            samples_[0].flatten(start_dim=1), lengths.flatten(), False)),
+        return (self.shared_embedding_layer(
+            samples_[0].flatten(start_dim=1), lengths.flatten(), False),
             lengths, maxLength)
 
     # -----------TRAINING----------------
@@ -110,8 +111,10 @@ class ReconstructionModel(nn.Module):
         targets_loads.append(torch.empty(
             (0, batchSize % miniBatchSize, 2*(self.IPA_length+1)), device=device))
 
-        modern_miniBatches: dict[ModernLanguages, list[TargetInferenceData]] = {}
-        modernOneHotVectors_miniBatches: dict[ModernLanguages, list[Tensor]] = {}
+        modern_miniBatches: dict[ModernLanguages,
+                                 list[TargetInferenceData]] = {}
+        modernOneHotVectors_miniBatches: dict[ModernLanguages, list[Tensor]] = {
+        }
 
         for lang in self.__languages:
             model: EditModel = self.getModel(lang)  # type: ignore
@@ -147,8 +150,10 @@ class ReconstructionModel(nn.Module):
                                                                         :maxModernLength, miniBatchSize*i: miniBatchSize*i + thisMiniBatchSize]
 
                 targets_loads[i] = torch.cat((targets_loads[i], model.get_targets(mini_targetProbCache,
-                                                                                  (samples_[1].squeeze(-1)+2, maxSourceLength),
-                                                                                  (moderns_[1]+1, maxModernLength),
+                                                                                  (samples_[
+                                                                                   1].squeeze(-1)+2, maxSourceLength),
+                                                                                  (moderns_[
+                                                                                   1]+1, maxModernLength),
                                                                                   modernOneHots).flatten(end_dim=1)), dim=0)
         return (
             list(zip(

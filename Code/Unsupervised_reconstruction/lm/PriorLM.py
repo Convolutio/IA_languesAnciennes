@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 
 from models.models import InferenceData
 from data.vocab import wordsToOneHots, computeInferenceData, vocabulary, PADDING_TOKEN
-from Source.packingEmbedding import PackingEmbedding
+from source.packingEmbedding import PackingEmbedding
 
 from typing import Callable
 

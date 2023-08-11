@@ -88,7 +88,14 @@ class NGramLM(PriorLM):
 
     def evaluation(self, data: str) -> float:
         """Perplexity evaluation"""
-        # TODO: Perplexity
+        batch_ngram = self.batch_ngram(data.split(' '))
+
+        # Loop over batch
+            # Loop over sequence
+                # Get the log prob for ngram
+                # And log add exp over the sequence
+            # Compute the perplexity for this sequence
+        # Mean all perplexities 
 
         return -1.0
 
@@ -127,6 +134,7 @@ class NGramLM(PriorLM):
         return output
 
     def inference(self, reconstructions: InferenceData) -> Tensor:
+        # TODO: Change InferenceData to Tensor to unbound 
         data = self.padDataToNgram(reconstructions[0])
         maxSequenceLength, batch_size, V = data.shape
         # begin with the neutral prob 1
@@ -245,6 +253,7 @@ class CharLM(nn.Module, PriorLM):
 
     def evaluation(self) -> float:
         # TODO: Perplexity
+        # https://stackoverflow.com/questions/59209086/calculate-perplexity-in-pytorch
         return -1.0
 
     def inference(self, reconstructions: InferenceData) -> Tensor:

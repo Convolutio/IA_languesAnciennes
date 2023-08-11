@@ -1,16 +1,15 @@
-from itertools import permutations
+from itertools import product
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 from torchtext.vocab import Vocab
-from torch.utils.data import DataLoader, Dataset
 from torch.optim import Adam
 from tqdm.auto import tqdm
 
-from Types.models import InferenceData
+from models.models import InferenceData
 from data.vocab import wordsToOneHots, computeInferenceData, vocabulary, PADDING_TOKEN
-from Source.packingEmbedding import PackingEmbedding
+from source.packingEmbedding import PackingEmbedding
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -37,36 +36,49 @@ class NGramLM(PriorLM):
         self.nGramLogProbs = torch.log(
             torch.zeros((self.vocabSize,) * self.n, device=device))
 
-    def prepare(self, data: str) -> Tensor:
+    def batch_ngram(self, data: list[str]) -> Tensor:
         """
-        Prepare the data in a batch by checking the validity \
-        of the vocabulary and setting the tensor to the shape (L x B).
+        Prepare the data into a ngram batch (shape: (((L-self.n)/1)+1, B, self.n) by checking the validity
+        of the vocabulary.
 
         Args:
-            data (str): the training data.
+            data (list[str]): the training data.
 
         Returns:
-            Tensor of shape L x B.
+            Tensor: ngram batch data.
         """
         assert len(d := set(data).difference(self.vocab.get_stoi().keys())) != 0, \
             f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}"
 
-        batch = wordsToOneHots(list(map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(" "))), self.vocab)
+        batch = wordsToOneHots(list(
+            map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data)), self.vocab)
 
-        return batch.to(device)
+        # shape: ( T:=((L-self.n)/1)+1, B, self.n)
+        batch_ngram = batch.unfold(0, self.n, 1)
+
+        return batch_ngram.to(device)
 
     def train(self, data: str) -> Tensor:
         """
         Train the n-gram language model on the `data` (str) 
         """
-        batch = self.prepare(data)
-        # shape : ((L-self.n)/1)+1 x B x self.n
-        batch_ngram = batch.unfold(0, self.n, 1)
+        batch_ngram = self.batch_ngram(data.split(' '))
+
+        # shape: (T*B, self.n) ; shape: (*, self.n), (*)
+        unique_ngrams, count_ngrams = torch.unique(
+            batch_ngram.view(-1, self.n), sorted=False, return_counts=True, dim=0)
+
+        non_zeros_ngram = torch.any(
+            unique_ngrams[0] == 0, dim=1)     # shape: (*)
+
+        for t, c, i in zip(unique_ngrams, count_ngrams, non_zeros_ngram):
+            if i:
+                self.nGramCount[tuple(t)] += c.item()
 
         # avoids all zeros cause it is the empty char so the prob in log is always null
-        for p in permutations(range(1, self.vocabSize), self.n):
-            self.nGramCount[p] += torch.sum(
-                torch.all(batch_ngram == torch.tensor(p), dim=-1)).item()
+        # for p in product(range(1, self.vocabSize), repeat=self.n):
+        #     self.nGramCount[p] += torch.sum(
+        #         torch.all(batch_ngram == torch.tensor(p), dim=-1)).item()
 
         countDivisor = torch.sum(self.nGramCount, dim=-1, keepdim=True)
 
@@ -77,33 +89,37 @@ class NGramLM(PriorLM):
     def evaluation(self, data: str) -> float:
         """Perplexity evaluation"""
         # TODO: Perplexity
+
         return -1.0
 
     def padDataToNgram(self, reconstructions: Tensor) -> Tensor:
         """
-        Returns the padded reconstructions at the beginning and end of each sequence to conform to the calculation in ngram. 
-        The final shape of the tensor is (L+2*(n-2), B)
+        Pad reconstructions at the beginning and end of each sequence to conform to the calculation in ngram. 
 
         Args:
-            reconstructions (Tensor) : tensor of (L, B) shape.
+            reconstructions (Tensor, dim=(L,B)): input tensor to pad.
+
+        Returns:
+            (Tensor, dim=(L+2*(n-2), B)): padded reconstructions.
         """
         B = reconstructions.shape[1]
 
         first_padding = torch.full(
             (self.n-2, B), self.vocab['('], device=device)
 
-        end_padding = torch.full((self.n-2, B), 0, device=device)
+        end_padding = torch.full(
+            (self.n-2, B), self.vocab[PADDING_TOKEN], device=device)
 
         # shape: (L+2*(self.n-2), B)
         padded_tensor = torch.cat(
             (first_padding, reconstructions[0], end_padding), dim=0)
 
         # Indices of the first occurrence of 0 along the L dimension
-        indices = torch.argmax(padded_tensor == 0,
+        indices = torch.argmax(padded_tensor == self.vocab[PADDING_TOKEN],
                                dim=0)
 
         t = torch.arange(padded_tensor.shape[0], device=device).unsqueeze(1)
-        mask = (t >= indices) & (t < indices +
+        mask = (t >= indices) & (t < indices +      # TODO: Check mask (dim)
                                  self.n-2)
 
         output = torch.where(mask, self.vocab[')'], padded_tensor)
@@ -138,62 +154,29 @@ class NGramLM(PriorLM):
         return probs
 
 
-class CharLMDataset(Dataset):
-    def __init__(self, data: str, vocab: Vocab = vocabulary):
-        self.data = self.word_tokenization(data)
-        self.vocab = vocab
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        return wordsToOneHots(self.data[idx], self.vocab)
-
-    @staticmethod
-    def word_tokenization(data: str, sep: str = ' ') -> list[str]:
-        return data.split(sep=sep)
-
-    @staticmethod
-    def word_to_one_hot(word: str, vocab: Vocab = vocabulary, device=device) -> Tensor:
-        """
-        Convert a word into a one-hot tensor using a predefined vocabulary.
-
-        Args:
-            word (str): The input word to convert.
-            vocab (Vocab): A Vocab that maps characters to their corresponding indices in the one-hot vector.
-
-        Returns:
-            Tensor: A one-hot tensor representation of the input word.
-        """
-        one_hot = torch.zeros(len(word), len(vocab))
-        for i, char in enumerate(word):
-            char_index = vocab[char]
-            one_hot[i][char_index] = 1
-        return one_hot.to(device)
-
-
 class CharLM(nn.Module, PriorLM):
     """
     Character level language model.
 
     Params:
-        vocab_size (int) : The number of character in the vocabulary.
         embedding_size : Dimension of the character embedding vectors.
         hidden_size: Size of the LSTM hidden state.
         num_layers: Number of the layers of the LSTM.
         dropout_rate: Probability to drop out a neuron.    
+        vocab (Vocab, optional) : The number of character in the vocabulary. Default value: `vocabulary`.
     """
 
-    def __init__(self, vocab_size: int, embedding_size: int, hidden_size: int, num_layers: int, dropout_rate: float):
+    def __init__(self, embedding_size: int, hidden_size: int, num_layers: int, dropout_rate: float, vocab: Vocab = vocabulary):
         super(CharLM, self).__init__
-        self.vocab_size = vocab_size
+        self.vocab = vocab
+        self.vocab_size = len(vocab)
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.dropout_rate = dropout_rate
 
         self.embedding = PackingEmbedding(num_embeddings=self.vocab_size,
-                                          embedding_dim=self.embedding_size, padding_idx=vocabulary[PADDING_TOKEN])
+                                          embedding_dim=self.embedding_size, padding_idx=self.vocab[PADDING_TOKEN])
 
         self.lstm = nn.LSTM(self.embedding_size, self.hidden_size, num_layers=self.num_layers,
                             dropout=self.dropout_rate)
@@ -213,16 +196,15 @@ class CharLM(nn.Module, PriorLM):
         return (torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device),
                 torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device))
 
-    def training(self, data: str, epochs: int, save_path: str, learning_rate: float = 0.001):
-        criter = nn.NLLLoss(ignore_index=vocabulary[PADDING_TOKEN])  # TODO: Change padding index
+    def training(self, data: str, mini_batch_size: int = 32, epochs: int = 10, save_path: str = "./out/CharLM", learning_rate: float = 0.001):
+        criter = nn.NLLLoss(ignore_index=self.vocab[PADDING_TOKEN])
         optim = Adam(self.parameters(), lr=learning_rate)
 
-        indices_tensor = wordsToOneHots(data.split(' '), vocabulary)
+        indices_tensor = wordsToOneHots(data.split(' '), self.vocab)
 
-        MINI_BATCH_SIZE = 32
-        def adjust_seq_lengths(x, l, l_max): return (x, l+1)
+        def adjust_seq_lengths(x: Tensor, l: Tensor, _): return (x, l+1)
         training_data = [adjust_seq_lengths(
-            *computeInferenceData(tData)) for tData in indices_tensor.split(MINI_BATCH_SIZE, dim=1)]
+            *computeInferenceData(tData)) for tData in indices_tensor.split(mini_batch_size, dim=1)]
 
         mini_batches_number = len(training_data)
 
@@ -237,10 +219,11 @@ class CharLM(nn.Module, PriorLM):
             for (i, mini_training_data) in enumerate(training_data):
                 optim.zero_grad()
                 # MINI_BATCH_SIZE or batch_size % MINI_BATCH_SIZE
-                mini_batch_size = len(mini_training_data[1])
+                # mini_batch_size = len(mini_training_data[1])
                 hidden = self.init_hidden(mini_batch_size)
 
-                scores, hidden = self(mini_training_data[0], hidden)
+                scores, hidden = self(
+                    mini_training_data[0], hidden)        # TODO: [:-1] ?
                 trgt = mini_training_data[0][1:]
 
                 loss = criter(scores.view(-1, self.vocab_size), trgt.view(-1))
@@ -273,11 +256,11 @@ class CharLM(nn.Module, PriorLM):
 
             hidden = self.init_hidden(batch_size)
 
-            output, _ = self(eval_data, hidden)  # shape = (L, B, output_dim)
+            output, _ = self(eval_data, hidden)  # shape (L, B, output_dim)
 
             # TODO: fix the index error for padding tokens (for which the one hot index will be out of range for the distribution)
             output = output[torch.arange(seq_length-1).unsqueeze(1), torch.arange(
-                batch_size).unsqueeze(0), eval_data[1:]]  # shape = (L-1, B)
-            output = torch.sum(output, dim=0)  # shape = (B)
+                batch_size).unsqueeze(0), eval_data[1:]]  # shape (L-1, B)
+            output = torch.sum(output, dim=0)  # shape (B)
 
         return output

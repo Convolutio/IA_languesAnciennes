@@ -1,7 +1,6 @@
-from Source.sampling import computeLaw
+from source.sampling import computeLaw
 import numpy as np
 import torch
-import math
 
 REPETITIONS = 10**5
 THREADS_NUMBER = 20

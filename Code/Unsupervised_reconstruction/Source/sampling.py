@@ -2,7 +2,7 @@ import numpy as np
 from torch import Tensor, tensor
 import torch
 from torch.nn.utils.rnn import pad_sequence
-from Source.reconstructionModel import ReconstructionModel
+from source.reconstructionModel import ReconstructionModel
 from data.vocab import computeInferenceData, vocabulary, PADDING_TOKEN
 from lm.PriorLM import PriorLM
 
@@ -13,7 +13,7 @@ def computeLaw(probs: np.ndarray) -> np.ndarray:
     """
     Returns a logarithmic probabilty distribution over all the probs.
 
-    Arguments:
+    Args:
         probs (list[float]): the list of logarithmic unnormalized probs
     """
     totalProb = INFTY_NEG
@@ -43,7 +43,7 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:ReconstructionMode
     """
     Sample proposals randomly from a probability distribution which will be computed progressively from forward dynamic program (so the language model, the edit models and the cognates are required).
 
-    Arguments:
+    Args:
         proposalsSetsInfos (list[ByteTensor]) : a list of the proposals sets for each reconstruction
         models (dict[Languages, EditModel]): the dictionnary containing the ReconstructionModel for each modern language.
         priorLM (PriorLM): a language model of the proto-language

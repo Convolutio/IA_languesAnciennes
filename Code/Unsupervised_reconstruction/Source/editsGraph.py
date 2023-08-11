@@ -1,7 +1,7 @@
 from typing import Optional
 from collections import deque
 
-from Types.models import *
+from models.models import *
 from data.vocab import vocabulary, PADDING_TOKEN, oneHotsToWords
 
 import torch
@@ -92,7 +92,7 @@ class EditsGraph:
         """
         Add an oriented edge from the `fromEdit` vertex to the `edit` one.
 
-        Arguments:
+        Args:
             - edit (Edit): the vertex to which the stop will be oriented. It will be created\
             if it doesn't exist in the graph.
             - fromEdit (Optional[Edit]): the vertex from which the stop comes. It must already\
@@ -168,7 +168,7 @@ class EditsGraph:
         """
         Rewrite each tensor's row for the zeros to all be on the right.
 
-        Arguments:
+        Args:
             t (Tensor): a tensor of shape (batch_size, N)
         """
         N = t.shape[1]

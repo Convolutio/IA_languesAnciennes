@@ -3,9 +3,9 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 
-from Types.models import *
-from Types.articleModels import ModernLanguages
-from Source.editsGraph import EditsGraph
+from models.models import *
+from models.articleModels import ModernLanguages
+from source.editsGraph import EditsGraph
 
 import torch
 from torch import Tensor
@@ -44,7 +44,7 @@ def getMinEditPaths(x: Tensor, y: Tensor,
     This is all the minimal edit paths with distinct editions set. A path is modeled by a recursive
     list of edits (type Edit), which modelize an arbor.
 
-    Arguments:
+    Args:
         x (ByteTensor): the first string to be compared (in one-hot indexes format)
         y (ByteTensor): the second one (in one-hot indexes format)
         recursivityArgs (tuple[IntMatrix, int, int, EditsGraph, Edit] | None) : (minEditDistanceMatrix, i_start, j_start, editsTree, parentEdit)
@@ -120,9 +120,9 @@ def computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> T
     Returns a list of the proposals in one-hot indexes representation (sequences
     of indexes in the vocabulary)
 
-    Arguments:
-        - currentReconstruction (ByteTensor): the current sampled proto-form
-        - cognates (list[ByteTensor]): its cognates\\
+    Args:
+        currentReconstruction (ByteTensor): the current sampled proto-form
+        cognates (list[ByteTensor]): its cognates\\
     """
     proposalsSet = torch.ByteTensor(size=(0, 0)).to(device)
 
@@ -155,6 +155,7 @@ def computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> T
     #                 Data: (/{x}/, /{y}/)")
     return proposalsSet
 
+
 def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: dict[ModernLanguages, list[Tensor]]) -> list[Tensor]:
     p = list()
     numberOfCognatePairs = len(cognates['french'])
@@ -163,7 +164,8 @@ def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Ten
         x = currentReconstructions[i]
         Y = [cognates[language][i] for language in cognates]
         p.append(computeProposals(x, Y))
-        if (i+1)%(numberOfCognatePairs//100)==0:
-            print("Proposals generation:", 1+100*(i+1)//numberOfCognatePairs, '%'+' '*10, end='\r')
+        if (i+1) % (numberOfCognatePairs//100) == 0:
+            print("Proposals generation:", 1+100*(i+1) //
+                  numberOfCognatePairs, '%'+' '*10, end='\r')
     print('\n'+'-'*60+'\n')
     return p

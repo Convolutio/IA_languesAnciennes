@@ -1,5 +1,3 @@
-from itertools import product
-
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -9,7 +7,9 @@ from tqdm.auto import tqdm
 
 from models.models import InferenceData
 from data.vocab import wordsToOneHots, computeInferenceData, vocabulary, PADDING_TOKEN
-from source.packingEmbedding import PackingEmbedding
+from Source.packingEmbedding import PackingEmbedding
+
+from typing import Callable
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -156,7 +156,7 @@ class NGramLM(PriorLM):
 
 class CharLM(nn.Module, PriorLM):
     """
-    Character level language model.
+    ## RNN sound-level language model.
 
     Params:
         embedding_size : Dimension of the character embedding vectors.
@@ -167,9 +167,10 @@ class CharLM(nn.Module, PriorLM):
     """
 
     def __init__(self, embedding_size: int, hidden_size: int, num_layers: int, dropout_rate: float, vocab: Vocab = vocabulary):
-        super(CharLM, self).__init__
+        super(CharLM, self).__init__()
         self.vocab = vocab
         self.vocab_size = len(vocab)
+        self.output_dim = self.vocab_size - 2
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -181,11 +182,14 @@ class CharLM(nn.Module, PriorLM):
         self.lstm = nn.LSTM(self.embedding_size, self.hidden_size, num_layers=self.num_layers,
                             dropout=self.dropout_rate)
 
-        self.fc = nn.Sequential(nn.Linear(self.hidden_size, self.vocab_size),
+        self.fc = nn.Sequential(nn.Linear(self.hidden_size, self.output_dim),
                                 nn.LogSoftmax(dim=-1))
 
-    def forward(self, x, h):
-        embedded = self.embedding(x)
+    def __call__(self, x: tuple[Tensor, Tensor], h: tuple[Tensor, Tensor]) -> tuple[Tensor, tuple[Tensor, Tensor]]:
+        return super().__call__(x, h)
+
+    def forward(self, x: tuple[Tensor, Tensor], h: tuple[Tensor, Tensor]):
+        embedded = self.embedding(*x[:2], batch_first=False)
         output, h = self.lstm(embedded, h)
         output, _ = torch.nn.utils.rnn.pad_packed_sequence(output)
         output = self.fc(output)
@@ -222,9 +226,10 @@ class CharLM(nn.Module, PriorLM):
                 # mini_batch_size = len(mini_training_data[1])
                 hidden = self.init_hidden(mini_batch_size)
 
+                # scores shape = (|x|+1, b, output_dim)
                 scores, hidden = self(
-                    mini_training_data[0], hidden)        # TODO: [:-1] ?
-                trgt = mini_training_data[0][1:]
+                    mini_training_data, hidden)
+                trgt = mini_training_data[0][1:] # shape = (|x|+1, b)
 
                 loss = criter(scores.view(-1, self.vocab_size), trgt.view(-1))
                 loss.backward()
@@ -251,14 +256,18 @@ class CharLM(nn.Module, PriorLM):
         self.eval()
 
         with torch.no_grad():
-            eval_data = reconstructions[0].to(device)
+            neutralizePaddingIndices: Callable[[Tensor], Tensor] = lambda t: t.where(t!=self.vocab[PADDING_TOKEN], self.output_dim)
+            addNeutralProbsForPaddingIndices: Callable[[Tensor], Tensor] = lambda t: torch.cat(
+                (t, torch.zeros(t.size()[:-1]+(1,), dtype=t.dtype, device=device)),
+                dim = -1
+                )
+            eval_data = neutralizePaddingIndices(reconstructions[0].to(device))
             seq_length, batch_size = eval_data.shape
 
             hidden = self.init_hidden(batch_size)
 
-            output, _ = self(eval_data, hidden)  # shape (L, B, output_dim)
+            output = addNeutralProbsForPaddingIndices(self((reconstructions[0], reconstructions[1]+2), hidden)[0])  # shape (L, B, output_dim + 1)
 
-            # TODO: fix the index error for padding tokens (for which the one hot index will be out of range for the distribution)
             output = output[torch.arange(seq_length-1).unsqueeze(1), torch.arange(
                 batch_size).unsqueeze(0), eval_data[1:]]  # shape (L-1, B)
             output = torch.sum(output, dim=0)  # shape (B)

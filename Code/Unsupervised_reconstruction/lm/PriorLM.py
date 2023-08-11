@@ -214,7 +214,7 @@ class CharLM(nn.Module, PriorLM):
 
         indices_tensor = wordsToOneHots(data.split(' '), self.vocab)
 
-        def adjust_seq_lengths(x: Tensor, l: Tensor, _): return (x, l+1)
+        adjust_seq_lengths: Callable[[Tensor, Tensor, int], tuple[Tensor, Tensor]] = lambda x, l, _: (x, l+1)
         training_data = [adjust_seq_lengths(
             *computeInferenceData(tData)) for tData in indices_tensor.split(mini_batch_size, dim=1)]
 

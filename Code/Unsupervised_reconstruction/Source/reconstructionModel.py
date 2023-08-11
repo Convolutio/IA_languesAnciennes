@@ -65,8 +65,8 @@ class ReconstructionModel(nn.Module):
             })
         self.cachedBatchSize = len(list(cognatesSet.values())[0][1]) # the size C for the inferences
     
-    def getModel(self, language:ModernLanguages):
-        return self.__editModels[language]
+    def getModel(self, language:ModernLanguages)->EditModel:
+        return self.__editModels[language] #type: ignore
     
     @property
     def languages(self):
@@ -103,7 +103,7 @@ class ReconstructionModel(nn.Module):
         modernOneHotVectors_miniBatches: dict[ModernLanguages, list[Tensor]] = {}
 
         for lang in self.__languages:
-            model:EditModel = self.getModel(lang) #type: ignore
+            model = self.getModel(lang)
             
             modern_splits = (model.cachedTargetInputData[0].split(miniBatchSize, 1), model.cachedTargetInputData[1].split(miniBatchSize))
             modern_miniBatches[lang] = []
@@ -149,7 +149,7 @@ class ReconstructionModel(nn.Module):
         
         for lang in self.__languages:
             modern_, modernOneHots = modern_miniBatches[lang], modernOneHotVectors_miniBatches[lang]
-            model:EditModel = self.getModel(lang) #type: ignore
+            model = self.getModel(lang)
             
             logits_load = torch.cat((logits_load, model.get_logits(samplesInput, modern_, modernOneHots).flatten(end_dim=1)), dim=0)
         return logits_load
@@ -210,7 +210,7 @@ class ReconstructionModel(nn.Module):
         self.eval()
         with torch.no_grad():
             for language in self.languages:
-                model:EditModel = self.__editModels[language] #type: ignore
+                model = self.getModel(language)
                 model.update_cachedTargetContext()
     
     def forward_dynProg(self, sources_:InferenceData) -> dict[ModernLanguages, Tensor]:
@@ -224,7 +224,7 @@ class ReconstructionModel(nn.Module):
 
             probs:dict[ModernLanguages, Tensor] = {}
             for language in self.languages:
-                model:EditModel = self.__editModels[language] #type: ignore
+                model = self.getModel(language)
                 mutation_prob:Tensor = compute_mutation_prob(model, sources, model.cachedTargetDataForDynProg) #type: ignore
                 probs[language] = mutation_prob
             
@@ -238,7 +238,7 @@ class ReconstructionModel(nn.Module):
 
             cache:dict[ModernLanguages, ProbCache] = {}
             for language in self.languages:
-                model:EditModel = self.__editModels[language] #type: ignore
+                model = self.getModel(language)
                 cache[language] = compute_posteriors(model, [sources], model.cachedTargetDataForDynProg)
                 
             return cache

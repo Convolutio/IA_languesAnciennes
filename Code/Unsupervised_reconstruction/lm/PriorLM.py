@@ -36,13 +36,13 @@ class NGramLM(PriorLM):
         self.nGramLogProbs = torch.log(
             torch.zeros((self.vocabSize,) * self.n, device=device))
 
-    def batch_ngram(self, data: list[str]) -> Tensor:
+    def batch_ngram(self, data: str) -> Tensor:
         """
         Prepare the data into a ngram batch (shape: (((L-self.n)/1)+1, B, self.n) by checking the validity
         of the vocabulary.
 
         Args:
-            data (list[str]): the training data.
+            data (str): the training data.
 
         Returns:
             Tensor: ngram batch data.
@@ -51,7 +51,7 @@ class NGramLM(PriorLM):
             f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}"
 
         batch = wordsToOneHots(list(
-            map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data)), self.vocab)
+            map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(' '))), self.vocab)
 
         # shape: ( T:=((L-self.n)/1)+1, B, self.n)
         batch_ngram = batch.unfold(0, self.n, 1)
@@ -62,7 +62,7 @@ class NGramLM(PriorLM):
         """
         Train the n-gram language model on the `data` (str) 
         """
-        batch_ngram = self.batch_ngram(data.split(' '))
+        batch_ngram = self.batch_ngram(data)
 
         # shape: (T*B, self.n) ; shape: (*, self.n), (*)
         unique_ngrams, count_ngrams = torch.unique(
@@ -88,7 +88,7 @@ class NGramLM(PriorLM):
 
     def evaluation(self, data: str) -> float:
         """Perplexity evaluation"""
-        batch_ngram = self.batch_ngram(data.split(' '))
+        batch_ngram = self.batch_ngram(data)
 
         # Loop over batch
             # Loop over sequence
@@ -134,7 +134,6 @@ class NGramLM(PriorLM):
         return output
 
     def inference(self, reconstructions: InferenceData) -> Tensor:
-        # TODO: Change InferenceData to Tensor to unbound 
         data = self.padDataToNgram(reconstructions[0])
         maxSequenceLength, batch_size, V = data.shape
         # begin with the neutral prob 1
@@ -208,7 +207,7 @@ class CharLM(nn.Module, PriorLM):
         return (torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device),
                 torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device))
 
-    def training(self, data: str, mini_batch_size: int = 32, epochs: int = 10, save_path: str = "./out/CharLM", learning_rate: float = 0.001):
+    def training(self, data: str, mini_batch_size: int = 32, epochs: int = 10, save_path: str = "./out/CharLM", learning_rate: float = 1e-3):
         criter = nn.NLLLoss(ignore_index=self.vocab[PADDING_TOKEN])
         optim = Adam(self.parameters(), lr=learning_rate)
 

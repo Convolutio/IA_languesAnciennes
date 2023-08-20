@@ -9,3 +9,4 @@ out
 recons_data
 Source/dynamicPrograms.py
 Tests/samples.pt
+latin_text_ipa.txt

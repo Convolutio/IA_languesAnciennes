@@ -7,6 +7,7 @@ from tqdm.auto import tqdm
 
 from models.models import InferenceData
 from data.vocab import wordsToOneHots, computeInferenceData, vocabulary, PADDING_TOKEN
+from data.ipa_tokenizer import tokenize_ipa
 from source.packingEmbedding import PackingEmbedding
 
 from typing import Callable
@@ -32,9 +33,9 @@ class NGramLM(PriorLM):
         self.vocabSize = len(vocab)
 
         self.nGramCount = torch.zeros(
-            (self.vocabSize,) * self.n, device=device)
+            (self.vocabSize,) * self.n, dtype=torch.float64, device=device)
         self.nGramLogProbs = torch.log(
-            torch.zeros((self.vocabSize,) * self.n, device=device))
+            torch.zeros((self.vocabSize,) * self.n, dtype=torch.float64, device=device))
 
     def batch_ngram(self, data: str) -> Tensor:
         """
@@ -47,8 +48,10 @@ class NGramLM(PriorLM):
         Returns:
             Tensor: ngram batch data.
         """
-        assert len(d := set(data).difference(self.vocab.get_stoi().keys())) != 0, \
+        d = set(data); d.discard(' ')
+        assert len(d.difference(self.vocab.get_stoi().keys())) == 0, \
             f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}"
+        del d
 
         batch = wordsToOneHots(list(
             map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(' '))), self.vocab)
@@ -56,7 +59,7 @@ class NGramLM(PriorLM):
         # shape: ( T:=((L-self.n)/1)+1, B, self.n)
         batch_ngram = batch.unfold(0, self.n, 1)
 
-        return batch_ngram.to(device)
+        return batch_ngram
 
     def train(self, data: str) -> Tensor:
         """
@@ -68,8 +71,8 @@ class NGramLM(PriorLM):
         unique_ngrams, count_ngrams = torch.unique(
             batch_ngram.view(-1, self.n), sorted=False, return_counts=True, dim=0)
 
-        non_zeros_ngram = torch.any(
-            unique_ngrams[0] == 0, dim=1)     # shape: (*)
+        non_zeros_ngram = ~torch.any(
+            unique_ngrams == 0, dim=1)     # shape: (*)
 
         for t, c, i in zip(unique_ngrams, count_ngrams, non_zeros_ngram):
             if i:
@@ -82,7 +85,13 @@ class NGramLM(PriorLM):
 
         countDivisor = torch.sum(self.nGramCount, dim=-1, keepdim=True)
 
-        self.nGramLogProbs = torch.log(self.nGramCount/countDivisor)
+        self.nGramLogProbs = torch.log(self.nGramCount)-torch.log(countDivisor)
+
+        print(self.nGramCount)
+        print(countDivisor)
+        print(self.nGramCount/countDivisor)
+        print(self.nGramLogProbs)
+
 
         return self.nGramLogProbs
 

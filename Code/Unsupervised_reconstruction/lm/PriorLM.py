@@ -5,8 +5,8 @@ from torchtext.vocab import Vocab
 from torch.optim import Adam
 from tqdm.auto import tqdm
 
-from models.models import InferenceData
-from data.vocab import wordsToOneHots, computeInferenceData, vocabulary, PADDING_TOKEN
+from models.models import InferenceData, PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN
+from data.vocab import wordsToOneHots, computeInferenceData, vocabulary
 from data.ipa_tokenizer import tokenize_ipa
 from source.packingEmbedding import PackingEmbedding
 
@@ -27,10 +27,14 @@ class PriorLM:
 
 
 class NGramLM(PriorLM):
-    def __init__(self, n: int, vocab: Vocab = vocabulary):
+    """
+    Smoothing value : a value to smooth the 0 probability value for uncountered n-grams and (n-1)-grams
+    """
+    def __init__(self, n: int, vocab: Vocab = vocabulary, smoothingValue: float = -1e5):
         self.n = n
         self.vocab = vocab
         self.vocabSize = len(vocab)
+        self.smoothingValue = smoothingValue
 
         self.nGramCount = torch.zeros(
             (self.vocabSize,) * self.n, dtype=torch.float64, device=device)
@@ -54,7 +58,7 @@ class NGramLM(PriorLM):
         del d
 
         batch = wordsToOneHots(list(
-            map(lambda w: '('*(self.n-1) + w + ')'*(self.n-1), data.split(' '))), self.vocab)
+            map(lambda w: SOS_TOKEN*(self.n-1) + w + EOS_TOKEN*(self.n-1), data.split(' '))), self.vocab)
 
         # shape: ( T:=((L-self.n)/1)+1, B, self.n)
         batch_ngram = batch.unfold(0, self.n, 1)
@@ -67,31 +71,31 @@ class NGramLM(PriorLM):
         """
         batch_ngram = self.batch_ngram(data)
 
-        # shape: (T*B, self.n) ; shape: (*, self.n), (*)
+        # batch_ngram.view shape: (T*B, self.n) ; unique_ngrams shape: (*, self.n); count_ngrams shape (*)
         unique_ngrams, count_ngrams = torch.unique(
             batch_ngram.view(-1, self.n), sorted=False, return_counts=True, dim=0)
 
-        non_zeros_ngram = ~torch.any(
-            unique_ngrams == 0, dim=1)     # shape: (*)
-
-        for t, c, i in zip(unique_ngrams, count_ngrams, non_zeros_ngram):
-            if i:
-                self.nGramCount[tuple(t)] += c.item()
-
-        # avoids all zeros cause it is the empty char so the prob in log is always null
-        # for p in product(range(1, self.vocabSize), repeat=self.n):
-        #     self.nGramCount[p] += torch.sum(
-        #         torch.all(batch_ngram == torch.tensor(p), dim=-1)).item()
-
+        non_padded_ngram = torch.all(
+            unique_ngrams != self.vocab[PADDING_TOKEN], dim=1)     # shape: (*)
+        
+        count_ngrams = torch.where(non_padded_ngram, count_ngrams, 0).to(dtype=self.nGramCount.dtype)
+        coords: tuple[Tensor] = tuple(unique_ngrams.T) # coord tensor shape = (*)
+        self.nGramCount[coords] = count_ngrams
+        
         countDivisor = torch.sum(self.nGramCount, dim=-1, keepdim=True)
 
-        self.nGramLogProbs = torch.log(self.nGramCount)-torch.log(countDivisor)
-
-        print(self.nGramCount)
-        print(countDivisor)
-        print(self.nGramCount/countDivisor)
-        print(self.nGramLogProbs)
-
+        # smooth the probs for non met ngrams
+        # TODO: smoothing with better algorithm
+        positionToSmooth = torch.logical_or(countDivisor == 0, self.nGramCount == 0)
+        
+        self.nGramLogProbs = torch.where(positionToSmooth,
+                                         torch.log(self.nGramCount) - torch.log(countDivisor),
+                                         self.smoothingValue)
+        
+        # neutralize undefined ngrams
+        for k in range(self.n):
+            coord = (None,)*k + (self.vocab[PADDING_TOKEN],) + (None,)*(self.n-k-1)
+            self.nGramLogProbs[coord] = 0
 
         return self.nGramLogProbs
 
@@ -113,20 +117,20 @@ class NGramLM(PriorLM):
         Pad reconstructions at the beginning and end of each sequence to conform to the calculation in ngram. 
 
         Args:
-            reconstructions (Tensor, dim=(L,B)): input tensor to pad.
+            reconstructions (Tensor, dim=(L,*)): input tensor to pad.
 
         Returns:
-            (Tensor, dim=(L+2*(n-2), B)): padded reconstructions.
+            (Tensor, dim=(L+2*(n-2), *)): padded reconstructions.
         """
-        B = reconstructions.shape[1]
+        batchShape = reconstructions.shape[1:]
 
         first_padding = torch.full(
-            (self.n-2, B), self.vocab['('], device=device)
+            (self.n-2, *batchShape), self.vocab[SOS_TOKEN], device=device)
 
         end_padding = torch.full(
-            (self.n-2, B), self.vocab[PADDING_TOKEN], device=device)
+            (self.n-2, *batchShape), self.vocab[PADDING_TOKEN], device=device)
 
-        # shape: (L+2*(self.n-2), B)
+        # shape: (L+2*(self.n-2), *)
         padded_tensor = torch.cat(
             (first_padding, reconstructions[0], end_padding), dim=0)
 
@@ -134,39 +138,24 @@ class NGramLM(PriorLM):
         indices = torch.argmax(padded_tensor == self.vocab[PADDING_TOKEN],
                                dim=0)
 
-        t = torch.arange(padded_tensor.shape[0], device=device).unsqueeze(1)
+        t = torch.arange(padded_tensor.shape[0], device=device)
+        for _ in range(len(batchShape)): t.unsqueeze(-1)
         mask = (t >= indices) & (t < indices +      # TODO: Check mask (dim)
                                  self.n-2)
 
-        output = torch.where(mask, self.vocab[')'], padded_tensor)
+        output = torch.where(mask, self.vocab[EOS_TOKEN], padded_tensor)
 
         return output
 
     def inference(self, reconstructions: InferenceData) -> Tensor:
         data = self.padDataToNgram(reconstructions[0])
-        maxSequenceLength, batch_size, V = data.shape
-        # begin with the neutral prob 1
-        probs: Tensor = torch.zeros(batch_size, dtype=torch.float64)
-
-        # For each word by th in the batch, get the probability of the we sum (cause we
-        # are in log) of all conditionnal probability of each character composed the word.
-        for l in range(maxSequenceLength - self.n):
-            nGram = data[l:l+self.n]
-            nGramProb = self.nGramLogProbs.unsqueeze(
-                0).expand(batch_size, *(-1,)*self.n)
-
-            for k in range(self.n):
-                selected_nGram = nGram[k]
-
-                for _ in range(self.n-k-1):
-                    selected_nGram = selected_nGram.unsqueeze(-1)
-
-                selected_nGram = selected_nGram.expand(
-                    -1, -1, *(V,)*(self.n-k-1))
-                nGramProb = torch.logsumexp(selected_nGram + nGramProb, dim=1)
-
-            # to neutralize the probability of ngrams with empty characters.
-            probs += torch.min(nGramProb, torch.zeros(batch_size))
+        
+        """
+        Let (U, *) be the shape of data
+        Coords is a tuple of n tensors of shape (*..., (U-n)/1 + 1)
+        """
+        coords = tuple(data.unfold(0, self.n, 1).transpose(0, -1))
+        probs = self.nGramLogProbs[coords].sum(dim=-1) # shape = (*)
         return probs
 
 

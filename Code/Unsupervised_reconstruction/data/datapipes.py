@@ -1,12 +1,14 @@
 from torchdata.datapipes.iter import IterDataPipe
-
+import torch
 from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
 from functools import partial
-from data.vocab import computeInferenceData, vocabulary, wordsToOneHots
-from models.models import TargetInferenceData, EOS_TOKEN, PADDING_TOKEN, InferenceData
-from models.articleModels import ModernLanguages
 from typing import TypeVar
+
+from data.vocab import computeInferenceData, vocabulary, wordsToOneHots
+from source.utils import pad2d_sequence
+from models.models import TargetInferenceData, EOS_TOKEN, PADDING_TOKEN, InferenceData
+from models.articleModels import ModernLanguages, Operations
 
 def formatSources(batch:Tensor)->InferenceData:
     """
@@ -47,7 +49,7 @@ def deep_batch(batch: tuple[int, list[tuple[Tensor, dict[ModernLanguages, Cognat
         lstToReturn.append([(t[a][j], realBatch[a][1], (i, j)) for a in range(c)])
     return lstToReturn
 
-def collate_fn(batch: list[tuple[Tensor, dict[ModernLanguages, CognateDType]]])\
+def __collate_fn(batch: list[tuple[Tensor, dict[ModernLanguages, CognateDType]]])\
     -> tuple[Tensor, dict[ModernLanguages, list[CognateDType]]]:
     """
     Arguments:
@@ -60,10 +62,10 @@ def collate_fn(batch: list[tuple[Tensor, dict[ModernLanguages, CognateDType]]])\
         {language: [t[1][language] for t in batch] for language in languages}
     )
 
-def samplingCollate_fn(batch: list[tuple[Tensor, dict[ModernLanguages, CognateDType], tuple[int, int]]])\
+def __samplingCollate_fn(batch: list[tuple[Tensor, dict[ModernLanguages, CognateDType], tuple[int, int]]])\
     -> tuple[Tensor, dict[ModernLanguages, list[CognateDType]], tuple[int, int]]:
     i, j = batch[0][2]
-    return (*collate_fn([t[:2] for t in batch]), (i, j))
+    return (*__collate_fn([t[:2] for t in batch]), (i, j))
 
 def samplingBatcher(proposalsDP: IterDataPipe[Tensor],
                     cognatesDP: IterDataPipe[dict[ModernLanguages, CognateDType]],
@@ -82,7 +84,7 @@ def samplingBatcher(proposalsDP: IterDataPipe[Tensor],
     """
     c, b = batchShape
     dp = proposalsDP.zip(cognatesDP).batch(c).enumerate()
-    return dp.map(partial(deep_batch, b=b)).unbatch(1).collate(samplingCollate_fn)
+    return dp.map(partial(deep_batch, b=b)).unbatch(1).collate(__samplingCollate_fn)
 
 def samplingDataPipe(proposalsDP: IterDataPipe[Tensor],
                     cognatesDP: IterDataPipe[dict[ModernLanguages, CognateDType]],
@@ -91,6 +93,27 @@ def samplingDataPipe(proposalsDP: IterDataPipe[Tensor],
                         ]]:
     return samplingBatcher(proposalsDP, cognatesDP, batchShape).map(formatSources, 0).map(formatTargets,1)
 
-def trainingDataPipe(samplesDP: IterDataPipe[Tensor], cognatesDP: IterDataPipe[dict[ModernLanguages, str]], miniBatchSize:int) -> IterDataPipe[tuple[InferenceData, TargetInferenceData]]:
-    return samplesDP.zip(cognatesDP).shuffle().batch(miniBatchSize).collate(collate_fn).map(formatSources, 0).map(formatTargets, 1)
+
+CachedTargetProbs = dict[ModernLanguages, dict[Operations, Tensor]]
+
+def __training__collate_fn(batch:list[tuple[str, dict[ModernLanguages, str], CachedTargetProbs]], mini_batch_size:int):
+    """
+    Collates the input and target data in the batch.
+    """
+    languages = tuple(batch[0][1].keys())
+    operations = batch[0][2][languages[0]].keys()
+    firstElement = computeInferenceData(wordsToOneHots([t[0] for t in batch]), vocabulary)
+    secondElement = formatTargets({lang:[t[1][lang] for t in batch] for lang in languages})
+    lastElement: CachedTargetProbs = {lang: {op:pad2d_sequence([t[2][lang][op] for t in batch], 0).squeeze(3) for op in operations} for lang in languages}
+
+    return (firstElement, secondElement, lastElement)
+
+def get_training_datapipe(training_dp: IterDataPipe[tuple[
+    str,
+    dict[ModernLanguages, str],
+    CachedTargetProbs
+    ]], mini_batch_size:int) -> IterDataPipe[tuple[InferenceData, dict[ModernLanguages, TargetInferenceData], CachedTargetProbs]]:
+        
+        new_dp = training_dp.shuffle().batch(mini_batch_size).in_batch_shuffle().sharding_filter()
+        return new_dp.map(partial(__training__collate_fn, mini_batch_size=mini_batch_size))
 

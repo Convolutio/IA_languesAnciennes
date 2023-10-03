@@ -1,22 +1,17 @@
 from torch import Tensor
 import torch.optim as optim
-from torchdata.dataloader2 import DataLoader2, MultiProcessingReadingService
-from torchdata.datapipes.iter import IterDataPipe
+from torchdata.dataloader2 import DataLoader2
 import torch.nn as nn
 import torch
 from torchtext.vocab import Vocab
 
 import numpy as np
 
-from typing import Callable
-
 import matplotlib.pyplot as plt
 
-from models.articleModels import ModernLanguages, Operations, OPERATIONS
+from models.articleModels import ModernLanguages, Operations
 from models.models import InferenceData, TargetInferenceData, SourceInferenceData, PADDING_TOKEN
-from data.vocab import wordsToOneHots, computeInferenceData
-from data.datapipes import formatTargets
-from source.utils import pad2d_sequence
+
 
 from source.editModel import EditModel
 from source.packingEmbedding import PackingEmbedding
@@ -25,12 +20,7 @@ from models.probcache import ProbCache
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-ResultsToCompare = dict[ModernLanguages, dict[Operations, Tensor]]
-TrainingDataPipe = IterDataPipe[tuple[
-    str,
-    dict[ModernLanguages, str],
-    ResultsToCompare
-]]
+
 
 class ReconstructionModel(nn.Module):
     """
@@ -93,19 +83,6 @@ class ReconstructionModel(nn.Module):
             lengths, maxLength)
 
     # -----------TRAINING----------------  
-    def __get_training_datapipe(self, training_dp: TrainingDataPipe, mini_batch_size:int) -> IterDataPipe[tuple[InferenceData, dict[ModernLanguages, TargetInferenceData], dict[ModernLanguages, Tensor]]]:
-        new_dp = training_dp.shuffle().batch(mini_batch_size).in_batch_shuffle().sharding_filter()
-        
-        def transform(batch:list[tuple[str, dict[ModernLanguages, str], ResultsToCompare]]):
-            firstElement = computeInferenceData(wordsToOneHots([t[0] for t in batch]))
-            secondElement = formatTargets({lang:[t[1][lang] for t in batch] for lang in batch[0][1]})
-            
-            concat: Callable[[dict[Operations, Tensor]], Tensor] = lambda d:torch.cat([d['sub'], d['dlt'], d['ins'], d['end']])
-            lastElement: dict[ModernLanguages, Tensor] = {lang:pad2d_sequence([concat(t[2][lang]) for t in batch], 0).squeeze(3) for lang in batch[0][2]}
-            return (firstElement, secondElement, lastElement)
-        
-        return new_dp.map(transform)
-    
     def train_models(self, training_data_loader:DataLoader2[tuple[
         InferenceData,
         dict[ModernLanguages, TargetInferenceData],

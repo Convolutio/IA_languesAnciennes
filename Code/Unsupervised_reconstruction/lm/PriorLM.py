@@ -79,7 +79,7 @@ class NGramLM(PriorLM):
             unique_ngrams != self.vocab[PADDING_TOKEN], dim=1)     # shape: (*)
         
         count_ngrams = torch.where(non_padded_ngram, count_ngrams, 0).to(dtype=self.nGramCount.dtype)
-        coords: tuple[Tensor] = tuple(unique_ngrams.T) # coord tensor shape = (*)
+        coords: tuple[Tensor, ...] = tuple(unique_ngrams.T) # coord tensor shape = (*)
         self.nGramCount[coords] = count_ngrams
         
         countDivisor = torch.sum(self.nGramCount, dim=-1, keepdim=True)

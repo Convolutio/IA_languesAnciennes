@@ -52,9 +52,9 @@ class ReconstructionModel(nn.Module):
     Input samples' lengths tensor shape: (C, 1)
     """
 
-    def __init__(self, languages: list[ModernLanguages], vocab: Vocab, lstm_input_dim: int, lstm_hidden_dim: int):
+    def __init__(self, languages: tuple[ModernLanguages, ...], vocab: Vocab, lstm_input_dim: int, lstm_hidden_dim: int):
         super().__init__()
-        self.__languages: tuple[ModernLanguages, ...] = tuple(languages)
+        self.__languages = languages
         self.IPA_length = len(vocab)-3
         self.vocab = vocab
         self.shared_embedding_layer = PackingEmbedding(
@@ -161,22 +161,25 @@ class ReconstructionModel(nn.Module):
         print(fig)
 
     # ------------INFERENCE------------------
-    def forward_dynProg(self, sources_: InferenceData) -> dict[ModernLanguages, Tensor]:
+    def forward_dynProg(self, inference_data_loader: DataLoader2[tuple[InferenceData,
+        dict[ModernLanguages, TargetInferenceData], tuple[int, int]]]):
         """
-        Returns (p(y_l)|x) for all the batch
+        Computes (p(y_l)|x) for all the batch (save the results in file)
         """
         self.eval()
         with torch.no_grad():
-            sources: SourceInferenceData = self.__computeSourceInferenceData(sources_)
+            for (sources_, targets_, (i, j)) in inference_data_loader:
+                sources: SourceInferenceData = self.__computeSourceInferenceData(sources_)
 
-            probs: dict[ModernLanguages, Tensor] = {}
-            for language in self.languages:
-                model: EditModel = self.__editModels[language]  # type: ignore
-                mutation_prob: Tensor = compute_mutation_prob(
-                    model, sources, model.cachedTargetDataForDynProg)  # type: ignore
-                probs[language] = mutation_prob
-
-            return probs
+                probs: dict[ModernLanguages, Tensor] = {}
+                for language in self.languages:
+                    model: EditModel = self.__editModels[language]  # type: ignore
+                    mutation_prob = compute_mutation_prob(
+                        model, sources, targets_[language])
+                    probs[language] = mutation_prob #type: ignore
+                torch.save(probs, f'{i}_{j}_mutationProbs.pt')
+                #TODO: en mémoire ou en fichier ??
+            inference_data_loader.shutdown()
 
     def backward_dynProg(self, sources_: InferenceData, targets_:dict[ModernLanguages, TargetInferenceData]) -> dict[ModernLanguages, ProbCache]:
         self.eval()
@@ -187,9 +190,7 @@ class ReconstructionModel(nn.Module):
             cache: dict[ModernLanguages, ProbCache] = {}
             for language in self.languages:
                 model: EditModel = self.__editModels[language]  # type: ignore
-                cache[language] = compute_posteriors(
-                    model, sources, targets_[language])
-
+                cache[language] = compute_posteriors(model, sources, targets_[language])
             return cache
     
     #TODO: enlever

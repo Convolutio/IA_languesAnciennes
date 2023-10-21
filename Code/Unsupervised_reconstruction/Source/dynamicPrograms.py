@@ -70,7 +70,7 @@ def compute_mutation_prob(model:EditModel, sources_:SourceInferenceData, targets
     f_sub_post[source_final_idx, target_final_idx.unsqueeze(1),
                torch.arange(batch_shape[0]).unsqueeze(1), torch.arange(batch_shape[1]).unsqueeze(0)] = 0.0
 
-    posterior_cache = ProbCache(max_source_sequenceLength, max_target_sequenceLength, (batch_shape[0],1))
+    posterior_cache = ProbCache(sources_, targets_, (batch_shape[0],1))
 
     for i in range(max_source_sequenceLength-1, -1, -1):
         for j in range(max_target_sequenceLength-1, -1, -1):

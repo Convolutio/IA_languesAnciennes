@@ -1,7 +1,7 @@
-from torch import zeros, cuda, Tensor, nan_to_num
+from torch import zeros, cuda, Tensor, where
 from typing import Literal
 from source.utils import computePaddingMask
-from models.articleModels import Operations
+from models.articleModels import Operations, OPERATIONS
 from models.models import SourceInferenceData, TargetInferenceData
 
 device = 'cuda' if cuda.is_available() else 'cpu'
@@ -27,7 +27,7 @@ class ProbCache:
         maxSourceLength = sourcesData[2]
         maxTargetLength = targetsData[2] + 1
         self.sourceLengthData = (sourcesData[1]-1, sourcesData[2]-1)
-        self.targetLengthData = (targetsData[1], targetsData[2])
+        self.targetLengthData = (targetsData[1].unsqueeze(-1), targetsData[2])
         self.sub = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device)
         self.ins = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device)
         self.dlt = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device)
@@ -39,10 +39,8 @@ class ProbCache:
         Tensors shape = (|x|+1, |y|+1, 1, 1)
         """
         paddingMask = computePaddingMask(self.sourceLengthData, self.targetLengthData)
-        d: dict[Operations, list[Tensor]] = {
-            'ins': nan_to_num(paddingMask*self.ins[:-1, :-1], nan=0).split(1, 2),
-            'end': nan_to_num(paddingMask*self.end[:-1, :-1], nan=0).split(1, 2),
-            'sub': nan_to_num(paddingMask*self.sub[:-1, :-1], nan=0).split(1, 2),
-            'dlt': nan_to_num(paddingMask*self.dlt[:-1, :-1], nan=0).split(1, 2)
-        }
+        for op in OPERATIONS:
+            setattr(self, op, where(paddingMask, getattr(self, op)[:-1, :-1], 0))
+        
+        d: dict[Operations, list[Tensor]] = {op:getattr(self, op).split(1,2) for op in OPERATIONS}
         return [{op:d[op][i] for op in d} for i in range(len(d['dlt']))]

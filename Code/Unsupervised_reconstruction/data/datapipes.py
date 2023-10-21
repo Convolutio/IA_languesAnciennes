@@ -67,7 +67,7 @@ def __samplingCollate_fn(batch: list[tuple[Tensor, dict[ModernLanguages, Cognate
     i, j = batch[0][2]
     return (*__collate_fn([t[:2] for t in batch]), (i, j))
 
-def samplingBatcher(proposalsDP: IterDataPipe[Tensor],
+def __samplingBatcher(proposalsDP: IterDataPipe[Tensor],
                     cognatesDP: IterDataPipe[dict[ModernLanguages, CognateDType]],
                     batchShape: tuple[int, int]) -> IterDataPipe[tuple[
                         Tensor, dict[ModernLanguages, list[CognateDType]], tuple[int, int]
@@ -91,7 +91,7 @@ def samplingDataPipe(proposalsDP: IterDataPipe[Tensor],
                     batchShape: tuple[int, int]) -> IterDataPipe[tuple[
                         InferenceData, dict[ModernLanguages, list[TargetInferenceData]], tuple[int, int]
                         ]]:
-    return samplingBatcher(proposalsDP, cognatesDP, batchShape).map(formatSources, 0).map(formatTargets,1)
+    return __samplingBatcher(proposalsDP, cognatesDP, batchShape).map(formatSources, 0).map(formatTargets,1)
 
 
 CachedTargetProbs = dict[ModernLanguages, dict[Operations, Tensor]]

@@ -96,7 +96,7 @@ def samplingDataPipe(proposalsDP: IterDataPipe[Tensor],
 
 CachedTargetProbs = dict[ModernLanguages, dict[Operations, Tensor]]
 
-def __training__collate_fn(batch:list[tuple[str, dict[ModernLanguages, str], CachedTargetProbs]], mini_batch_size:int):
+def __training__collate_fn(batch:list[tuple[str, dict[ModernLanguages, str], CachedTargetProbs]]):
     """
     Collates the input and target data in the batch.
     """
@@ -114,6 +114,6 @@ def get_training_datapipe(training_dp: IterDataPipe[tuple[
     CachedTargetProbs
     ]], mini_batch_size:int) -> IterDataPipe[tuple[InferenceData, dict[ModernLanguages, TargetInferenceData], CachedTargetProbs]]:
         
-        new_dp = training_dp.shuffle().batch(mini_batch_size).in_batch_shuffle().sharding_filter()
-        return new_dp.map(partial(__training__collate_fn, mini_batch_size=mini_batch_size))
+        new_dp = training_dp.shuffle().sharding_filter().batch(mini_batch_size)
+        return new_dp.collate(__training__collate_fn)
 

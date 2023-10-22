@@ -9,7 +9,7 @@ def functionToRun():
     """
     Call here the function
     """
-    from data import datapipes
+    from tests import testTrainingTransforms
     # bigram = NGramLM(3, vocabulary)
     # txt = ""
     # with open('latin_text_ipa.txt', 'r', encoding='utf-8') as f:

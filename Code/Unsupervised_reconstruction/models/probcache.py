@@ -28,10 +28,10 @@ class ProbCache:
         maxTargetLength = targetsData[2] + 1
         self.sourceLengthData = (sourcesData[1]-1, sourcesData[2]-1)
         self.targetLengthData = (targetsData[1].unsqueeze(-1), targetsData[2])
-        self.sub = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device)
-        self.ins = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device)
-        self.dlt = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device)
-        self.end = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device)
+        self.sub = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
+        self.ins = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
+        self.dlt = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
+        self.end = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
 
     def toTargetsProbs(self) -> list[dict[Operations, Tensor]]:
         """

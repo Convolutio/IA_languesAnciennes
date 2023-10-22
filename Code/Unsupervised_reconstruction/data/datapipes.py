@@ -1,4 +1,5 @@
 from torchdata.datapipes.iter import IterDataPipe
+from torchdata.datapipes.map import MapDataPipe
 import torch
 from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
@@ -108,7 +109,7 @@ def __training__collate_fn(batch:list[tuple[str, dict[ModernLanguages, str], Cac
 
     return (firstElement, secondElement, lastElement)
 
-def get_training_datapipe(training_dp: IterDataPipe[tuple[
+def get_training_datapipe(training_dp: MapDataPipe[tuple[
     str,
     dict[ModernLanguages, str],
     CachedTargetProbs

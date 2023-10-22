@@ -1,7 +1,7 @@
 from torchdata.datapipes.map import SequenceWrapper
 from torchdata.dataloader2 import DataLoader2
 from data.getDataset import getCognatesSet, getIteration
-from data.datapipes import formatTargets
+from data.datapipes import formatTargets, get_training_datapipe
 from data.vocab import computeInferenceData, wordsToOneHots, vocabulary
 from models.articleModels import ModernLanguages, MODERN_LANGUAGES, Operations
 from models.models import InferenceData
@@ -37,3 +37,9 @@ print(target_probs[148]['french'].keys())
 print(target_probs[89]['portuguese']['dlt'].size())
 dp = SequenceWrapper(target_probs)
 dl = DataLoader2(dp) # TODO: remove this memory leak
+
+#If the code above works, then the ideal code below should works
+MINI_BATCH_SIZE = 30
+dp2 = SequenceWrapper(raw_samples).zip(SequenceWrapper(raw_cognates), SequenceWrapper(target_probs))
+dp2 = get_training_datapipe(dp2, MINI_BATCH_SIZE) #type: ignore
+dl2 = DataLoader2(dp2)

@@ -1,5 +1,5 @@
-Lire en [Français](https://github.com/Convolutio/IA_languesAnciennes/edit/master/README.md#lintelligence-artificielle-dans-la-linguistique-historique).\
-Read in [English](https://github.com/Convolutio/IA_languesAnciennes/edit/master/README.md#artificial-intelligence-in-historical-linguistics).
+Lire en [Français](https://github.com/Convolutio/IA_languesAnciennes#lintelligence-artificielle-dans-la-linguistique-historique).\
+Read in [English](https://github.com/Convolutio/IA_languesAnciennes#artificial-intelligence-in-historical-linguistics).
 
 ____
 

@@ -1,5 +1,4 @@
 #!/usr/local/bin/python3.9.10
-from typing import Literal, Callable
 
 import torch
 import torch.nn as nn

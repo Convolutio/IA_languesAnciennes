@@ -10,7 +10,7 @@ def pad2d_sequence(sequence:list[Tensor], padding_value:float):
     """
     maxX = max([t.size()[0] for t in sequence])
     maxY = max([t.size()[1] for t in sequence])
-    padded = torch.full((maxX, maxY, len(sequence), *sequence[0].size()[2:]), padding_value)
+    padded = torch.full((maxX, maxY, len(sequence), *sequence[0].size()[2:]), padding_value, dtype=sequence[0].dtype)
     for (i, t) in enumerate(sequence):
         x_l, y_l = t.size()[:2]
         padded[:x_l, :y_l, i] = t

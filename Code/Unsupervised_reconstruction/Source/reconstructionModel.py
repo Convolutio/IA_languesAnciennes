@@ -1,6 +1,6 @@
 from torch import Tensor
 import torch.optim as optim
-from torchdata.dataloader2 import DataLoader2
+from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch
 from torchtext.vocab import Vocab
@@ -76,14 +76,14 @@ class ReconstructionModel(nn.Module):
         return self.__languages
 
     def __computeSourceInferenceData(self, samples_: InferenceData) -> SourceInferenceData:
-        lengths = samples_[1]+2
-        maxLength = samples_[2]+2
+        lengths = samples_[1]
+        maxLength = samples_[2]
         return (self.shared_embedding_layer(
             (samples_[0].flatten(start_dim=1), lengths.flatten(), False)),
             lengths, maxLength)
 
     # -----------TRAINING----------------  
-    def train_models(self, training_data_loader:DataLoader2[tuple[
+    def train_models(self, training_data_loader:DataLoader[tuple[
         InferenceData,
         dict[ModernLanguages, TargetInferenceData],
         dict[ModernLanguages, dict[Operations, Tensor]]
@@ -100,14 +100,13 @@ class ReconstructionModel(nn.Module):
         optimizer = optim.Adam(self.parameters(), lr=learning_rate)
         # TODO: experimenting smoothing values for this loss function.
         # neutral if log(target) = log(logit) = 0
-        loss_function = nn.KLDivLoss(reduction="mean", log_target=True)
+        loss_function = nn.KLDivLoss(reduction="batchmean", log_target=True)
 
         trainingStats = {'average': np.zeros(epochs), 'std': np.zeros(epochs)}
 
         self.train()
 
         for epochNumber in range(epochs):
-            training_data_loader.seed(epochNumber)
             print(f"Epoch {epochNumber+1}\n" + '-'*60)
 
             losses = []
@@ -119,7 +118,7 @@ class ReconstructionModel(nn.Module):
                     targets_load[lang]['dlt'],
                     targets_load[lang]['ins'],
                     targets_load[lang]['end'],
-                    ), dim=-1).flatten(end_dim=2) for lang in self.languages], dim=0)
+                    ), dim=-1).flatten(end_dim=1) for lang in self.languages], dim=0)
                 logits_load = []
                 for lang in self.languages:
                     logits = self.getModel(lang).forward_and_select(
@@ -131,7 +130,7 @@ class ReconstructionModel(nn.Module):
                         logits['dlt'],
                         logits['ins'],
                         logits['end']
-                        ), dim=-1).flatten(end_dim=2)
+                        ), dim=-1).flatten(end_dim=1)
                     logits_load.append(logits)
                 #shape = ((|x|+1)*(|y|+1), c, 4)
                 logits = torch.cat(logits_load, dim=0)
@@ -161,7 +160,7 @@ class ReconstructionModel(nn.Module):
         print(fig)
 
     # ------------INFERENCE------------------
-    def forward_dynProg(self, inference_data_loader: DataLoader2[tuple[InferenceData,
+    def forward_dynProg(self, inference_data_loader: DataLoader[tuple[InferenceData,
         dict[ModernLanguages, TargetInferenceData], tuple[int, int]]]):
         """
         Computes (p(y_l)|x) for all the batch (save the results in file)
@@ -179,7 +178,6 @@ class ReconstructionModel(nn.Module):
                     probs[language] = mutation_prob #type: ignore
                 torch.save(probs, f'{i}_{j}_mutationProbs.pt')
                 #TODO: en mémoire ou en fichier ??
-            inference_data_loader.shutdown()
 
     def backward_dynProg(self, sources_: InferenceData, targets_:dict[ModernLanguages, TargetInferenceData]) -> dict[ModernLanguages, ProbCache]:
         self.eval()

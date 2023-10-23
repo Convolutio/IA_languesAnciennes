@@ -6,7 +6,7 @@ from torch.nn.utils.rnn import pad_sequence
 from functools import partial
 from typing import TypeVar
 
-from data.vocab import computeInferenceData, vocabulary, wordsToOneHots
+from data.vocab import computeInferenceData_Source, computeInferenceData_Target, vocabulary, wordsToOneHots
 from source.utils import pad2d_sequence
 from models.models import TargetInferenceData, EOS_TOKEN, PADDING_TOKEN, InferenceData
 from models.articleModels import ModernLanguages, Operations
@@ -15,14 +15,12 @@ def formatSources(batch:Tensor)->InferenceData:
     """
     batch: tensor (|x|, c, b)
     """
-    return computeInferenceData(batch, vocabulary)
+    return computeInferenceData_Source(batch, vocabulary)
 
 def formatTargets(batch:dict[ModernLanguages, list[str]]) -> dict[ModernLanguages, TargetInferenceData]:
     d = {}
     for lang in batch:
-        targets, rawLengths, maxLength = computeInferenceData(wordsToOneHots(batch[lang], vocabulary), vocabulary)
-        d[lang] = (targets.where(targets != vocabulary[EOS_TOKEN], vocabulary[PADDING_TOKEN])[:-1],
-            rawLengths+1, maxLength+1)
+        d[lang] = computeInferenceData_Target(wordsToOneHots(batch[lang], vocabulary), vocabulary)
     return d
 
 CognateDType = TypeVar("CognateDType")
@@ -103,7 +101,7 @@ def __training__collate_fn(batch:list[tuple[str, dict[ModernLanguages, str], Cac
     """
     languages = tuple(batch[0][1].keys())
     operations = batch[0][2][languages[0]].keys()
-    firstElement = computeInferenceData(wordsToOneHots([t[0] for t in batch]), vocabulary)
+    firstElement = computeInferenceData_Source(wordsToOneHots([t[0] for t in batch]), vocabulary)
     secondElement = formatTargets({lang:[t[1][lang] for t in batch] for lang in languages})
     lastElement: CachedTargetProbs = {lang: {op:pad2d_sequence([t[2][lang][op] for t in batch], 0).squeeze(3) for op in operations} for lang in languages}
 

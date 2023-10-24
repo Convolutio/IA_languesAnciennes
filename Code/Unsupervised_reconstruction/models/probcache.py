@@ -1,8 +1,7 @@
 from torch import zeros, cuda, Tensor, where
 from typing import Literal
 from source.utils import computePaddingMask
-from models.articleModels import Operations, OPERATIONS
-from models.models import SourceInferenceData, TargetInferenceData
+from models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates, Operations, OPERATIONS
 
 device = 'cuda' if cuda.is_available() else 'cpu'
 
@@ -18,7 +17,10 @@ class ProbCache:
         * end : (|x|+1, |y|+1)
     Padding value : 0
     """
-    def __init__(self, sourcesData:SourceInferenceData, targetsData:TargetInferenceData, batch_size:tuple[int, Literal[1]]):
+    def __init__(self,
+                 sourcesData: InferenceData_SamplesEmbeddings,
+                 targetsData: InferenceData_Cognates,
+                 batch_size: tuple[int, Literal[1]]):
         """
         Arguments:
             - sourcesData : needed to get length data

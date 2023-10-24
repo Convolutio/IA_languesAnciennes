@@ -1,5 +1,6 @@
 import torch
 from torch import Tensor
+from typing import TypeVar
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -63,3 +64,18 @@ def computePaddingMask(sourceLengthData: tuple[Tensor, int], targetLengthData: t
         B = torch.arange(maxTargetLength)[unsqueezing_tuple] < targetLengths.unsqueeze(0) # dim = (L_y, *)
         # dim = (L_x, L_y, *)
         return torch.logical_and(A.unsqueeze(1), B.unsqueeze(0)).to(device)
+
+__KeyType = TypeVar('__KeyType')
+__ValType = TypeVar('__ValType')
+
+def dl_to_ld(dl:dict[__KeyType, list[__ValType]])-> list[dict[__KeyType, __ValType]]:
+    new_list = [{key: dl[key][i] for key in dl} for i in range(len(dl[next(iter(dl))]))]
+    return new_list
+
+__KeyType2 = TypeVar('__KeyType2')
+__ValType2 = TypeVar('__ValType2')
+
+def ld_to_dl(ld:list[dict[__KeyType2, __ValType2]]) -> dict[__KeyType2, list[__ValType2]]:
+    list_length = len(ld)
+    new_dict = {key:[ld[i][key] for i in range(list_length)] for key in ld[0]}
+    return new_dict

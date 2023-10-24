@@ -4,14 +4,14 @@ import torch
 from torch import Tensor
 from models.probcache import ProbCache
 from source.editModel import EditModel
-from models.models import SourceInferenceData, TargetInferenceData
+from models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates
 from typing import Union
 
 BIG_NEG = -1e9
 
 
 
-def compute_mutation_prob(model:EditModel, sources_:SourceInferenceData, targets_:TargetInferenceData, return_posteriors:bool = False) -> Union[Tensor, ProbCache]:
+def compute_mutation_prob(model:EditModel, sources_:InferenceData_SamplesEmbeddings, targets_: InferenceData_Cognates, return_posteriors:bool = False) -> Union[Tensor, ProbCache]:
     """
     Arguments:
         - model (EditModel) : the model predicting an edition from a reconstruction to its cognate in a given modern language
@@ -96,6 +96,6 @@ def compute_mutation_prob(model:EditModel, sources_:SourceInferenceData, targets
     model.clear_cache()
     return posterior_cache
 
-def compute_posteriors(model:EditModel, sources_:SourceInferenceData, targets_:TargetInferenceData)->ProbCache:
+def compute_posteriors(model:EditModel, sources_:InferenceData_SamplesEmbeddings, targets_:InferenceData_Cognates)->ProbCache:
     targetsProbsCache = compute_mutation_prob(model, sources_, targets_, return_posteriors = True)
     return targetsProbsCache #type: ignore

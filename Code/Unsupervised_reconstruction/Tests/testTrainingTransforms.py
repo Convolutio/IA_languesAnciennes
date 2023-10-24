@@ -4,16 +4,15 @@ from torch.utils.data import DataLoader
 from torch import Tensor
 from data.getDataset import getCognatesSet, getIteration
 from data.datapipes import formatTargets
-from data.vocab import computeInferenceData_Source, computeInferenceData_Target, wordsToOneHots, vocabulary
-from models.articleModels import ModernLanguages, MODERN_LANGUAGES, Operations, OPERATIONS
-from models.models import InferenceData, PADDING_TOKEN
+from data.vocab import computeInferenceData_Samples, wordsToOneHots, vocabulary
+from models.types import ( ModernLanguages, MODERN_LANGUAGES, Operations, OPERATIONS, InferenceData, PADDING_TOKEN )
 from source.reconstructionModel import ReconstructionModel
 from source.utils import pad2d_sequence
 
 raw_cognates = getCognatesSet()
 cognates:dict[ModernLanguages, InferenceData] = formatTargets(raw_cognates)
 raw_samples = getIteration(1)
-currentReconstructions = computeInferenceData_Source(wordsToOneHots(raw_samples).unsqueeze(-1)) #TODO: simplify the data loading
+currentReconstructions = computeInferenceData_Samples(wordsToOneHots(raw_samples).unsqueeze(-1)) #TODO: simplify the data loading
 
 LSTM_INPUT_DIM = 50
 LSTM_HIDDEN_DIM = 50
@@ -57,7 +56,7 @@ def __training__collate_fn(batch:list[tuple[str, dict[ModernLanguages, str], Cac
     """
     languages = tuple(batch[0][1].keys())
     operations = batch[0][2][languages[0]].keys()
-    firstElement = computeInferenceData_Source(wordsToOneHots([t[0] for t in batch]).unsqueeze(-1), vocabulary)
+    firstElement = computeInferenceData_Samples(wordsToOneHots([t[0] for t in batch]).unsqueeze(-1), vocabulary)
     secondElement = formatTargets({lang:[t[1][lang] for t in batch] for lang in languages})
     maxSourceLength = firstElement[2] - 1
     maxCognateLength = {lang: secondElement[lang][2] for lang in MODERN_LANGUAGES}
@@ -69,7 +68,7 @@ def __training__collate_fn(batch:list[tuple[str, dict[ModernLanguages, str], Cac
 raw_cognates = [{lang: raw_cognates[lang][i] for lang in MODERN_LANGUAGES} for i in range(len(raw_cognates['french']))]
 myDataset = MyDataset(raw_samples, raw_cognates, target_probs)
 MINI_BATCH_SIZE = 30
-dl = DataLoader(dataset = myDataset, batch_size=MINI_BATCH_SIZE, collate_fn=__training__collate_fn, shuffle=True) # TODO: remove this memory leak
+dl = DataLoader(dataset = myDataset, batch_size=MINI_BATCH_SIZE, collate_fn=__training__collate_fn, shuffle=True)
 
 randomEditModel.train_models(dl)
 

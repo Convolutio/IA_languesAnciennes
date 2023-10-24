@@ -9,8 +9,7 @@ from torch.nn.functional import pad
 from torchtext.vocab import Vocab
 from torch import Tensor
 
-from models.articleModels import ModernLanguages, Operations
-from models.models import SourceInferenceData, TargetInferenceData, PADDING_TOKEN
+from models.types import (ModernLanguages, Operations, InferenceData_SamplesEmbeddings, InferenceData_Cognates, PADDING_TOKEN)
 from source.packingEmbedding import PackingEmbedding
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -91,10 +90,10 @@ class EditModel(nn.Module):
         self.__cachedProbs: dict[Operations, Tensor] = {}
     
 
-    def __call__(self, sources_: SourceInferenceData, targets_: TargetInferenceData) -> tuple[Tensor, Tensor]:
+    def __call__(self, sources_: InferenceData_SamplesEmbeddings, targets_: InferenceData_Cognates) -> tuple[Tensor, Tensor]:
         return super().__call__(sources_, targets_)
 
-    def forward(self, sources_:SourceInferenceData, targets_:TargetInferenceData) -> tuple[Tensor, Tensor]:
+    def forward(self, sources_: InferenceData_SamplesEmbeddings, targets_: InferenceData_Cognates) -> tuple[Tensor, Tensor]:
         """
         Returns a tuple of tensors representing respectively log q_sub(. |x,.,y[:.]) and log q_ins(.|x,.,y[:.]) , for each (x,y) sample-target couple in the batch.
 
@@ -130,7 +129,7 @@ class EditModel(nn.Module):
 
         return sub_results, ins_results
 
-    def forward_and_select(self, sources: SourceInferenceData, targets:TargetInferenceData) -> dict[Operations, Tensor]:
+    def forward_and_select(self, sources: InferenceData_SamplesEmbeddings, targets: InferenceData_Cognates) -> dict[Operations, Tensor]:
         """
         Run the forward method of the model and select the probabilities of interest for the cognates provided in input. During the selection, the probabilities for undefined (x[i],y[:j]) input couples (i.e. with one of the two input containing at least one padding token) are neutralized.
         Returns a dictionnary of the probabilities for each operations (ins, sub, end, dlt).
@@ -165,7 +164,7 @@ class EditModel(nn.Module):
         return {'sub':sub_results[...,0], 'dlt':sub_results[...,1],
                 'ins':ins_results[...,0], 'end':sub_results[...,1]}
     
-    def cache_probs(self, sources: SourceInferenceData, targets: TargetInferenceData):
+    def cache_probs(self, sources: InferenceData_SamplesEmbeddings, targets: InferenceData_Cognates):
         """
         Runs inferences in the model from given sources. 
         It is supposed that the context of the targets and their one-hots have already been computed in the model.

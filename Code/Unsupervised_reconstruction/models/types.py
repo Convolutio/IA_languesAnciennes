@@ -26,14 +26,23 @@ InferenceData = tuple[Tensor, Tensor, int]
 The data in a language for inferring into an edit model with the dynamic program.
 
 This tuple contains :
-    - the tensor with the batch's words with their boundaries, encoded into one-hot indexes sequence.
-      (shape = (N+2, C, B) or (N+2, C)), with C the number of cognate pairs, B the number of input linked to each cognate pair (1 if it is a cognate, else it is a number of proposals linked to each cognate), N the variable raw sequences lengths).
+    * the tensor with the batch's words with their boundaries, encoded into one-hot indexes sequence.
+      (shape = (N+2, C, B) or (N+2, C)), with C the number of cognate pairs, B the number of samples linked to each cognate pair (1 if it is a cognate, else it is a number of proposals linked to each cognate), N the variable raw sequences lengths).
       See data.vocab.py for the meaning of each one-hot indexes. 
-    - the CPU IntTensor with the lengths of the sequences (with their boundaries). (shape = (C, B) or (C))
-    - The max length of a sequence in the batch, for avoiding computing again this information.
+    * the CPU IntTensor with the lengths of the sequences (with their boundaries). (shape = (C, B) or (C))
+    * The max length of a sequence in the batch, for avoiding computing again this information.
 """
 
-SourceInferenceData = tuple[PackedSequence, Tensor, int]
+InferenceData_Samples = tuple[Tensor, Tensor, int]
+"""
+This is the samples' expected input data type for the ReconstructionModel
+Tuple arguments:
+    * IntTensor with the samples with one-hot indexes format. They are sequences of tokens with IPA chararacters and the boundary tokens. shape = (|x|+2, C, B)
+    * CPU IntTensor with the lengths of sequences (with the boundary tokens, so |x|+2). shape = (C, B)
+    * int with the maximum one
+"""
+
+InferenceData_SamplesEmbeddings = tuple[PackedSequence, Tensor, int]
 """
 It is expected the source input data to be passed in an EditModel with the PackingEmbedding conversion which has already been externally applied.
 
@@ -42,7 +51,7 @@ Tuple arguments:
     * CPU IntTensor with the lengths of sequences (with boundaries, so |x|+2). shape = (C, B)
     * int with the maximum one
 """
-TargetInferenceData = tuple[Tensor, Tensor, int]
+InferenceData_Cognates = tuple[Tensor, Tensor, int]
 """
 Tuple arguments:
     * IntTensor with the modern forms with one-hot indexes format. They are sequences of tokens with IPA chararacters and only the opening boundary. shape = (|y|+1, C)
@@ -53,3 +62,15 @@ Tuple arguments:
 PADDING_TOKEN = '-'
 SOS_TOKEN = '('
 EOS_TOKEN = ')'
+
+
+ModernLanguages = Literal['french', 'spanish', 'italian', 'portuguese', 'romanian']
+MODERN_LANGUAGES: tuple[ModernLanguages, ...] = ('french', 'spanish', 'italian', 'portuguese', 'romanian')
+Operations = Literal['sub', 'dlt', 'ins', 'end']
+OPERATIONS:tuple[Operations,...] = ("sub", "dlt", "ins", "end")
+
+CognatesSet_str = dict[ModernLanguages, list[str]]
+CognatesSet_oneHotIdxs = dict[ModernLanguages, list[Tensor]]
+
+Form = str
+FormsSet = list[str] # a list of forms

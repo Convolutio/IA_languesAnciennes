@@ -5,7 +5,7 @@ from torch.nn.utils.rnn import pad_sequence, unpad_sequence
 from torch import cuda
 import re
 
-from models.models import InferenceData, TargetInferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
+from models.types import ModernLanguages, InferenceData, InferenceData_Cognates, InferenceData_Samples, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
 
 device = "cuda" if cuda.is_available() else "cpu"
 
@@ -113,8 +113,10 @@ def __computeInferenceData(words_intTensor: Tensor, vocab: Vocab = vocabulary) -
 
     return (withBoundariesTensor[:maxLength], lengths.cpu(), maxLength)
 
-def computeInferenceData_Source(words_intTensor: Tensor, vocab: Vocab = vocabulary) -> InferenceData:
+def computeInferenceData_Samples(words_intTensor: Tensor, vocab: Vocab = vocabulary) -> InferenceData_Samples:
     """
+    Arguments:
+        - words_intTensor: an IntTensor of shape (|x|, c) or (|x|, c, b)
     Computes samples' input data for the ReconstructionModel from an IntTensor containing words in one-hot indices format.
     The IntTensor is reduced, then the lengths of the sequences are computed and finally the encoding is performed.
     The one-hot indices IntTensor is of shape (|x|+2, c, b) and the lengths cpu Tensor is of shape (c, b)
@@ -126,12 +128,17 @@ def computeInferenceData_Source(words_intTensor: Tensor, vocab: Vocab = vocabula
         raise Exception("Your tensor with samples' tokens must be of shape (|x|, c) or (|x|, c, b)")
     return __computeInferenceData(words_intTensor, vocab)
 
-def computeInferenceData_Target(words_intTensor: Tensor, vocab: Vocab = vocabulary) -> TargetInferenceData:
+def computeInferenceData_Cognates(words_intTensors: dict[ModernLanguages, Tensor], vocab: Vocab = vocabulary) -> dict[ModernLanguages, InferenceData_Cognates]:
     """
-    Computes cognates' input data for the ReconstructionModel from an IntTensor containing words in one-hot indices format.
-    The IntTensor is reduced, then the lengths of the sequences are computed and finally the encoding is performed.
-    The EOS token is removed and so the lengths Tensor equals (|y|+1). See the TargetInferenceData type's documentation for more details.
+    Arguments:
+        - words_intTensor: a dictionnary of IntTensor of shape (|y_l|, c)
+    Computes cognates' input data for the ReconstructionModel from IntTensors containing words in one-hot indices format.
+    The IntTensors are reduced, then the lengths of the sequences are computed and finally the encoding is performed.
+    The EOS token is removed and so the lengths Tensor equals (|y|+1). See the `InferenceData_Cognates` type's documentation for more details.
     """
-    targets, rawLengths, maxLength = __computeInferenceData(words_intTensor, vocab)
-    return (targets.where(targets != vocab[EOS_TOKEN], vocab[PADDING_TOKEN])[:-1],
+    d:dict[ModernLanguages, InferenceData_Cognates] = {}
+    for lang in words_intTensors:
+        targets, rawLengths, maxLength = __computeInferenceData(words_intTensors[lang], vocab)
+        d[lang] = (targets.where(targets != vocab[EOS_TOKEN], vocab[PADDING_TOKEN])[:-1],
             rawLengths-1, maxLength-1)
+    return d

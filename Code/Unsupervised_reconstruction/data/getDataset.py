@@ -1,5 +1,5 @@
 from typing import Literal
-from models.articleModels import ModernLanguages
+from models.types import ModernLanguages
 from data.vocab import wordsToOneHots
 from torch import Tensor
 

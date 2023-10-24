@@ -9,8 +9,9 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from models.articleModels import ModernLanguages, Operations
-from models.models import InferenceData, TargetInferenceData, SourceInferenceData, PADDING_TOKEN
+from models.types import (ModernLanguages, Operations, InferenceData,
+                          InferenceData_Cognates, InferenceData_SamplesEmbeddings, 
+                          PADDING_TOKEN)
 
 
 from source.editModel import EditModel
@@ -75,7 +76,7 @@ class ReconstructionModel(nn.Module):
     def languages(self):
         return self.__languages
 
-    def __computeSourceInferenceData(self, samples_: InferenceData) -> SourceInferenceData:
+    def __computeSourceInferenceData(self, samples_: InferenceData) -> InferenceData_SamplesEmbeddings:
         lengths = samples_[1]
         maxLength = samples_[2]
         return (self.shared_embedding_layer(
@@ -85,15 +86,15 @@ class ReconstructionModel(nn.Module):
     # -----------TRAINING----------------  
     def train_models(self, training_data_loader:DataLoader[tuple[
         InferenceData,
-        dict[ModernLanguages, TargetInferenceData],
+        dict[ModernLanguages, InferenceData_Cognates],
         dict[ModernLanguages, dict[Operations, Tensor]]
     ]],
                     epochs: int = 5, learning_rate: float = 0.01):
         """
         Arguments:
-            training_set: an dataload of tuples containing (
-                the sampled reconstruction,
-                its cognates,
+            training_set: a dataload of tuples containing (
+                the sampled reconstructions,
+                their cognates,
                 its targets edit probabilities (shape = (|x|+1, |y|+1, c, 1))
                 )
         """
@@ -161,14 +162,14 @@ class ReconstructionModel(nn.Module):
 
     # ------------INFERENCE------------------
     def forward_dynProg(self, inference_data_loader: DataLoader[tuple[InferenceData,
-        dict[ModernLanguages, TargetInferenceData], tuple[int, int]]]):
+        dict[ModernLanguages, InferenceData_Cognates], tuple[int, int]]]):
         """
         Computes (p(y_l)|x) for all the batch (save the results in file)
         """
         self.eval()
         with torch.no_grad():
             for (sources_, targets_, (i, j)) in inference_data_loader:
-                sources: SourceInferenceData = self.__computeSourceInferenceData(sources_)
+                sources: InferenceData_SamplesEmbeddings = self.__computeSourceInferenceData(sources_)
 
                 probs: dict[ModernLanguages, Tensor] = {}
                 for language in self.languages:
@@ -179,10 +180,10 @@ class ReconstructionModel(nn.Module):
                 torch.save(probs, f'{i}_{j}_mutationProbs.pt')
                 #TODO: en mémoire ou en fichier ??
 
-    def backward_dynProg(self, sources_: InferenceData, targets_:dict[ModernLanguages, TargetInferenceData]) -> dict[ModernLanguages, ProbCache]:
+    def backward_dynProg(self, sources_: InferenceData, targets_:dict[ModernLanguages, InferenceData_Cognates]) -> dict[ModernLanguages, ProbCache]:
         self.eval()
         with torch.no_grad():
-            sources: SourceInferenceData = self.__computeSourceInferenceData(
+            sources: InferenceData_SamplesEmbeddings = self.__computeSourceInferenceData(
                 sources_)
 
             cache: dict[ModernLanguages, ProbCache] = {}
@@ -192,7 +193,7 @@ class ReconstructionModel(nn.Module):
             return cache
     
     #TODO: enlever
-    def infer(self, sources_: InferenceData, targets_:dict[ModernLanguages, TargetInferenceData]):
+    def infer(self, sources_: InferenceData, targets_:dict[ModernLanguages, InferenceData_Cognates]):
         model: EditModel = self.getModel("french") #type:ignore
         sub_results, ins_results = model.forward_and_select(self.__computeSourceInferenceData(sources_), targets_['french'])
         return sub_results, ins_results

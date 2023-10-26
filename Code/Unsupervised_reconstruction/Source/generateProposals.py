@@ -3,8 +3,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 
-from models.models import *
-from models.articleModels import ModernLanguages
+from models.types import *
 from source.editsGraph import EditsGraph
 
 import torch
@@ -171,7 +170,7 @@ def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Ten
     """
     For each cognate pair, generate a list of proposals from the current chosen sample and its corresponding cognates in each languages. The list of proposals processed by the MH algorithms
     is then established with a uniform random drawing of `samplesNumber` items.
-    Then a list of c IntTensors of shape (`samplesNumber`, L~) is generated.
+    Then a list of c IntTensors of shape (`samplesNumber*2`, L~) is generated.
     """
     p = list()
     numberOfCognatePairs = len(cognates['french'])

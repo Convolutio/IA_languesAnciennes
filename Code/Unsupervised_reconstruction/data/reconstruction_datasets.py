@@ -27,6 +27,7 @@ class __TrainingDataset(Dataset):
     def __init__(self, raw_samples: list[str],
                  raw_cognates: list[dict[ModernLanguages, str]],
                  target_probs: list[dict[ModernLanguages, dict[Operations, Tensor]]]) -> None:
+        assert(len(raw_samples)==len(raw_cognates)==len(target_probs)), "The lists to be zipped must have the same length."
         self.training_load = list(zip(raw_samples, raw_cognates, target_probs))
         self.length = len(target_probs)
 

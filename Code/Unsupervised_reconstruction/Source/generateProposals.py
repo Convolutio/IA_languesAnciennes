@@ -3,8 +3,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 
-from models.models import *
-from models.articleModels import ModernLanguages
+from models.types import *
 from source.editsGraph import EditsGraph
 
 import torch
@@ -117,7 +116,7 @@ class IncorrectResultsException(Exception):
 
 def computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> Tensor:
     """
-    Returns a list of the proposals in one-hot indexes representation (sequences
+    Returns a list of the proposals (shape = (B, L~)) in one-hot indexes representation (sequences
     of indexes in the vocabulary)
 
     Args:
@@ -155,15 +154,31 @@ def computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> T
     #                 Data: (/{x}/, /{y}/)")
     return proposalsSet
 
+def sampleFromProposals(proposalsSet:Tensor, samplesNumber:int)->Tensor:
+    """
+    Arguments:
+        - proposalsSet (IntTensor, shape (B, L~))
+    Returns an IntTensor of shape (2*samplesNumber, L~) with random samples (uniform sampling).
+    """
+    proposalsNumber = len(proposalsSet)
+    # drawing with 1/(n-1) law, with n the number of proposals
+    j = torch.randint(high=proposalsNumber-1, size=(samplesNumber,), dtype=torch.int32, device=device)
+    j = j.repeat_interleave(2) + torch.tensor([0,1], device=device).repeat(samplesNumber)
+    return proposalsSet[j.unsqueeze(1), torch.arange(proposalsSet.size()[2]).unsqueeze(0)]
 
-def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: dict[ModernLanguages, list[Tensor]]) -> list[Tensor]:
+def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: dict[ModernLanguages, list[Tensor]], samplesNumber:int) -> list[Tensor]:
+    """
+    For each cognate pair, generate a list of proposals from the current chosen sample and its corresponding cognates in each languages. The list of proposals processed by the MH algorithms
+    is then established with a uniform random drawing of `samplesNumber` items.
+    Then a list of c IntTensors of shape (`samplesNumber*2`, L~) is generated.
+    """
     p = list()
     numberOfCognatePairs = len(cognates['french'])
     print('-'*60)
     for i in range(numberOfCognatePairs):
         x = currentReconstructions[i]
         Y = [cognates[language][i] for language in cognates]
-        p.append(computeProposals(x, Y))
+        p.append(sampleFromProposals(computeProposals(x, Y), samplesNumber))
         if (i+1) % (numberOfCognatePairs//100) == 0:
             print("Proposals generation:", 1+100*(i+1) //
                   numberOfCognatePairs, '%'+' '*10, end='\r')

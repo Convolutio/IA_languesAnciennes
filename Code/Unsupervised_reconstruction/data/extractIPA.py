@@ -12,7 +12,7 @@ def printNbIPAFrom_Scrap(filePath: str) -> None:
     Print the number of IPA characters contained in the `scraped_IPA.json` file.
 
     Args:
-        filePath: A string representing the path to the `scraped_IPA.json` file. 
+        filePath: string representing the path to the `scraped_IPA.json` file. 
     """
     with open(filePath, 'r', encoding="utf-8") as f:
         IPA: list[dict[str, str]] = json.load(f)
@@ -25,12 +25,12 @@ def extractIPAFrom_Scrap(filePath: str, outputType: Literal['csv', 'set']) -> Un
     and extracting a set of unique 'symbol' values or writing the data to a CSV file.
 
     Args:
-        filePath: A string representing the path to the `scraped_IPA.json` file.
-        outputType: Specifies the output type, either 'csv' for CSV file or 'set' for unique symbols.
+        filePath: string representing the path to the `scraped_IPA.json` file.
+        outputType: specifies the output type, either 'csv' for CSV file or 'set' for unique symbols.
 
     Returns:
-        str: A string representing the file path of the created CSV file (default: IPA_characters.csv) if 'csv' is chosen as output type.
-        set(str): A set containing unique 'symbol' values if 'set' is chosen as output type.
+        str: string representing the file path of the created CSV file (default: IPA_characters.csv) if 'csv' is chosen as output type.
+        set(str): set containing unique 'symbol' values if 'set' is chosen as output type.
     """
 
     if not os.path.exists(filePath):
@@ -67,10 +67,10 @@ def extractIPAFrom_MeloniDb(filePath: str) -> set[str]:
     Extract a set of IPA characters from the Meloni database contained in the `romance-ipa.txt` file.
 
     Args:
-        filePath: A string representing the path to the `romance-ipa.txt` file.
+        filePath: string representing the path to the `romance-ipa.txt` file.
 
     Returns:
-        set(str): A set of IPA characters.
+        set(str): set of IPA characters.
     """
     SEP = '\t'
 
@@ -84,10 +84,10 @@ def extractIPAFrom_HeDatabase(pathFolder: str) -> set[str]:
     Extract a set of IPA characters from files ending in `_ipa.txt` in the `recons_data` folder.
 
     Args:
-        filePath: A string representing the path to the `recons_data` folder.
+        filePath: string representing the path to the `recons_data` folder.
 
     Returns:
-        set(str): A set of IPA characters.
+        set(str): set of IPA characters.
     """
     setIPA = set[str]()
 
@@ -108,12 +108,12 @@ def generateVocabularyFile(listIPAChars: list[str], filename: str = 'IPA_charact
     a list of IPA characters, separated by `SEP`.
 
     Args:
-        listIPAChars: A list of IPA characters.
-        filename: The name of the output file.
-        SEP: The separator between each IPA character written in the file.
+        listIPAChars: list of IPA characters.
+        filename: name of the output file.
+        SEP: separator between each IPA character written in the file.
 
     Returns:
-        str: A string representing the file path of the created text file (default: 'IPA_characters.txt').
+        str: string representing the file path of the created text file (default: 'IPA_characters.txt').
     """
     with open(filename, 'w', encoding='utf-8') as file2write:
         content = ""

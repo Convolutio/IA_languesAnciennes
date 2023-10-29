@@ -7,7 +7,6 @@ from tqdm.auto import tqdm
 
 from models.models import InferenceData, PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN
 from data.vocab import wordsToOneHots, computeInferenceData, vocabulary
-from data.ipa_tokenizer import tokenize_ipa
 from source.packingEmbedding import PackingEmbedding
 
 from typing import Callable

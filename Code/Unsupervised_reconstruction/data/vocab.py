@@ -1,29 +1,58 @@
+import re
 import torch
-from torch import Tensor
+import random
+
+from typing import Optional
+from torch import Tensor, cuda
+
 from torchtext.vocab import Vocab, build_vocab_from_iterator
 from torch.nn.utils.rnn import pad_sequence, unpad_sequence
-from torch import cuda
-import re
 
 from models.models import InferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
 
+
+# GLOBAL VARIABLES / CONSTANTS
 device = "cuda" if cuda.is_available() else "cpu"
 
-specialTokensPattern = re.compile('|'.join(
-    ['(' + specialToken + ')' for specialToken in (PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN)]))
-
-vocabulary: Vocab  # |Σ| = len(vocab)-3
+vocabulary: Vocab
 with open('./data/IPA_vocabulary.txt', 'r', encoding='utf-8') as vocFile:
-    vocabulary = build_vocab_from_iterator(vocFile.read().split(
-        ", "), specials=[EOS_TOKEN, SOS_TOKEN, PADDING_TOKEN], special_first=False)
-IPA_charsNumber = len(vocabulary)-3
+    vocabulary = build_vocab_from_iterator(vocFile.read().split(", "),
+                                           specials=[EOS_TOKEN, SOS_TOKEN, PADDING_TOKEN], special_first=False)
+
+NUMBER_IPA_CHARS = len(vocabulary)-3  # |Σ| = len(vocab)-3
+
+
+def keepWordsInVoc(words: list[str], ipaVocab: str, nbSamples: int, filename: Optional[str]) -> str:
+    """
+    Keeps only `nbSamples` words containing only IPA characters defined by `ipaVocab` from word list `words`.
+
+    Args:
+        words: list of words to validate.
+        ipaVocab: string of IPA characters representing the entire vocabulary. Regex search patterns.
+        nbSamples: number of samples to keep from the word list.
+        filename (Optional): name of the output file.
+
+    Returns:
+        str: a string of the kept text. If a file name is chosen, then this string will be saved in this text file.
+    """
+    random.seed(42)  # Fix the randomness
+    ipaRegex = re.compile(r"^[{0}]+$".format(ipaVocab))
+
+    validSampledWords = random.sample(
+        [word for word in words if ipaRegex.match(word)], nbSamples)
+
+    if filename:
+        with open(f"{filename}.txt", "w", encoding='utf-8') as f:
+            f.write(" ".join(validSampledWords))
+
+    return " ".join(validSampledWords)
 
 
 def wordsToOneHots(words: list[str], inventory: Vocab = vocabulary) -> Tensor:
     """
     Args:
-        words (list[str]): list of words to convert.
-        inventory (Vocab, optional): vocabulary (object) for mapping characters into integers. Default value: `vocabulary`.
+        words: list of words to convert.
+        inventory (Optional): vocabulary (object) for mapping characters into integers. Default value: `vocabulary`.
 
     Returns:
         IntTensor, dim=(L, B): a padded tensor containing the B words of the list as sequences of L tokens in one-hot indices format.
@@ -39,7 +68,7 @@ def wordsToOneHots(words: list[str], inventory: Vocab = vocabulary) -> Tensor:
 def paddedOneHotsToRawSequencesList(batch: InferenceData) -> list[Tensor]:
     """
     Args:
-        batch (InferenceData): the first element must be a padded IntTensor of shape (L, B).
+        batch: the first element must be a padded IntTensor of shape (L, B).
 
     Returns:
         list[Tensor]: a list of unidimensional IntTensors of variable length.
@@ -51,8 +80,8 @@ def oneHotsToWords(batch: Tensor, removeSpecialTokens: bool = False, inventory: 
     """
     Args:
         batch (Tensor, dim=(L, B)): IntTensor/LongTensor representing padded words in sequences of one hot indices.
-        removeSpecialTokens (bool, optional): argument to remove or not the special tokens. Default value: `False`.
-        inventory (Vocab, optional): vocabulary (object) for mapping indices into characters. Default value: `vocabulary`.
+        removeSpecialTokens (Optional): argument to remove or not the special tokens. Default value: `False`.
+        inventory (Optional): vocabulary (object) for mapping indices into characters. Default value: `vocabulary`.
 
     Returns:
         list[str]: a list of B words in string format.
@@ -67,12 +96,17 @@ def oneHotsToWords(batch: Tensor, removeSpecialTokens: bool = False, inventory: 
     >>> oneHotsToWords(t, True, vocabulary)
     ['notifikar', 'dɔrikʊ']
     """
-    wordsLst = ["".join(inventory.lookup_tokens(wordInLst))
+
+    specialTokensPattern = re.compile('|'.join(
+        ['(' + specialToken + ')' for specialToken in (PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN)]))
+
+    wordList = ["".join(inventory.lookup_tokens(wordInLst))
                 for wordInLst in batch.T.tolist()]
+
     if not removeSpecialTokens:
-        return wordsLst
-    else:
-        return specialTokensPattern.sub("", " ".join(wordsLst)).split(" ")
+        return wordList
+
+    return specialTokensPattern.sub("", " ".join(wordList)).split(" ")
 
 
 def computeInferenceData(words_intTensor: Tensor, vocab: Vocab = vocabulary) -> InferenceData:
@@ -83,10 +117,10 @@ def computeInferenceData(words_intTensor: Tensor, vocab: Vocab = vocabulary) -> 
 
     Args:
         words_intTensor (ByteTensor, dim=(ArbitrarySequenceLength, *)) : tensor with the encoded words.
-        vocab (Vocab, optional): vocabulary containing the mapping between characters and indices. Default value: `vocabulary`.
+        vocab (Optional): vocabulary containing the mapping between characters and indices. Default value: `vocabulary`.
 
     Returns:
-        InferenceData: compute data for the inference. 
+        InferenceData: a computed data for inference. 
     """
     left_boundary_index = vocab['(']
     right_boundary_index = vocab[')']

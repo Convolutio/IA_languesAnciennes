@@ -17,7 +17,7 @@ device = "cuda" if cuda.is_available() else "cpu"
 vocabulary: Vocab
 with open('./data/IPA_vocabulary.txt', 'r', encoding='utf-8') as vocFile:
     vocabulary = build_vocab_from_iterator(vocFile.read().split(", "),
-                                           specials=[EOS_TOKEN, SOS_TOKEN, PADDING_TOKEN], special_first=False)
+                                           specials=[SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN], special_first=False)
 
 NUMBER_IPA_CHARS = len(vocabulary)-3  # |Σ| = len(vocab)-3
 

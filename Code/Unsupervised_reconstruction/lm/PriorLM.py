@@ -15,21 +15,24 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class PriorLM:
-    def __init__(self):
-        pass
-
+    def __init__(self): ...
     def train(self, data: str) -> None: ...
-
     def evaluation(self) -> float: ...
-
     def inference(self, reconstructions: InferenceData) -> Tensor: ...
 
 
 class NGramLM(PriorLM):
     """
-    Smoothing value : a value to smooth the 0 probability value for uncountered n-grams and (n-1)-grams
+    ## N-gram Language Model.
+
+    Params:
+        n (int): size of the N-gram to be used in the model.
+        vocab (Vocab, optional): vocabulary of IPA characters in the language model.
+        smoothingValue (float, optional): value used for smoothing in probability computations for n-grams and (n-1)-grams not encountered.
+                                Defaults value: -1e5.
     """
-    def __init__(self, n: int, vocab: Vocab = vocabulary, smoothingValue: float = -1e5):
+
+    def __init__(self, n: int, vocab: Vocab = vocabulary, smoothingValue: float = 1e-5):
         self.n = n
         self.vocab = vocab
         self.vocabSize = len(vocab)
@@ -42,20 +45,24 @@ class NGramLM(PriorLM):
 
     def batch_ngram(self, data: str) -> Tensor:
         """
-        Prepare the data into a ngram batch (shape: (((L-self.n)/1)+1, B, self.n) by checking the validity
-        of the vocabulary.
+        Prepare string data into an ngram batch tensor while checking the validity of the vocabulary.
 
         Args:
-            data (str): the training data.
+            data (str): input training data.
 
         Returns:
-            Tensor: ngram batch data.
+            (Tensor, dim=(*, B, self.n)): ngram batch tensor.
         """
-        d = set(data); d.discard(' ')
-        assert len(d.difference(self.vocab.get_stoi().keys())) == 0, \
-            f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}"
+
+        d = set(data)
+        d.discard(' ')
+        if len(d.difference(self.vocab.get_stoi().keys())) != 0:
+            raise Exception(
+                f"This dataset does not have the vocabulary required for training.\n The voc difference is : {d}")
         del d
 
+        # Before converting the string of words into a padded tensor,
+        # it is necessary to convert it into a list and add the SOS token and the EOS token to each word.
         batch = wordsToOneHots(list(
             map(lambda w: SOS_TOKEN*(self.n-1) + w + EOS_TOKEN*(self.n-1), data.split(' '))), self.vocab)
 
@@ -63,6 +70,43 @@ class NGramLM(PriorLM):
         batch_ngram = batch.unfold(0, self.n, 1)
 
         return batch_ngram
+
+    def padDataToNgram(self, reconstructions: Tensor) -> Tensor:
+        """
+        Pad reconstructions at the beginning and end of each sequence to conform to the computation in ngram. 
+
+        Args:
+            reconstructions (Tensor, dim=(L,*)): input tensor to pad.
+
+        Returns:
+            (Tensor, dim=(L+2*(n-2), *)): padded reconstructions.
+        """
+        # This method allows the L dimension to be reworked,
+        # so that the other dimensions are kept in their original state.
+        batchShape = reconstructions.shape[1:]
+
+        first_padding = torch.full(
+            (self.n-2, *batchShape), self.vocab[SOS_TOKEN], device=device)
+
+        # Dedicate the space for the (n-2) EOS to be placed at the end of the words.
+        end_padding = torch.full(
+            (self.n-2, *batchShape), self.vocab[PADDING_TOKEN], device=device)
+
+        # shape: (L+2*(self.n-2), *)
+        padded_tensor = torch.cat(
+            (first_padding, reconstructions, end_padding), dim=0)
+
+        # Indices of the first occurrence of PADDING_TOKEN along the L dimension
+        indices = torch.argmax((padded_tensor == self.vocab[PADDING_TOKEN])*1,
+                               dim=0)
+
+        t = torch.arange(padded_tensor.shape[0], device=device)
+        t = t.reshape(((t.shape[0],)+len(batchShape)*(1,)))
+        mask = (t >= indices) & (t <= indices + self.n-2)
+
+        output = torch.where(mask, self.vocab[EOS_TOKEN], padded_tensor)
+
+        return output
 
     def train(self, data: str) -> Tensor:
         """
@@ -76,24 +120,29 @@ class NGramLM(PriorLM):
 
         non_padded_ngram = torch.all(
             unique_ngrams != self.vocab[PADDING_TOKEN], dim=1)     # shape: (*)
-        
-        count_ngrams = torch.where(non_padded_ngram, count_ngrams, 0).to(dtype=self.nGramCount.dtype)
-        coords: tuple[Tensor, ...] = tuple(unique_ngrams.T) # coord tensor shape = (*)
+
+        count_ngrams = torch.where(non_padded_ngram, count_ngrams, 0).to(
+            dtype=self.nGramCount.dtype)
+        coords: tuple[Tensor, ...] = tuple(
+            unique_ngrams.T)  # coord tensor shape = (*)
         self.nGramCount[coords] = count_ngrams
-        
+
         countDivisor = torch.sum(self.nGramCount, dim=-1, keepdim=True)
 
         # smooth the probs for non met ngrams
         # TODO: smoothing with better algorithm
-        positionToSmooth = torch.logical_or(countDivisor == 0, self.nGramCount == 0)
-        
+        positionToSmooth = torch.logical_or(
+            countDivisor == 0, self.nGramCount == 0)
+
         self.nGramLogProbs = torch.where(positionToSmooth,
-                                         torch.log(self.nGramCount) - torch.log(countDivisor),
-                                         self.smoothingValue)
-        
+                                         self.smoothingValue,
+                                         torch.log(self.nGramCount) -
+                                         torch.log(countDivisor))
+
         # neutralize undefined ngrams
         for k in range(self.n):
-            coord = (None,)*k + (self.vocab[PADDING_TOKEN],) + (None,)*(self.n-k-1)
+            coord = (None,)*k + \
+                (self.vocab[PADDING_TOKEN],) + (None,)*(self.n-k-1)
             self.nGramLogProbs[coord] = 0
 
         return self.nGramLogProbs
@@ -103,58 +152,23 @@ class NGramLM(PriorLM):
         batch_ngram = self.batch_ngram(data)
 
         # Loop over batch
-            # Loop over sequence
-                # Get the log prob for ngram
-                # And log add exp over the sequence
-            # Compute the perplexity for this sequence
-        # Mean all perplexities 
+        # Loop over sequence
+        # Get the log prob for ngram
+        # And log add exp over the sequence
+        # Compute the perplexity for this sequence
+        # Mean all perplexities
 
         return -1.0
 
-    def padDataToNgram(self, reconstructions: Tensor) -> Tensor:
-        """
-        Pad reconstructions at the beginning and end of each sequence to conform to the calculation in ngram. 
-
-        Args:
-            reconstructions (Tensor, dim=(L,*)): input tensor to pad.
-
-        Returns:
-            (Tensor, dim=(L+2*(n-2), *)): padded reconstructions.
-        """
-        batchShape = reconstructions.shape[1:]
-
-        first_padding = torch.full(
-            (self.n-2, *batchShape), self.vocab[SOS_TOKEN], device=device)
-
-        end_padding = torch.full(
-            (self.n-2, *batchShape), self.vocab[PADDING_TOKEN], device=device)
-
-        # shape: (L+2*(self.n-2), *)
-        padded_tensor = torch.cat(
-            (first_padding, reconstructions[0], end_padding), dim=0)
-
-        # Indices of the first occurrence of 0 along the L dimension
-        indices = torch.argmax(padded_tensor == self.vocab[PADDING_TOKEN],
-                               dim=0)
-
-        t = torch.arange(padded_tensor.shape[0], device=device)
-        for _ in range(len(batchShape)): t.unsqueeze(-1)
-        mask = (t >= indices) & (t < indices +      # TODO: Check mask (dim)
-                                 self.n-2)
-
-        output = torch.where(mask, self.vocab[EOS_TOKEN], padded_tensor)
-
-        return output
-
     def inference(self, reconstructions: InferenceData) -> Tensor:
         data = self.padDataToNgram(reconstructions[0])
-        
+
         """
-        Let (U, *) be the shape of data
-        Coords is a tuple of n tensors of shape (*..., (U-n)/1 + 1)
+        Let (L, *) be the shape of data
+        Coords is a tuple of n tensors of shape (*..., (L-n)/1 + 1)
         """
         coords = tuple(data.unfold(0, self.n, 1).transpose(0, -1))
-        probs = self.nGramLogProbs[coords].sum(dim=-1) # shape = (*)
+        probs = self.nGramLogProbs[coords].sum(dim=-1)  # shape = (*)
         return probs
 
 
@@ -210,7 +224,8 @@ class CharLM(nn.Module, PriorLM):
 
         indices_tensor = wordsToOneHots(data.split(' '), self.vocab)
 
-        adjust_seq_lengths: Callable[[Tensor, Tensor, int], tuple[Tensor, Tensor]] = lambda x, l, _: (x, l+1)
+        adjust_seq_lengths: Callable[[Tensor, Tensor, int],
+                                     tuple[Tensor, Tensor]] = lambda x, l, _: (x, l+1)
         training_data = [adjust_seq_lengths(
             *computeInferenceData(tData)) for tData in indices_tensor.split(mini_batch_size, dim=1)]
 
@@ -233,7 +248,7 @@ class CharLM(nn.Module, PriorLM):
                 # scores shape = (|x|+1, b, output_dim)
                 scores, hidden = self(
                     mini_training_data, hidden)
-                trgt = mini_training_data[0][1:] # shape = (|x|+1, b)
+                trgt = mini_training_data[0][1:]  # shape = (|x|+1, b)
 
                 loss = criter(scores.view(-1, self.vocab_size), trgt.view(-1))
                 loss.backward()
@@ -261,17 +276,20 @@ class CharLM(nn.Module, PriorLM):
         self.eval()
 
         with torch.no_grad():
-            neutralizePaddingIndices: Callable[[Tensor], Tensor] = lambda t: t.where(t!=self.vocab[PADDING_TOKEN], self.output_dim)
+            neutralizePaddingIndices: Callable[[Tensor], Tensor] = lambda t: t.where(
+                t != self.vocab[PADDING_TOKEN], self.output_dim)
             addNeutralProbsForPaddingIndices: Callable[[Tensor], Tensor] = lambda t: torch.cat(
-                (t, torch.zeros(t.size()[:-1]+(1,), dtype=t.dtype, device=device)),
-                dim = -1
-                )
+                (t, torch.zeros(t.size()[:-1]+(1,),
+                 dtype=t.dtype, device=device)),
+                dim=-1
+            )
             eval_data = neutralizePaddingIndices(reconstructions[0].to(device))
             seq_length, batch_size = eval_data.shape
 
             hidden = self.init_hidden(batch_size)
 
-            output = addNeutralProbsForPaddingIndices(self((reconstructions[0], reconstructions[1]+2), hidden)[0])  # shape (L, B, output_dim + 1)
+            output = addNeutralProbsForPaddingIndices(self(
+                (reconstructions[0], reconstructions[1]+2), hidden)[0])  # shape (L, B, output_dim + 1)
 
             output = output[torch.arange(seq_length-1).unsqueeze(1), torch.arange(
                 batch_size).unsqueeze(0), eval_data[1:]]  # shape (L-1, B)

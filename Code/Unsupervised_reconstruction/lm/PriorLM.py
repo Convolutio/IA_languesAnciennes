@@ -32,7 +32,7 @@ class NGramLM(PriorLM):
                                 Defaults value: -1e5.
     """
 
-    def __init__(self, n: int, vocab: Vocab = vocabulary, smoothingValue: float = 1e-5):
+    def __init__(self, n: int, vocab: Vocab = vocabulary, smoothingValue: float = -1e9):
         self.n = n
         self.vocab = vocab
         self.vocabSize = len(vocab)
@@ -177,11 +177,11 @@ class CharLM(nn.Module, PriorLM):
     ## RNN sound-level language model.
 
     Params:
-        embedding_size : Dimension of the character embedding vectors.
-        hidden_size: Size of the LSTM hidden state.
-        num_layers: Number of the layers of the LSTM.
-        dropout_rate: Probability to drop out a neuron.    
-        vocab (Vocab, optional) : The number of character in the vocabulary. Default value: `vocabulary`.
+        embedding_size : dimension of the character embedding vectors.
+        hidden_size: size of the LSTM hidden state.
+        num_layers: number of the layers of the LSTM.
+        dropout_rate: probability to drop out a neuron.    
+        vocab (Vocab, optional) : number of character in the vocabulary. Default value: `vocabulary`.
     """
 
     def __init__(self, embedding_size: int, hidden_size: int, num_layers: int, dropout_rate: float, vocab: Vocab = vocabulary):

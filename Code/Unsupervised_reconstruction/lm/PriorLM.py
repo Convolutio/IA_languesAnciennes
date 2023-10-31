@@ -102,7 +102,7 @@ class NGramLM(PriorLM):
 
         t = torch.arange(padded_tensor.shape[0], device=device)
         t = t.reshape(((t.shape[0],)+len(batchShape)*(1,)))
-        mask = (t >= indices) & (t <= indices + self.n-2)
+        mask = (t >= indices) & (t < indices + self.n-2)
 
         output = torch.where(mask, self.vocab[EOS_TOKEN], padded_tensor)
 

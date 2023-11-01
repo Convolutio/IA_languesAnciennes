@@ -4,15 +4,16 @@ from models.types import PADDING_TOKEN
 
 MAX_WORD_LENGTH = 20
 
-# batch_sizes = [randint(5, MAX_SAMPLES_NUMBER) for _ in range(C)]
 def createSamplesBatch(cognates_groups_number: int, samples_number_per_cognates_group: int) -> list[torch.Tensor]:
-    lengths = [torch.randint(low = 3, high = MAX_WORD_LENGTH, size = (samples_number_per_cognates_group,)) for _ in range(cognates_groups_number)]
+    recons_lengths = torch.randint(low=3, high=MAX_WORD_LENGTH+1, size=(cognates_groups_number,))
+    lengths = [torch.randint(low = recons_lengths[i].item()-2, high = recons_lengths[i].item()+3, size = (samples_number_per_cognates_group,)) for i in range(cognates_groups_number)]
     batch = []
     for i in range(cognates_groups_number):
         sequenceLengths = lengths[i]
         maxLength = int(torch.max(sequenceLengths).item())
         notPaddingTokenPositions = torch.arange(maxLength).unsqueeze(1) < sequenceLengths.unsqueeze(0)
-        samplesTensor = torch.randint(0, len(vocabulary)-3,
-                                        (maxLength, samples_number_per_cognates_group))
-        batch.append(samplesTensor.where(notPaddingTokenPositions, vocabulary[PADDING_TOKEN]).T)
+        samplesTensor = torch.randint(low=0, high=len(vocabulary)-3,
+                                        size=(maxLength, samples_number_per_cognates_group), dtype=torch.uint8)
+        samplesTensor = samplesTensor.where(notPaddingTokenPositions, vocabulary[PADDING_TOKEN]).T
+        batch.append(samplesTensor)
     return batch

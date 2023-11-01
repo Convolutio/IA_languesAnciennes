@@ -5,14 +5,12 @@ from data.reconstruction_datasets import samplingDataLoader
 from data.getDataset import getCognatesSet
 from Source.utils import dl_to_ld
 
-from torch.utils.data import TensorDataset, DataLoader, ChainDataset
-
 def functionToRun():
     """
     Call here the function
     """
     cognates = dl_to_ld(getCognatesSet())
-    samples = createSamplesBatch(len(cognates), 400)
+    samples = createSamplesBatch(len(cognates), 40000)
     dataloader = samplingDataLoader(samples, cognates, (30, 50))
     firstElt = next(iter(dataloader))
     print(len(firstElt[0]))

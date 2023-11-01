@@ -1,9 +1,10 @@
-from typing import Iterator
+from typing import Generator, Any
 from torch import Tensor
+from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, IterableDataset, DataLoader, TensorDataset, ChainDataset
-from data.vocab import computeInferenceData_Samples, computeInferenceData_Cognates, wordsToOneHots
+from data.vocab import computeInferenceData_Samples, computeInferenceData_Cognates, wordsToOneHots, vocabulary
 from Source.utils import pad2d_sequence
-from models.types import ModernLanguages, Operations, InferenceData_Samples, InferenceData_Cognates
+from models.types import ModernLanguages, Operations, InferenceData_Samples, InferenceData_Cognates, PADDING_TOKEN
 
 #---------------Maximisation Datasets---------------------
 
@@ -52,9 +53,14 @@ def trainingDataLoader(raw_samples:list[str],
 
 
 #-------------Sampling Datasets---------------------
-class __SamplingDataset(IterableDataset[tuple[list[tuple[Tensor, dict[ModernLanguages, Tensor]]],
-                                         tuple[int, int]
-                                         ]]):
+Raw_minibatch_type = tuple[tuple[
+                        list[Tensor], # list of c ByteTensors of shape (b, |x|)
+                        list[dict[ModernLanguages, Tensor]] # list of c dicts with the c cognates group
+                        ],
+                        tuple[int, int] # the coords of the minibatch in the global batch
+                        ]
+
+class __SamplingDataset(IterableDataset[Raw_minibatch_type]):
     """
     Returns an iterable of tuple([list of c tuple(b samples tensor, associated cognates)], coords in global batch)
     """
@@ -66,17 +72,19 @@ class __SamplingDataset(IterableDataset[tuple[list[tuple[Tensor, dict[ModernLang
         self.batch_size = samples_number_per_batch
         self.cognates_batch_index = cognates_batch_index
     
-    def __iter__(self) -> Iterator[tuple[list[tuple[Tensor, dict[ModernLanguages, Tensor]]],
-                                         tuple[int, int]
-                                         ]]:
+    def __iter__(self) -> Generator[Raw_minibatch_type, Any, None]:
         for (j, elt) in enumerate(DataLoader(TensorDataset(*self.proposals), batch_size=self.batch_size)):
             yield ((elt, self.cognates), (self.cognates_batch_index, j))
 
-def __sampling__collate_fn(batch: tuple[list[tuple[Tensor, dict[ModernLanguages, Tensor]]],
-                                        tuple[int, int]])\
+def __sampling__collate_fn(batch: Raw_minibatch_type)\
                                             -> tuple[tuple[InferenceData_Samples, dict[ModernLanguages, InferenceData_Cognates]],
                                                     tuple[int, int]]:
-    return batch
+    collated_samples = computeInferenceData_Samples(pad_sequence(sequences=[t.T for t in batch[0][0]], padding_value=vocabulary[PADDING_TOKEN]))
+    collated_cognates: dict[ModernLanguages, Tensor] = {}
+    c = len(batch[0][0])
+    for language in batch[0][1][0]:
+        collated_cognates[language] = pad_sequence([batch[0][1][n][language] for n in range(c)], padding_value=vocabulary[PADDING_TOKEN])
+    return ((collated_samples, computeInferenceData_Cognates(collated_cognates)), batch[1])
 
 def generateSamplingDataset(proposals:list[Tensor], cognates:list[dict[ModernLanguages, Tensor]],
                             batch_shape: tuple[int, int]):

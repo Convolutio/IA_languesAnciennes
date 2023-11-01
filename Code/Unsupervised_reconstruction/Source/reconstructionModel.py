@@ -9,14 +9,14 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from models.types import (ModernLanguages, Operations, InferenceData,
+from models.types import (ModernLanguages, Operations, InferenceData_Samples,
                           InferenceData_Cognates, InferenceData_SamplesEmbeddings, 
                           PADDING_TOKEN)
 
 
-from source.editModel import EditModel
-from source.packingEmbedding import PackingEmbedding
-from source.dynamicPrograms import compute_mutation_prob, compute_posteriors
+from Source.editModel import EditModel
+from Source.packingEmbedding import PackingEmbedding
+from Source.dynamicPrograms import compute_mutation_prob, compute_posteriors
 from models.probcache import ProbCache
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -25,6 +25,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class ReconstructionModel(nn.Module):
     """
+    #TODO: update the documentation (for now, don't read it).
+
     Let C be the number of cognates pairs in the unsupervised training dataset.
     Let B be the number of samples given for the inference for each cognates pair.
 
@@ -76,7 +78,7 @@ class ReconstructionModel(nn.Module):
     def languages(self):
         return self.__languages
 
-    def __computeSourceInferenceData(self, samples_: InferenceData) -> InferenceData_SamplesEmbeddings:
+    def __computeSourceInferenceData(self, samples_: InferenceData_Samples) -> InferenceData_SamplesEmbeddings:
         lengths = samples_[1]
         maxLength = samples_[2]
         return (self.shared_embedding_layer(
@@ -85,7 +87,7 @@ class ReconstructionModel(nn.Module):
 
     # -----------TRAINING----------------  
     def train_models(self, training_data_loader:DataLoader[tuple[
-        InferenceData,
+        InferenceData_Samples,
         dict[ModernLanguages, InferenceData_Cognates],
         dict[ModernLanguages, dict[Operations, Tensor]]
     ]],
@@ -161,26 +163,22 @@ class ReconstructionModel(nn.Module):
         print(fig)
 
     # ------------INFERENCE------------------
-    def forward_dynProg(self, inference_data_loader: DataLoader[tuple[InferenceData,
-        dict[ModernLanguages, InferenceData_Cognates], tuple[int, int]]]):
+    def forward_dynProg(self, samples: InferenceData_Samples, cognates: dict[ModernLanguages, InferenceData_Cognates]):
         """
         Computes (p(y_l)|x) for all the batch (save the results in file)
         """
         self.eval()
+        probs: dict[ModernLanguages, Tensor] = {}
         with torch.no_grad():
-            for (sources_, targets_, (i, j)) in inference_data_loader:
-                sources: InferenceData_SamplesEmbeddings = self.__computeSourceInferenceData(sources_)
+            sources: InferenceData_SamplesEmbeddings = self.__computeSourceInferenceData(samples)
+            for language in self.languages:
+                model: EditModel = self.__editModels[language]  # type: ignore
+                mutation_prob = compute_mutation_prob(
+                    model, sources, cognates[language])
+                probs[language] = mutation_prob #type: ignore
+        return probs 
 
-                probs: dict[ModernLanguages, Tensor] = {}
-                for language in self.languages:
-                    model: EditModel = self.__editModels[language]  # type: ignore
-                    mutation_prob = compute_mutation_prob(
-                        model, sources, targets_[language])
-                    probs[language] = mutation_prob #type: ignore
-                torch.save(probs, f'{i}_{j}_mutationProbs.pt')
-                #TODO: en mémoire ou en fichier ??
-
-    def backward_dynProg(self, sources_: InferenceData, targets_:dict[ModernLanguages, InferenceData_Cognates]) -> dict[ModernLanguages, ProbCache]:
+    def backward_dynProg(self, sources_: InferenceData_Samples, targets_:dict[ModernLanguages, InferenceData_Cognates]) -> dict[ModernLanguages, ProbCache]:
         self.eval()
         with torch.no_grad():
             sources: InferenceData_SamplesEmbeddings = self.__computeSourceInferenceData(
@@ -193,7 +191,7 @@ class ReconstructionModel(nn.Module):
             return cache
     
     #TODO: enlever
-    def infer(self, sources_: InferenceData, targets_:dict[ModernLanguages, InferenceData_Cognates]):
+    def infer(self, sources_: InferenceData_Samples, targets_:dict[ModernLanguages, InferenceData_Cognates]):
         model: EditModel = self.getModel("french") #type:ignore
         sub_results, ins_results = model.forward_and_select(self.__computeSourceInferenceData(sources_), targets_['french'])
         return sub_results, ins_results

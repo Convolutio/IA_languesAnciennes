@@ -1,6 +1,6 @@
 from typing import Iterator
 from torch import Tensor
-from torch.utils.data import Dataset, IterableDataset, DataLoader
+from torch.utils.data import Dataset, IterableDataset, DataLoader, TensorDataset, ChainDataset
 from data.vocab import computeInferenceData_Samples, computeInferenceData_Cognates, wordsToOneHots
 from Source.utils import pad2d_sequence
 from models.types import ModernLanguages, Operations, InferenceData_Samples, InferenceData_Cognates
@@ -58,27 +58,19 @@ class __SamplingDataset(IterableDataset[tuple[list[tuple[Tensor, dict[ModernLang
     """
     Returns an iterable of tuple([list of c tuple(b samples tensor, associated cognates)], coords in global batch)
     """
-    def __init__(self, cognates_group_with_proposals: list[tuple[Tensor, dict[ModernLanguages, Tensor]]],
-                 batch_shape:tuple[int, int]) -> None:
-        """
-        Arguments:
-            - cognates_group_with_proposals: a list of tuples each containing one cognates group with its associated proposals tensor (shape = (B, L~))
-            - batch_shape: the shape `(c, b)` of a batch of `c` cognates group with `b` proposals for each. 
-        """
-        self.cognates_group_with_proposals = cognates_group_with_proposals
-        self.c, self.b = batch_shape
-        self.C = len(cognates_group_with_proposals)
-        self.B = len(cognates_group_with_proposals[0][0]) # self.B := total proposals number
+    def __init__(self, proposals: list[Tensor], cognates: list[dict[ModernLanguages, Tensor]],
+                 samples_number_per_batch: int, cognates_batch_index:int) -> None:
+        assert(len(proposals)==len(cognates)), "the two lists must have the same length to match together"
+        self.proposals = proposals
+        self.cognates = cognates
+        self.batch_size = samples_number_per_batch
+        self.cognates_batch_index = cognates_batch_index
     
     def __iter__(self) -> Iterator[tuple[list[tuple[Tensor, dict[ModernLanguages, Tensor]]],
                                          tuple[int, int]
                                          ]]:
-        for i in range(self.C//self.c + bool(self.C%self.c)):
-            splitted_list = []
-            for n in range(self.c*i, min(self.c*(i+1), self.C)):
-                splitted_list.append([(t, self.cognates_group_with_proposals[n][1]) for t in self.cognates_group_with_proposals[n][0].split(self.b)])
-            for j in range(self.B//self.b + bool(self.B%self.b)):
-                yield ([splitted_list[n][j] for n in range(len(splitted_list))], (i, j))
+        for (j, elt) in enumerate(DataLoader(TensorDataset(*self.proposals), batch_size=self.batch_size)):
+            yield ((elt, self.cognates), (self.cognates_batch_index, j))
 
 def __sampling__collate_fn(batch: tuple[list[tuple[Tensor, dict[ModernLanguages, Tensor]]],
                                         tuple[int, int]])\
@@ -86,5 +78,17 @@ def __sampling__collate_fn(batch: tuple[list[tuple[Tensor, dict[ModernLanguages,
                                                     tuple[int, int]]:
     return batch
 
-def samplingDataLoader(cognates_group_with_proposals: list[tuple[Tensor, dict[ModernLanguages, Tensor]]]):
-    return DataLoader(dataset=__SamplingDataset(cognates_group_with_proposals, (30, 50)), batch_size=None, collate_fn=__sampling__collate_fn)
+def generateSamplingDataset(proposals:list[Tensor], cognates:list[dict[ModernLanguages, Tensor]],
+                            batch_shape: tuple[int, int]):
+    """
+    Arguments:
+     - batch_shape: (c, b)
+    """
+    c, b = batch_shape
+    datasets: list[__SamplingDataset] = []
+    for i in range(len(proposals)//c):
+        datasets.append(__SamplingDataset(proposals[c*i:c*(i+1)], cognates[c*i:c*(i+1)], b, i))
+    return ChainDataset(datasets)
+
+def samplingDataLoader(proposals: list[Tensor], cognates: list[dict[ModernLanguages, Tensor]], batch_shape:tuple[int, int]):
+    return DataLoader(dataset=generateSamplingDataset(proposals, cognates, batch_shape), batch_size=None, collate_fn=__sampling__collate_fn)

@@ -1,6 +1,6 @@
 from torch import zeros, cuda, Tensor, where
 from typing import Literal
-from Source.utils import computePaddingMask
+from source.utils import computePaddingMask
 from models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates, Operations, OPERATIONS
 
 device = 'cuda' if cuda.is_available() else 'cpu'

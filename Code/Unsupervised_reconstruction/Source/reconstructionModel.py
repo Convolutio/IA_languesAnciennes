@@ -14,9 +14,9 @@ from models.types import (ModernLanguages, Operations, InferenceData_Samples,
                           PADDING_TOKEN)
 
 
-from Source.editModel import EditModel
-from Source.packingEmbedding import PackingEmbedding
-from Source.dynamicPrograms import compute_mutation_prob, compute_posteriors
+from source.editModel import EditModel
+from source.packingEmbedding import PackingEmbedding
+from source.dynamicPrograms import compute_mutation_prob, compute_posteriors
 from models.probcache import ProbCache
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -176,7 +176,7 @@ class ReconstructionModel(nn.Module):
                 mutation_prob = compute_mutation_prob(
                     model, sources, cognates[language])
                 probs[language] = mutation_prob #type: ignore
-        return probs 
+        return probs
 
     def backward_dynProg(self, sources_: InferenceData_Samples, targets_:dict[ModernLanguages, InferenceData_Cognates]) -> dict[ModernLanguages, ProbCache]:
         self.eval()

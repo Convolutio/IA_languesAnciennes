@@ -3,13 +3,13 @@
 import torch
 from torch import Tensor
 from models.probcache import ProbCache
-from Source.editModel import EditModel
+from source.editModel import EditModel
 from models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates
 from typing import Union
 
 BIG_NEG = -1e9
 
-
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def compute_mutation_prob(model:EditModel, sources_:InferenceData_SamplesEmbeddings, targets_: InferenceData_Cognates, return_posteriors:bool = False) -> Union[Tensor, ProbCache]:
     """
@@ -30,8 +30,8 @@ def compute_mutation_prob(model:EditModel, sources_:InferenceData_SamplesEmbeddi
 
     # apparently faster in numpy for indexing but 
     
-    f_sub = torch.full((max_source_sequenceLength, max_target_sequenceLength, *batch_shape), fill_value=BIG_NEG)
-    f_ins = torch.full((max_source_sequenceLength, max_target_sequenceLength, *batch_shape), fill_value=BIG_NEG)
+    f_sub = torch.full((max_source_sequenceLength, max_target_sequenceLength, *batch_shape), fill_value=BIG_NEG, device=device)
+    f_ins = torch.full((max_source_sequenceLength, max_target_sequenceLength, *batch_shape), fill_value=BIG_NEG, device=device)
     # start by subbing ( with (. Now in insertion mode
     f_ins[0, 0] = 0.0
     

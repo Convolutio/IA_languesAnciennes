@@ -10,7 +10,7 @@ from torchtext.vocab import Vocab
 from torch import Tensor
 
 from models.types import (ModernLanguages, Operations, InferenceData_SamplesEmbeddings, InferenceData_Cognates, PADDING_TOKEN)
-from Source.packingEmbedding import PackingEmbedding
+from source.packingEmbedding import PackingEmbedding
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -142,7 +142,7 @@ class EditModel(nn.Module):
         sub_results, ins_results = (convertForIndexing(t) for t in self(sources, targets))
         x_l, y_l, c, b = sub_results.shape[:-1]  # |x|+1, |y|+1, c, b
         # neutralizes results for the padding and eos tokens
-        not_padding_token_in_source = (torch.arange(sources[2]-1)[:, None, None] < (sources[1]-1).unsqueeze(0)).unsqueeze(1).unsqueeze(-1) # shape = (|x|+1, 1, c, b, 1)
+        not_padding_token_in_source = (torch.arange(sources[2]-1)[:, None, None] < (sources[1]-1).unsqueeze(0)).unsqueeze(1).unsqueeze(-1).to(device) # shape = (|x|+1, 1, c, b, 1)
         cognates = targets[0].detach() # shape = (|y|+1, c)
         targetsCoords = pad(cognates[1:], (0,0,0,1), "constant", self.output_dim).unsqueeze(-1) # shape = (|y|+1, c, 1)
         targetsCoords = targetsCoords.where(targetsCoords != self.padding_index, self.output_dim)
@@ -172,12 +172,11 @@ class EditModel(nn.Module):
         self.eval()
         with torch.no_grad():
 
-            def lengthen(t, padding_x, padding_y): return torch.cat((
-                torch.cat(
-                    (t, torch.zeros((padding_x, *t.size()[1:]), device=device)), dim=0),
-                torch.zeros((t.size()[0]+1, padding_y,
-                            *t.size()[2:]), device=device)
-            ), dim=1)
+            def lengthen(t, padding_x, padding_y): 
+                return torch.cat((
+                    torch.cat((t, torch.zeros((padding_x, *t.size()[1:]), device=device)), dim=0), 
+                    torch.zeros((t.size()[0]+1, padding_y, *t.size()[2:]), device=device)), dim=1
+                ).to(device)
 
             # dim = (|x|+2, |y|+2, c, b)
             self.__cachedProbs = {op:lengthen(t, 1, 1) for (op, t) in self.forward_and_select(sources, targets).items()}

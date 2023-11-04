@@ -3,7 +3,7 @@ from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, IterableDataset, DataLoader, TensorDataset, ChainDataset
 from data.vocab import computeInferenceData_Samples, computeInferenceData_Cognates, wordsToOneHots, vocabulary
-from Source.utils import pad2d_sequence
+from source.utils import pad2d_sequence
 from models.types import ModernLanguages, Operations, InferenceData_Samples, InferenceData_Cognates, PADDING_TOKEN
 
 #---------------Maximisation Datasets---------------------

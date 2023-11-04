@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from models.types import *
-from Source.editsGraph import EditsGraph
+from source.editsGraph import EditsGraph
 
 import torch
 from torch import Tensor

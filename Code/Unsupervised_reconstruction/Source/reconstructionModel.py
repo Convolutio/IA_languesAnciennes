@@ -14,9 +14,9 @@ from models.types import (ModernLanguages, Operations, InferenceData_Samples,
                           PADDING_TOKEN)
 
 
-from source.editModel import EditModel
-from source.packingEmbedding import PackingEmbedding
-from source.dynamicPrograms import compute_mutation_prob, compute_posteriors
+from Source.editModel import EditModel
+from Source.packingEmbedding import PackingEmbedding
+from Source.dynamicPrograms import compute_mutation_prob, compute_posteriors
 from models.probcache import ProbCache
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

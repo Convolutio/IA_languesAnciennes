@@ -2,7 +2,7 @@ import numpy as np
 from torch import Tensor, tensor
 import torch
 from torch.nn.utils.rnn import pad_sequence
-from source.reconstructionModel import ReconstructionModel
+from Source.reconstructionModel import ReconstructionModel
 from data.vocab import computeInferenceData, vocabulary, PADDING_TOKEN
 from lm.PriorLM import PriorLM
 

@@ -6,8 +6,8 @@ from data.getDataset import getCognatesSet, getIteration
 from data.datapipes import formatTargets
 from data.vocab import computeInferenceData_Samples, wordsToOneHots, vocabulary
 from models.types import ( ModernLanguages, MODERN_LANGUAGES, Operations, OPERATIONS, InferenceData, PADDING_TOKEN )
-from source.reconstructionModel import ReconstructionModel
-from source.utils import pad2d_sequence
+from Source.reconstructionModel import ReconstructionModel
+from Source.utils import pad2d_sequence
 
 raw_cognates = getCognatesSet()
 cognates:dict[ModernLanguages, InferenceData] = formatTargets(raw_cognates)

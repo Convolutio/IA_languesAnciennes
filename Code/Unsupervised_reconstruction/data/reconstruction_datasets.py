@@ -1,9 +1,9 @@
 from typing import Generator, Any
 from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import Dataset, IterableDataset, DataLoader, TensorDataset, ChainDataset
+from torch.utils.data import Dataset, IterableDataset, DataLoader, TensorDataset, ChainDataset, get_worker_info
 from data.vocab import computeInferenceData_Samples, computeInferenceData_Cognates, wordsToOneHots, vocabulary
-from source.utils import pad2d_sequence
+from Source.utils import pad2d_sequence
 from models.types import ModernLanguages, Operations, InferenceData_Samples, InferenceData_Cognates, PADDING_TOKEN
 
 #---------------Maximisation Datasets---------------------
@@ -54,7 +54,7 @@ def trainingDataLoader(raw_samples:list[str],
 
 #-------------Sampling Datasets---------------------
 Raw_minibatch_type = tuple[tuple[
-                        list[Tensor], # list of c ByteTensors of shape (b, |x|)
+                        tuple[Tensor], # tuple of c ByteTensors of shape (b, |x|)
                         list[dict[ModernLanguages, Tensor]] # list of c dicts with the c cognates group
                         ],
                         tuple[int, int] # the coords of the minibatch in the global batch
@@ -67,14 +67,21 @@ class __SamplingDataset(IterableDataset[Raw_minibatch_type]):
     def __init__(self, proposals: list[Tensor], cognates: list[dict[ModernLanguages, Tensor]],
                  samples_number_per_batch: int, cognates_batch_index:int) -> None:
         assert(len(proposals)==len(cognates)), "the two lists must have the same length to match together"
-        self.proposals = proposals
+        self.proposals_dataset = TensorDataset(*proposals)
         self.cognates = cognates
         self.batch_size = samples_number_per_batch
         self.cognates_batch_index = cognates_batch_index
     
     def __iter__(self) -> Generator[Raw_minibatch_type, Any, None]:
-        for (j, elt) in enumerate(DataLoader(TensorDataset(*self.proposals), batch_size=self.batch_size)):
-            yield ((elt, self.cognates), (self.cognates_batch_index, j))
+        worker_info = get_worker_info()
+        worker_id, num_workers = 0, 1
+        if worker_info is not None:
+            worker_id = worker_info.id
+            num_workers = worker_info.num_workers
+        samples_batch_index = worker_id
+        for start_index in range(worker_id*self.batch_size, len(self.proposals_dataset), num_workers*self.batch_size):
+            yield((self.proposals_dataset[start_index:start_index+self.batch_size], self.cognates), (self.cognates_batch_index, samples_batch_index))
+            samples_batch_index += num_workers
 
 def __sampling__collate_fn(batch: Raw_minibatch_type)\
                                             -> tuple[tuple[InferenceData_Samples, dict[ModernLanguages, InferenceData_Cognates]],
@@ -98,5 +105,5 @@ def generateSamplingDataset(proposals:list[Tensor], cognates:list[dict[ModernLan
         datasets.append(__SamplingDataset(proposals[c*i:c*(i+1)], cognates[c*i:c*(i+1)], b, i))
     return ChainDataset(datasets)
 
-def samplingDataLoader(proposals: list[Tensor], cognates: list[dict[ModernLanguages, Tensor]], batch_shape:tuple[int, int]):
-    return DataLoader(dataset=generateSamplingDataset(proposals, cognates, batch_shape), batch_size=None, collate_fn=__sampling__collate_fn)
+def samplingDataLoader(proposals: list[Tensor], cognates: list[dict[ModernLanguages, Tensor]], batch_shape: tuple[int, int], num_workers: int = 0):
+    return DataLoader(dataset=generateSamplingDataset(proposals, cognates, batch_shape), batch_size=None, collate_fn=__sampling__collate_fn, num_workers = num_workers)

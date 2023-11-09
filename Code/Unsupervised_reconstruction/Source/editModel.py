@@ -10,7 +10,7 @@ from torchtext.vocab import Vocab
 from torch import Tensor
 
 from models.types import (ModernLanguages, Operations, InferenceData_SamplesEmbeddings, InferenceData_Cognates, PADDING_TOKEN)
-from source.packingEmbedding import PackingEmbedding
+from Source.packingEmbedding import PackingEmbedding
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 

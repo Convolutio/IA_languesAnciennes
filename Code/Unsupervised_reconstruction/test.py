@@ -5,7 +5,7 @@ from Tests.createSamples import createSamplesBatch
 from data.reconstruction_datasets import samplingDataLoader
 from data.vocab import vocabulary
 from data.getDataset import getCognatesSet
-from source.utils import dl_to_ld
+from Source.utils import dl_to_ld
 
 def functionToRun():
     """

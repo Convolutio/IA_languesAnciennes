@@ -17,6 +17,7 @@ class ProbCache:
         * end : (|x|+1, |y|+1)
     Padding value : 0
     """
+
     def __init__(self,
                  sourcesData: InferenceData_SamplesEmbeddings,
                  targetsData: InferenceData_Cognates,
@@ -30,19 +31,28 @@ class ProbCache:
         maxTargetLength = targetsData[2] + 1
         self.sourceLengthData = (sourcesData[1]-1, sourcesData[2]-1)
         self.targetLengthData = (targetsData[1].unsqueeze(-1), targetsData[2])
-        self.sub = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
-        self.ins = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
-        self.dlt = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
-        self.end = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
+        self.sub = zeros((maxSourceLength, maxTargetLength,
+                         *batch_size), device=device).detach()
+        self.ins = zeros((maxSourceLength, maxTargetLength,
+                         *batch_size), device=device).detach()
+        self.dlt = zeros((maxSourceLength, maxTargetLength,
+                         *batch_size), device=device).detach()
+        self.end = zeros((maxSourceLength, maxTargetLength,
+                         *batch_size), device=device).detach()
 
     def toTargetsProbs(self) -> list[dict[Operations, Tensor]]:
         """
         Return, for each sample, its target edit probabilities. The undefined probabilities are neutralized to 0 in log space.
         Tensors shape = (|x|+1, |y|+1, 1, 1)
         """
-        paddingMask = computePaddingMask(self.sourceLengthData, self.targetLengthData)
+        paddingMask = computePaddingMask(
+            self.sourceLengthData, self.targetLengthData)
+
         for op in OPERATIONS:
-            setattr(self, op, where(paddingMask, getattr(self, op)[:-1, :-1], 0))
-        
-        d: dict[Operations, list[Tensor]] = {op:getattr(self, op).split(1,2) for op in OPERATIONS}
-        return [{op:d[op][i] for op in d} for i in range(len(d['dlt']))]
+            setattr(self, op, where(paddingMask,
+                    getattr(self, op)[:-1, :-1], 0))
+
+        d: dict[Operations, list[Tensor]] = {
+            op: getattr(self, op).split(1, 2) for op in OPERATIONS}
+
+        return [{op: d[op][i] for op in d} for i in range(len(d['dlt']))]

@@ -79,7 +79,7 @@ def trainingDataLoader(raw_samples: list[__RawSample],
 
 __AbsoluteCoords = tuple[int, int]
 __RawMiniBatch = tuple[tuple[tuple[Tensor, ...], list[__TensorCognates]],
-                            __AbsoluteCoords]
+                       __AbsoluteCoords]
 """
 - tuple of c ByteTensors of shape (b, |x|)
 - list of c dicts with the c cognates group
@@ -147,5 +147,5 @@ def generateSamplingDataset(proposals: list[Tensor], cognates: list[__TensorCogn
 
 
 def samplingDataLoader(proposals: list[Tensor], cognates: list[__TensorCognates], batch_shape: __AbsoluteCoords, num_workers: int = 0):
-    #TODO: Rework the data structure the 'collate_fn' expected a list of elements but instead gave a tuple where the lists are contained inside.
+    # TODO: Rework the data structure the 'collate_fn' expected a list of elements but instead gave a tuple where the lists are contained inside.
     return DataLoader(dataset=generateSamplingDataset(proposals, cognates, batch_shape), batch_size=None, collate_fn=__sampling__collate_fn, num_workers=num_workers)

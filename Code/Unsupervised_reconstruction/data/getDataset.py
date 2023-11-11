@@ -28,11 +28,11 @@ def getTargetsReconstruction() -> list[Tensor]:
         return [wordsToOneHots([line[1:-1]]).squeeze(1) for line in f.readline()[:-1]]
 
 
-def getIteration(i: Literal[1,2,3,4]) -> list[str]:
+def getIteration(i: Literal[1, 2, 3, 4]) -> list[str]:
     """
     Returns the samples from the i-th Bouchard-Côte et al.'s model iteration in a padded IntTensor, formatted as one-hot indices (without boundaries).
     """
-    iteration:list[str]
+    iteration: list[str]
     with open(f'./recons_data/iteration3_{str(i)}.txt', 'r', encoding='utf-8') as file:
         iteration = [line[:-1] for line in file.readlines()[:-1]]
 

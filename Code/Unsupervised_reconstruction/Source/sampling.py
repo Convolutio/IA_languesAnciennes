@@ -9,6 +9,7 @@ from lm.PriorLM import PriorLM
 INFTY_NEG = -1e9
 device = "cuda" if torch.cuda.is_available() else 'cpu'
 
+
 def computeLaw(probs: np.ndarray) -> np.ndarray:
     """
     Returns a logarithmic probabilty distribution over all the probs.
@@ -24,22 +25,24 @@ def computeLaw(probs: np.ndarray) -> np.ndarray:
     return np.array([prob-totalProb for prob in probs], dtype=float)
 
 
-def computeUnnormalizedProbs(models:ReconstructionModel, priorLM:PriorLM, proposalsSetsList:list[Tensor], selectionIndexes:Tensor) -> Tensor:
+def computeUnnormalizedProbs(models: ReconstructionModel, priorLM: PriorLM, proposalsSetsList: list[Tensor], selectionIndexes: Tensor) -> Tensor:
     """
     Run the dynamic inferences in the neural edit models and inferences in the prior language model to compute p(x|{y_l : l \\in L}) over the proposals batch which will be built from the sampled indexes.
     """
     batch_size = len(proposalsSetsList)
-    batch = pad_sequence([proposalsSetsList[n][int(selectionIndexes[n].item())] for n in range(batch_size)], batch_first=False, padding_value = vocabulary[PADDING_TOKEN]).to(dtype=torch.int32, device=device)
+    batch = pad_sequence([proposalsSetsList[n][int(selectionIndexes[n].item())] for n in range(
+        batch_size)], batch_first=False, padding_value=vocabulary[PADDING_TOKEN]).to(dtype=torch.int32, device=device)
     sourceInferenceData = computeInferenceData_Samples(batch)
 
     probs = priorLM.inference(sourceInferenceData)
     mutationProbs = models.forward_dynProg(sourceInferenceData)
     for branch_mutationProbs in mutationProbs.values():
         probs += branch_mutationProbs
+
     return torch.as_tensor(probs)
 
-    
-def metropolisHasting(proposalsSetsList: list[Tensor], models:ReconstructionModel, priorLM:PriorLM, iteration: int = 10**4) -> Tensor:
+
+def metropolisHasting(proposalsSetsList: list[Tensor], models: ReconstructionModel, priorLM: PriorLM, iteration: int = 10**4) -> Tensor:
     """
     Sample proposals randomly from a probability distribution which will be computed progressively from forward dynamic program (so the language model, the edit models and the cognates are required).
 
@@ -50,33 +53,33 @@ def metropolisHasting(proposalsSetsList: list[Tensor], models:ReconstructionMode
         iteration (int) : the number of proposal sampling iterations.
     """
     batch_size = len(proposalsSetsList)
-    proposalsNumbers = tensor([len(proposalsSet) for proposalsSet in proposalsSetsList], dtype=torch.float)
-    
+    proposalsNumbers = tensor(
+        [len(proposalsSet) for proposalsSet in proposalsSetsList], dtype=torch.float)
+
     # Computes once the context of targets in the edits models
     models.update_modernForm_context()
 
     print("-"*60)
-    
+
     i = torch.zeros(batch_size, dtype=torch.int32)
     iProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, i)
-    
+
     for it in range(iteration):
         # random j index for each sample
-        j = torch.floor(
-            torch.rand(batch_size) * (proposalsNumbers-1)
-            ).to(dtype=torch.int32)
-        j = torch.where(j>=i, j+1, j)
-        
-        jProbs = computeUnnormalizedProbs(models, priorLM, proposalsSetsList, j)
-        
+        j = torch.floor(torch.rand(batch_size) * (proposalsNumbers-1)).to(dtype=torch.int32)
+        j = torch.where(j >= i, j+1, j)
+
+        jProbs = computeUnnormalizedProbs(
+            models, priorLM, proposalsSetsList, j)
+
         acceptation = jProbs - iProbs
         u = torch.log(torch.rand(batch_size))
-        i = torch.where(u<=acceptation, j, i)
-        iProbs = torch.where(u<=acceptation, jProbs, iProbs)
+        i = torch.where(u <= acceptation, j, i)
+        iProbs = torch.where(u <= acceptation, jProbs, iProbs)
 
-        
-        if it%(iteration//100)==0:
+        if it % (iteration//100) == 0:
             print(f'Sampling: {it//(iteration//100)}%'+' '*10, end='\r')
+
     print('\n'+'-'*60+'\n')
-    
+
     return pad_sequence([proposalsSetsList[n][i[n]] for n in range(batch_size)], batch_first=False, padding_value=vocabulary[PADDING_TOKEN])

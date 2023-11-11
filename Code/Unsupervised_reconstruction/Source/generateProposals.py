@@ -36,9 +36,8 @@ def __computeMinEditDistanceMatrix(x: Tensor, y: Tensor) -> npt.NDArray[np.int_]
     return D
 
 
-def __getMinEditPaths(x: Tensor, y: Tensor,
-                    recursivityArgs: Optional[tuple[npt.NDArray[np.int_], int, int, EditsGraph,
-                                                    Optional[Edit]]] = None) -> EditsGraph:
+def __getMinEditPaths(x: Tensor, y: Tensor, recursivityArgs: Optional[tuple[
+                        npt.NDArray[np.int_], int, int, EditsGraph, Optional[Edit]]] = None) -> EditsGraph:
     """
     This is all the minimal edit paths with distinct editions set. A path is modeled by a recursive
     list of edits (type Edit), which modelize an arbor.
@@ -90,6 +89,7 @@ def __getMinEditPaths(x: Tensor, y: Tensor,
         i, j = c
         deltaCoord = (i-i_start, j-j_start)
         edit: Edit
+
         if deltaCoord == (-1, -1):
             # substitution
             edit = (0, i_start-1, j_start-1)
@@ -154,7 +154,8 @@ def __computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) ->
     #                 Data: (/{x}/, /{y}/)")
     return proposalsSet
 
-def __sampleFromProposals(proposalsSet:Tensor, samplesNumber:int)->Tensor:
+
+def __sampleFromProposals(proposalsSet: Tensor, samplesNumber: int) -> Tensor:
     """
     Arguments:
         - proposalsSet (IntTensor, shape (B, L~))
@@ -162,11 +163,15 @@ def __sampleFromProposals(proposalsSet:Tensor, samplesNumber:int)->Tensor:
     """
     proposalsNumber = len(proposalsSet)
     # drawing with 1/(n-1) law, with n the number of proposals
-    j = torch.randint(high=proposalsNumber-1, size=(samplesNumber,), dtype=torch.int32, device=device)
-    j = j.repeat_interleave(2) + torch.tensor([0,1], device=device).repeat(samplesNumber)
+    j = torch.randint(high=proposalsNumber-1,
+                      size=(samplesNumber,), dtype=torch.int32, device=device)
+    j = j.repeat_interleave(
+        2) + torch.tensor([0, 1], device=device).repeat(samplesNumber)
+
     return proposalsSet[j.unsqueeze(1), torch.arange(proposalsSet.size()[2]).unsqueeze(0)]
 
-def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: list[dict[ModernLanguages, Tensor]], samplesNumber:int) -> list[Tensor]:
+
+def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: list[dict[ModernLanguages, Tensor]], samplesNumber: int) -> list[Tensor]:
     """
     For each cognate pair, generate a list of proposals from the current chosen sample and its corresponding cognates in each languages. The list of proposals processed by the MH algorithms
     is then established with a uniform random drawing of `samplesNumber` items.
@@ -175,12 +180,17 @@ def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Ten
     p = list()
     numberOfCognatePairs = len(cognates)
     print('-'*60)
+
     for i in range(numberOfCognatePairs):
         x = currentReconstructions[i]
         Y = list(cognates[i].values())
-        p.append(__sampleFromProposals(__computeProposals(x, Y), samplesNumber))
+        p.append(__sampleFromProposals(
+            __computeProposals(x, Y), samplesNumber))
+
         if (i+1) % (numberOfCognatePairs//100) == 0:
             print("Proposals generation:", 1+100*(i+1) //
                   numberOfCognatePairs, '%'+' '*10, end='\r')
+
     print('\n'+'-'*60+'\n')
+
     return p

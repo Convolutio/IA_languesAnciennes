@@ -1,7 +1,6 @@
-from torch import Tensor
-from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
-import torch.nn as nn
 import torch
+import torch.nn as nn
+from torch import Tensor
 from torchtext.vocab import Vocab
 
 from models.types import InferenceData, InferenceData_Cognates, EOS_TOKEN, PADDING_TOKEN

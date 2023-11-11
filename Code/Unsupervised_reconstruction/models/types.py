@@ -4,7 +4,7 @@ from torch.nn.utils.rnn import PackedSequence
 
 EditNDArray = Tensor
 EditsCombination = Tensor
-Edit = tuple[Literal[0,1,2], int, int]
+Edit = tuple[Literal[0, 1, 2], int, int]
 """
 [op, i, j]
 
@@ -64,13 +64,16 @@ SOS_TOKEN = '('
 EOS_TOKEN = ')'
 
 
-ModernLanguages = Literal['french', 'spanish', 'italian', 'portuguese', 'romanian']
-MODERN_LANGUAGES: tuple[ModernLanguages, ...] = ('french', 'spanish', 'italian', 'portuguese', 'romanian')
+ModernLanguages = Literal['french', 'spanish',
+                          'italian', 'portuguese', 'romanian']
+MODERN_LANGUAGES: tuple[ModernLanguages, ...] = (
+    'french', 'spanish', 'italian', 'portuguese', 'romanian')
+
 Operations = Literal['sub', 'dlt', 'ins', 'end']
-OPERATIONS:tuple[Operations,...] = ("sub", "dlt", "ins", "end")
+OPERATIONS: tuple[Operations, ...] = ("sub", "dlt", "ins", "end")
 
 CognatesSet_str = dict[ModernLanguages, list[str]]
 CognatesSet_oneHotIdxs = dict[ModernLanguages, list[Tensor]]
 
 Form = str
-FormsSet = list[str] # a list of forms
+FormsSet = list[str]  # a list of forms

@@ -54,21 +54,25 @@ class EditsGraph:
     def __init__(self, x: Tensor, y: Tensor, editDistance: int) -> None:
         self.__editIds: dict[Edit, int] = {}
         self.__edits: list[Edit] = [(0, 0, 0)]
-        self.__insertionInfos: list[list[int]] = [
-            [0, len(y)] for i in range(len(x)+1)]
+
+        self.__insertionInfos: list[list[int]] = [[0, len(y)] 
+                                                  for _ in range(len(x)+1)]
         """
         The matrix above contains for each i position in x the following information:\\
         [the max number of inserted characters, the minimal j index in y of the inserted characters]
         """
+
         self.__deletionInfos: list[bool] = [False for i in range(len(x))]
         """
         This list save if there is an edit path where x[i] is deleted.
         """
+
         # The dict below saves the graph's vertecies and their connexions.
         # Empty beginning node with 0 index
         self.__nodes: list[Node] = [Node(0)]
         self.__nodesDepth: list[int] = [0]  # list of depth of each node
         self.__editDistance = editDistance
+
         # For debugging
         self.__x = x
         self.__y = y
@@ -79,11 +83,12 @@ class EditsGraph:
         self.__nodes.append(Node(newNodeId))
         self.__nodesDepth.append(self.__nodesDepth[fromNodeId]+1)
         self.__editIds[edit] = newNodeId
+
         if edit[0] == 2:
             _, i, j = edit
             self.__insertionInfos[i+1][0] += 1
-            self.__insertionInfos[i +
-                                  1][1] = min(self.__insertionInfos[i+1][1], j)
+            self.__insertionInfos[i + 1][1] = min(self.__insertionInfos[i+1][1], j)
+
         elif edit[0] == 1:
             i = edit[1]
             self.__deletionInfos[i] = True
@@ -184,8 +189,10 @@ class EditsGraph:
         #                 raise Exception("The algorithm is wrong.")
         #         break
 
-        j_max = torch.max(torch.argmax(t==vocabulary[PADDING_TOKEN], 1)).item()
-        return t[:,:j_max-1]
+        j_max = torch.max(torch.argmax(
+            t == vocabulary[PADDING_TOKEN], 1)).item()
+
+        return t[:, :j_max-1]
 
     def __addCombinations(self, combinationsList: list[Tensor], fromNode_id: int, toNode_id: int):
         combinationsList[toNode_id] = torch.cat(

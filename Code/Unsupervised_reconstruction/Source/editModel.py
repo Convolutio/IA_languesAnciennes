@@ -9,7 +9,8 @@ from torch.nn.functional import pad
 from torchtext.vocab import Vocab
 from torch import Tensor
 
-from models.types import (ModernLanguages, Operations, InferenceData_SamplesEmbeddings, InferenceData_Cognates, PADDING_TOKEN)
+from models.types import (ModernLanguages, Operations,
+                          InferenceData_SamplesEmbeddings, InferenceData_Cognates, PADDING_TOKEN)
 from Source.packingEmbedding import PackingEmbedding
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -62,8 +63,6 @@ class EditModel(nn.Module):
 
         self.language = language
 
-        super(EditModel, self).__init__()
-
         IPA_length = len(vocab)-3
         # must equals |Σ|+1 for the <end>/<del> special output tokens
         self.output_dim = IPA_length + 1
@@ -88,7 +87,8 @@ class EditModel(nn.Module):
         ).to(device)
 
         self.__cachedProbs: dict[Operations, Tensor] = {}
-    
+        
+        super(EditModel, self).__init__()
 
     def __call__(self, sources_: InferenceData_SamplesEmbeddings, targets_: InferenceData_Cognates) -> tuple[Tensor, Tensor]:
         return super().__call__(sources_, targets_)
@@ -106,8 +106,10 @@ class EditModel(nn.Module):
             targets_ : if not specified (with None, in inference stage), the context will be got from the cached data.
         """
         # shape = (1, |y|+1, C, 1, hidden_dim)
-        modernContext = self.encoder_modern((targets_[0], targets_[1], False))[0]
-        modernContext = pad_packed_sequence(modernContext)[0].unsqueeze(-2).unsqueeze(0)
+        modernContext = self.encoder_modern(
+            (targets_[0], targets_[1], False))[0]
+        modernContext = pad_packed_sequence(
+            modernContext)[0].unsqueeze(-2).unsqueeze(0)
 
         cognatePairsNumber = modernContext.size()[2]
 
@@ -137,33 +139,44 @@ class EditModel(nn.Module):
         Tensors shape = (|x|+1, |y|+1, c, b)
         """
         def convertForIndexing(t): return torch.cat(
-                (t, torch.zeros((*t.size()[:-1], 1), device=device)), dim=-1)
-        
-        sub_results, ins_results = (convertForIndexing(t) for t in self(sources, targets))
+            (t, torch.zeros((*t.size()[:-1], 1), device=device)), dim=-1)
+
+        sub_results, ins_results = (convertForIndexing(t)
+                                    for t in self(sources, targets))
         x_l, y_l, c, b = sub_results.shape[:-1]  # |x|+1, |y|+1, c, b
+
         # neutralizes results for the padding and eos tokens
-        not_padding_token_in_source = (torch.arange(sources[2]-1)[:, None, None] < (sources[1]-1).unsqueeze(0)).unsqueeze(1).unsqueeze(-1).to(device) # shape = (|x|+1, 1, c, b, 1)
-        cognates = targets[0].detach() # shape = (|y|+1, c)
-        targetsCoords = pad(cognates[1:], (0,0,0,1), "constant", self.output_dim).unsqueeze(-1) # shape = (|y|+1, c, 1)
-        targetsCoords = targetsCoords.where(targetsCoords != self.padding_index, self.output_dim)
+        not_padding_token_in_source = (torch.arange(sources[2]-1)[:, None, None] < (
+            sources[1]-1).unsqueeze(0)).unsqueeze(1).unsqueeze(-1).to(device)  # shape = (|x|+1, 1, c, b, 1)
+
+        cognates = targets[0].detach()  # shape = (|y|+1, c)
+
+        targetsCoords = pad(cognates[1:], (0, 0, 0, 1), "constant",
+                            self.output_dim).unsqueeze(-1)  # shape = (|y|+1, c, 1)
+        targetsCoords = targetsCoords.where(
+            targetsCoords != self.padding_index, self.output_dim)
         targetsCoords = torch.cat((targetsCoords,
                                    torch.where(cognates != self.padding_index, self.output_dim - 1, self.output_dim).unsqueeze(-1)),
-                                   dim = -1) # shape = (|y|+1, c, 2)
-        targetsCoords = targetsCoords.unsqueeze(0).unsqueeze(3) # shape = (1, |y|+1, c, 1, 2)
-        targetsCoords = torch.where(not_padding_token_in_source, targetsCoords, self.output_dim)
+                                  dim=-1)  # shape = (|y|+1, c, 2)
+        targetsCoords = targetsCoords.unsqueeze(0).unsqueeze(3)  # shape = (1, |y|+1, c, 1, 2)
+        targetsCoords = torch.where(not_padding_token_in_source, 
+                                    targetsCoords, self.output_dim)
         targetsCoords = torch.meshgrid(torch.arange(x_l),
                                        torch.arange(y_l),
                                        torch.arange(c),
                                        torch.arange(b),
-                                        torch.arange(2),
-                                        indexing='ij'
-                                        )[:-1] + (targetsCoords,)
-        
-        sub_results = sub_results[targetsCoords] # shape (|x|+1, |y|+1, c, b, 2)
-        ins_results = ins_results[targetsCoords] # shape (|x|+1, |y|+1, c, b, 2)
-        return {'sub':sub_results[...,0], 'dlt':sub_results[...,1],
-                'ins':ins_results[...,0], 'end':sub_results[...,1]}
-    
+                                       torch.arange(2),
+                                       indexing='ij'
+                                       )[:-1] + (targetsCoords,)
+
+        # shape (|x|+1, |y|+1, c, b, 2)
+        sub_results = sub_results[targetsCoords]
+        # shape (|x|+1, |y|+1, c, b, 2)
+        ins_results = ins_results[targetsCoords]
+
+        return {'sub': sub_results[..., 0], 'dlt': sub_results[..., 1],
+                'ins': ins_results[..., 0], 'end': sub_results[..., 1]}
+
     def cache_probs(self, sources: InferenceData_SamplesEmbeddings, targets: InferenceData_Cognates):
         """
         Runs inferences in the model from given sources. 
@@ -172,14 +185,16 @@ class EditModel(nn.Module):
         self.eval()
         with torch.no_grad():
 
-            def lengthen(t, padding_x, padding_y): 
+            def lengthen(t, padding_x, padding_y):
                 return torch.cat((
-                    torch.cat((t, torch.zeros((padding_x, *t.size()[1:]), device=device)), dim=0), 
+                    torch.cat(
+                        (t, torch.zeros((padding_x, *t.size()[1:]), device=device)), dim=0),
                     torch.zeros((t.size()[0]+1, padding_y, *t.size()[2:]), device=device)), dim=1
                 ).to(device)
 
             # dim = (|x|+2, |y|+2, c, b)
-            self.__cachedProbs = {op:lengthen(t, 1, 1) for (op, t) in self.forward_and_select(sources, targets).items()}
+            self.__cachedProbs = {op: lengthen(t, 1, 1)
+                                  for (op, t) in self.forward_and_select(sources, targets).items()}
 
     def clear_cache(self):
         self.__cachedProbs = {}

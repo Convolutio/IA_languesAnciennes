@@ -168,7 +168,7 @@ class NGramLM(PriorLM):
         Coords is a tuple of n tensors of shape (*..., (L-n)/1 + 1)
         """
         coords = tuple(data.unfold(0, self.n, 1).transpose(0, -1))
-        probs = self.nGramLogProbs[coords].logsumexp(dim=-1)  # shape = (*)
+        probs = self.nGramLogProbs[coords].sum(dim=-1)  # shape = (*)
         return probs
 
 

@@ -2,22 +2,19 @@ from torch import Tensor
 from typing import Literal
 
 from data.vocab import keepWordsInVoc, wordsToOneHots
-from models.articleModels import ModernLanguages
+from models.types import ModernLanguages
 
 
-def getCognatesSet() -> dict[ModernLanguages, Tensor]:
+def getCognatesSet() -> dict[ModernLanguages, list[str]]:
     """
     Returns a dictionary containing the raw cognates in padded IntTensors, formatted as one-hot indices (without boundaries).
     """
-
-    cognates: dict[ModernLanguages, Tensor] = {}
+    cognates: dict[ModernLanguages, list[str]] = {}
     for modernLanguage in ('french', 'spanish', 'portuguese', 'romanian', 'italian'):
         with open(f"./recons_data/data/{modernLanguage.capitalize()}_ipa.txt", "r", encoding="utf-8") as f:
             # Remove 1st and last characters, i.e., space and line break.
             # Do not take the last line, which is just a space.
-            # Each line corresponds to a word will be converted into a one-hot tensor.
-            cognates[modernLanguage] = wordsToOneHots(
-                [line[1:-1] for line in f.readlines()[:-1]])
+            cognates[modernLanguage] = [line[1:-1] for line in f.readlines()[:-1]]
 
     return cognates
 
@@ -31,12 +28,15 @@ def getTargetsReconstruction() -> list[Tensor]:
         return [wordsToOneHots([line[1:-1]]).squeeze(1) for line in f.readline()[:-1]]
 
 
-def getIteration(i: Literal[1, 2, 3, 4]) -> Tensor:
+def getIteration(i: Literal[1,2,3,4]) -> list[str]:
     """
     Returns the samples from the i-th Bouchard-Côte et al.'s model iteration in a padded IntTensor, formatted as one-hot indices (without boundaries).
     """
-    with open(f'./recons_data/iteration3_{str(i)}.txt', 'r', encoding='utf-8') as f:
-        return wordsToOneHots([line[:-1] for line in f.readlines()[:-1]])
+    iteration:list[str]
+    with open(f'./recons_data/iteration3_{str(i)}.txt', 'r', encoding='utf-8') as file:
+        iteration = [line[:-1] for line in file.readlines()[:-1]]
+
+    return iteration
 
 
 def getLMTrainingSet(setSizes: list[int]) -> list[str]:

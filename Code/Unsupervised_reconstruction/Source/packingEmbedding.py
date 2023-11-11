@@ -18,11 +18,11 @@ class PackingEmbedding(nn.Embedding):
         packed = pack_padded_sequence(embedded, lengths, batch_first, enforce_sorted=False)
         return packed
     
-    def __call__(self, inputTensor:Tensor, lengths:Tensor, batch_first:bool) -> PackedSequence:
+    def __call__(self, argument:tuple[Tensor , Tensor, bool]) -> PackedSequence:
         """
         Forward Arguments (all in the same tuple):
         - inputTensor (Tensor): a batch which contains sequences of tokens, represented with one-hot indexes.
         - lengths (IntTensor, CPU): a list of each sequence's length of interest.
         - batch_first (bool): if True, the inputTensor shape must be (B, L), else (L, B)
         """
-        return super().__call__((inputTensor, lengths, batch_first))
+        return super().__call__(argument)

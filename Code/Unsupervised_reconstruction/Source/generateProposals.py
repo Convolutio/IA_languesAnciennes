@@ -3,8 +3,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 
-from models.models import *
-from models.articleModels import ModernLanguages
+from models.types import *
 from Source.editsGraph import EditsGraph
 
 import torch
@@ -19,7 +18,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # cf. 2.5 chapter https://web.stanford.edu/~jurafsky/slp3/2.pdf for the variables notations
 
 
-def computeMinEditDistanceMatrix(x: Tensor, y: Tensor) -> npt.NDArray[np.int_]:
+def __computeMinEditDistanceMatrix(x: Tensor, y: Tensor) -> npt.NDArray[np.int_]:
     """
     We consider that a substitution has the same cost than a deletion and an insertion.
     """
@@ -37,7 +36,7 @@ def computeMinEditDistanceMatrix(x: Tensor, y: Tensor) -> npt.NDArray[np.int_]:
     return D
 
 
-def getMinEditPaths(x: Tensor, y: Tensor,
+def __getMinEditPaths(x: Tensor, y: Tensor,
                     recursivityArgs: Optional[tuple[npt.NDArray[np.int_], int, int, EditsGraph,
                                                     Optional[Edit]]] = None) -> EditsGraph:
     """
@@ -58,7 +57,7 @@ def getMinEditPaths(x: Tensor, y: Tensor,
     if recursivityArgs is not None:
         minEditDistanceMatrix, i_start, j_start, editsTree, parentEdit = recursivityArgs
     else:
-        minEditDistanceMatrix = computeMinEditDistanceMatrix(x, y)
+        minEditDistanceMatrix = __computeMinEditDistanceMatrix(x, y)
         i_start = minEditDistanceMatrix.shape[0]-1
         j_start = minEditDistanceMatrix.shape[1]-1
         editsTree = EditsGraph(x, y, minEditDistanceMatrix[len(x), len(y)])
@@ -85,7 +84,7 @@ def getMinEditPaths(x: Tensor, y: Tensor,
 
     if currentPathLength == minPriorPathLength:
         # reclimb the matrix with a neutral substitution
-        return getMinEditPaths(x, y, (minEditDistanceMatrix, i_start-1, j_start-1, editsTree, parentEdit))
+        return __getMinEditPaths(x, y, (minEditDistanceMatrix, i_start-1, j_start-1, editsTree, parentEdit))
 
     for c in possiblePriorCoords:
         i, j = c
@@ -102,7 +101,7 @@ def getMinEditPaths(x: Tensor, y: Tensor,
             edit = (1, i_start-1, j_start-1)
         if not editsTree.include(edit):
             editsTree.connect(edit, parentEdit)
-            getMinEditPaths(
+            __getMinEditPaths(
                 x, y, (minEditDistanceMatrix, i, j, editsTree, edit))
         else:
             editsTree.connect(edit, parentEdit)
@@ -115,9 +114,9 @@ class IncorrectResultsException(Exception):
         super().__init__(*args)
 
 
-def computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> Tensor:
+def __computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> Tensor:
     """
-    Returns a list of the proposals in one-hot indexes representation (sequences
+    Returns a list of the proposals (shape = (B, L~)) in one-hot indexes representation (sequences
     of indexes in the vocabulary)
 
     Args:
@@ -127,7 +126,7 @@ def computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> T
     proposalsSet = torch.ByteTensor(size=(0, 0)).to(device)
 
     for cognate in cognates:
-        editsTree = getMinEditPaths(currentReconstruction, cognate)
+        editsTree = __getMinEditPaths(currentReconstruction, cognate)
         newComputedProposals = editsTree.computeEditsCombinations()
 
         if newComputedProposals.shape[1] > proposalsSet.shape[1]:
@@ -155,15 +154,31 @@ def computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> T
     #                 Data: (/{x}/, /{y}/)")
     return proposalsSet
 
+def __sampleFromProposals(proposalsSet:Tensor, samplesNumber:int)->Tensor:
+    """
+    Arguments:
+        - proposalsSet (IntTensor, shape (B, L~))
+    Returns an IntTensor of shape (2*samplesNumber, L~) with random samples (uniform sampling).
+    """
+    proposalsNumber = len(proposalsSet)
+    # drawing with 1/(n-1) law, with n the number of proposals
+    j = torch.randint(high=proposalsNumber-1, size=(samplesNumber,), dtype=torch.int32, device=device)
+    j = j.repeat_interleave(2) + torch.tensor([0,1], device=device).repeat(samplesNumber)
+    return proposalsSet[j.unsqueeze(1), torch.arange(proposalsSet.size()[2]).unsqueeze(0)]
 
-def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: dict[ModernLanguages, list[Tensor]]) -> list[Tensor]:
+def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: list[dict[ModernLanguages, Tensor]], samplesNumber:int) -> list[Tensor]:
+    """
+    For each cognate pair, generate a list of proposals from the current chosen sample and its corresponding cognates in each languages. The list of proposals processed by the MH algorithms
+    is then established with a uniform random drawing of `samplesNumber` items.
+    Then a list of c IntTensors of shape (`samplesNumber*2`, L~) is generated.
+    """
     p = list()
-    numberOfCognatePairs = len(cognates['french'])
+    numberOfCognatePairs = len(cognates)
     print('-'*60)
     for i in range(numberOfCognatePairs):
         x = currentReconstructions[i]
-        Y = [cognates[language][i] for language in cognates]
-        p.append(computeProposals(x, Y))
+        Y = list(cognates[i].values())
+        p.append(__sampleFromProposals(__computeProposals(x, Y), samplesNumber))
         if (i+1) % (numberOfCognatePairs//100) == 0:
             print("Proposals generation:", 1+100*(i+1) //
                   numberOfCognatePairs, '%'+' '*10, end='\r')

@@ -1,18 +1,16 @@
 #!/usr/local/bin/python3.9.10
-from typing import Optional, Literal, Callable
 
 import torch
 import torch.nn as nn
 
-from torch.nn.utils.rnn import pad_packed_sequence, pad_sequence
+from torch.nn.utils.rnn import pad_packed_sequence
+from torch.nn.functional import pad
+
 from torchtext.vocab import Vocab
 from torch import Tensor
 
-from models.probcache import ProbCache
-from models.articleModels import *
-from models.models import InferenceData, SourceInferenceData, TargetInferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
+from models.types import (ModernLanguages, Operations, InferenceData_SamplesEmbeddings, InferenceData_Cognates, PADDING_TOKEN)
 from Source.packingEmbedding import PackingEmbedding
-from Source.cachedModernData import CachedTargetsData, isElementOutOfRange
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -49,7 +47,7 @@ class EditModel(nn.Module):
     Expected input cognates' lengths tensor shape: (C)
     """
 
-    def __init__(self, targets_: InferenceData, language: ModernLanguages, shared_embedding_layer: PackingEmbedding, vocab: Vocab, lstm_hidden_dim: int):
+    def __init__(self, language: ModernLanguages, shared_embedding_layer: PackingEmbedding, vocab: Vocab, lstm_hidden_dim: int):
         """
         Params:
             - embedding_layer (Embedding): the shared embedding layer between all of the EditModels. It hosts an input containing tokens in the vocabulary passed in the 'vocab' argument object.
@@ -69,6 +67,7 @@ class EditModel(nn.Module):
         IPA_length = len(vocab)-3
         # must equals |Σ|+1 for the <end>/<del> special output tokens
         self.output_dim = IPA_length + 1
+        self.padding_index = vocab[PADDING_TOKEN]
         lstm_input_dim = shared_embedding_layer.embedding_dim
 
         self.encoder_prior = nn.Sequential(
@@ -88,42 +87,13 @@ class EditModel(nn.Module):
             nn.LogSoftmax(dim=-1)
         ).to(device)
 
-        self.__cachedTargetsData = CachedTargetsData(targets_, vocab)
+        self.__cachedProbs: dict[Operations, Tensor] = {}
+    
 
-        self.__cachedProbs: dict[Literal['ins',
-                                         'sub', 'end', 'del'], Tensor] = {}
-
-    @property
-    def cachedTargetInputData(self):
-        """
-        * (IntTensor/LongTensor) The input one-hot indexes of the target cognates, without their ) closing boundary. dim = (|y|+1, B) ; indexes between 0 and |Σ|+1 included
-        * The CPU IntTensor with the sequence lengths (with opening boundary, so |y|+1). (dim = B)
-        """
-        return self.__cachedTargetsData.targetsInputData
-
-    @property
-    def cachedTargetDataForDynProg(self):
-        """
-        A tuple with:
-            * the ndarray with batch's raw sequence lengths
-            * an integer equalling the maximum one
-        """
-        return self.__cachedTargetsData.lengthDataForDynProg
-
-    # ----------Inference---------------
-
-    def update_cachedTargetContext(self):
-        """
-        Before each inference stage (during the sampling and the backward dynamic program running), call this method to cache the current inferred context for the modern forms.
-        """
-        targetsInputData = self.__cachedTargetsData.targetsInputData
-        self.__cachedTargetsData.modernContext = pad_packed_sequence(
-            self.encoder_modern((*targetsInputData, False))[0])[0].unsqueeze(-2).unsqueeze(0)
-
-    def __call__(self, sources_: SourceInferenceData, targets_: Optional[TargetInferenceData] = None) -> tuple[Tensor, Tensor]:
+    def __call__(self, sources_: InferenceData_SamplesEmbeddings, targets_: InferenceData_Cognates) -> tuple[Tensor, Tensor]:
         return super().__call__(sources_, targets_)
 
-    def forward(self, sources_: SourceInferenceData, targets_: Optional[TargetInferenceData]) -> tuple[Tensor, Tensor]:
+    def forward(self, sources_: InferenceData_SamplesEmbeddings, targets_: InferenceData_Cognates) -> tuple[Tensor, Tensor]:
         """
         Returns a tuple of tensors representing respectively log q_sub(. |x,.,y[:.]) and log q_ins(.|x,.,y[:.]) , for each (x,y) sample-target couple in the batch.
 
@@ -135,12 +105,9 @@ class EditModel(nn.Module):
             sources_
             targets_ : if not specified (with None, in inference stage), the context will be got from the cached data.
         """
-        modernContext: Tensor  # dim = (1, |y|+1, C, 1, hidden_dim)
-        if targets_ is not None:
-            modernContext = pad_packed_sequence(self.encoder_modern(
-                (targets_[0], targets_[1], False))[0])[0].unsqueeze(-2).unsqueeze(0)
-        else:
-            modernContext = self.__cachedTargetsData.modernContext
+        # shape = (1, |y|+1, C, 1, hidden_dim)
+        modernContext = self.encoder_modern((targets_[0], targets_[1], False))[0]
+        modernContext = pad_packed_sequence(modernContext)[0].unsqueeze(-2).unsqueeze(0)
 
         cognatePairsNumber = modernContext.size()[2]
 
@@ -162,61 +129,57 @@ class EditModel(nn.Module):
 
         return sub_results, ins_results
 
-    def cache_probs(self, sources: list[SourceInferenceData]):
+    def forward_and_select(self, sources: InferenceData_SamplesEmbeddings, targets: InferenceData_Cognates) -> dict[Operations, Tensor]:
+        """
+        Run the forward method of the model and select the probabilities of interest for the cognates provided in input. During the selection, the probabilities for undefined (x[i],y[:j]) input couples (i.e. with one of the two input containing at least one padding token) are neutralized.
+        Returns a dictionnary of the probabilities for each operations (ins, sub, end, dlt).
+
+        Tensors shape = (|x|+1, |y|+1, c, b)
+        """
+        def convertForIndexing(t): return torch.cat(
+                (t, torch.zeros((*t.size()[:-1], 1), device=device)), dim=-1)
+        
+        sub_results, ins_results = (convertForIndexing(t) for t in self(sources, targets))
+        x_l, y_l, c, b = sub_results.shape[:-1]  # |x|+1, |y|+1, c, b
+        # neutralizes results for the padding and eos tokens
+        not_padding_token_in_source = (torch.arange(sources[2]-1)[:, None, None] < (sources[1]-1).unsqueeze(0)).unsqueeze(1).unsqueeze(-1).to(device) # shape = (|x|+1, 1, c, b, 1)
+        cognates = targets[0].detach() # shape = (|y|+1, c)
+        targetsCoords = pad(cognates[1:], (0,0,0,1), "constant", self.output_dim).unsqueeze(-1) # shape = (|y|+1, c, 1)
+        targetsCoords = targetsCoords.where(targetsCoords != self.padding_index, self.output_dim)
+        targetsCoords = torch.cat((targetsCoords,
+                                   torch.where(cognates != self.padding_index, self.output_dim - 1, self.output_dim).unsqueeze(-1)),
+                                   dim = -1) # shape = (|y|+1, c, 2)
+        targetsCoords = targetsCoords.unsqueeze(0).unsqueeze(3) # shape = (1, |y|+1, c, 1, 2)
+        targetsCoords = torch.where(not_padding_token_in_source, targetsCoords, self.output_dim)
+        targetsCoords = torch.meshgrid(torch.arange(x_l),
+                                       torch.arange(y_l),
+                                       torch.arange(c),
+                                       torch.arange(b),
+                                        torch.arange(2),
+                                        indexing='ij'
+                                        )[:-1] + (targetsCoords,)
+        
+        sub_results = sub_results[targetsCoords] # shape (|x|+1, |y|+1, c, b, 2)
+        ins_results = ins_results[targetsCoords] # shape (|x|+1, |y|+1, c, b, 2)
+        return {'sub':sub_results[...,0], 'dlt':sub_results[...,1],
+                'ins':ins_results[...,0], 'end':sub_results[...,1]}
+    
+    def cache_probs(self, sources: InferenceData_SamplesEmbeddings, targets: InferenceData_Cognates):
         """
         Runs inferences in the model from given sources. 
         It is supposed that the context of the targets and their one-hots have already been computed in the model.
         """
         self.eval()
         with torch.no_grad():
-            def convertForIndexing(t): return torch.cat(
-                (t, torch.zeros((*t.size()[:-1], 1), device=device)), dim=-1)
 
-            def lengthen(t, padding_x, padding_y): return torch.cat((
-                torch.cat(
-                    (t, torch.zeros((padding_x, *t.size()[1:]), device=device)), dim=0),
-                torch.zeros((t.size()[0]+1, padding_y,
-                            *t.size()[2:]), device=device)
-            ), dim=1)
+            def lengthen(t, padding_x, padding_y): 
+                return torch.cat((
+                    torch.cat((t, torch.zeros((padding_x, *t.size()[1:]), device=device)), dim=0), 
+                    torch.zeros((t.size()[0]+1, padding_y, *t.size()[2:]), device=device)), dim=1
+                ).to(device)
 
-            # dim = (|x|+2, |y|+2, C, B)
-            self.__cachedProbs = {}
-
-            cachedProbsNotConcatenated: dict[Literal['ins', 'sub', 'end', 'del'], list[Tensor]] = {
-                key: [] for key in ('ins', 'sub', 'end', 'del')}
-
-            # TODO: enhance performances with memory usage and parallelisation
-            for miniSources in sources:
-                sub_results, ins_results = (
-                    convertForIndexing(t) for t in self(miniSources))
-                x_l, y_l, C, b = sub_results.shape[:-1]  # |x|+1, |y|+1, C, b
-
-                # usefull space = (|x|+1, |y|+1, C, b)
-                cachedProbsNotConcatenated['del'] += lengthen(
-                    sub_results[..., -2], 1, 1).chunk(b, -1)
-                # usefull space = (|x|+1, |y|+1, C, b)
-                cachedProbsNotConcatenated['end'] += lengthen(
-                    ins_results[..., -2], 1, 1).chunk(b, -1)
-
-                neutralizeOutOfRangeClasses: Callable[[Tensor], Tensor] = lambda t: t.where(
-                    t < self.output_dim, self.output_dim)
-                targetsOneHots = neutralizeOutOfRangeClasses(
-                    self.__cachedTargetsData.targetsInputData[0][1:])  # shape = (|y|, C)
-                indexes = torch.meshgrid(torch.arange(x_l), torch.arange(y_l-1), torch.arange(
-                    C), torch.arange(b), indexing='ij') + (targetsOneHots.unsqueeze(0).unsqueeze(-1),)
-
-                # q(y[j]| x, i, y[:j]) = q(.| x, i, y[:j])[onehot_idx(y[j])]
-                # usefull space = (|x|+1, |y|, C, B)
-                cachedProbsNotConcatenated['sub'] += lengthen(
-                    sub_results[indexes], 1, 2).chunk(b, -1)
-                # usefull space = (|x|+1, |y|, C, B)
-                cachedProbsNotConcatenated['ins'] += lengthen(
-                    ins_results[indexes], 1, 2).chunk(b, -1)
-
-            while len(cachedProbsNotConcatenated) > 0:
-                operation, tensorLst = cachedProbsNotConcatenated.popitem()
-                self.__cachedProbs[operation] = pad_sequence(tensorLst).transpose(
-                    1, -1).squeeze(1)  # shape = (|x|+2, |y|+2, C, B)
+            # dim = (|x|+2, |y|+2, c, b)
+            self.__cachedProbs = {op:lengthen(t, 1, 1) for (op, t) in self.forward_and_select(sources, targets).items()}
 
     def clear_cache(self):
         self.__cachedProbs = {}
@@ -231,97 +194,4 @@ class EditModel(nn.Module):
         return self.__cachedProbs['end'][i, j]
 
     def dlt(self, i: int, j: int):
-        return self.__cachedProbs['del'][i, j]
-
-    # ----------Training----------------
-    def __computePaddingMask(self, sourceLengthData: tuple[Tensor, int], targetLengthData: tuple[Tensor, int]):
-        """
-        Computes a mask for the padded elements from the reconstructions x and the targets y.
-
-        Mask dim = (|x|+1, |y|+1, b, 1)
-
-        Apply the mask with broadcasting as below
-        >>> mask = self.__computeMask(sourcesLengths, maxSourceLength)
-        >>> masked_ctx = mask*ctx
-
-        Args:
-            * sourceLengthData: a tuple with the following elements:
-                - sourcesLengths: a cpu tensor containing the lengths of the samples with the boundaries (|x|+2)
-                - maxSourceLength: the value of the maximum sequence length (including the boundaries).
-            * targetLengthData: if None, this data is not computed and got from the cache. Else, the tuple with the following elements must be given:
-                - targetsLengths: a cpu tensor containing the lengths of the modern forms with the boundaries (|y|+2)
-                - maxTargetLength: the value of the maximum sequence length (including the boundaries)
-        """
-        A = isElementOutOfRange(*sourceLengthData)  # dim = (b, |x|+1)
-        B = isElementOutOfRange(*targetLengthData)  # dim = (b, |y|+1)
-        # dim = (|x|+1, |y|+1, b, 1)
-        return torch.logical_and(A.unsqueeze(-1), B.unsqueeze(-2)).to(device).movedim((1, 2), (0, 1)).unsqueeze(-1)
-
-    def __computeMaskedProbDistribs(self, sub_probs: Tensor, ins_probs: Tensor, targetOneHotVectors: Tensor) -> Tensor:
-        """
-        Returns a tensor of shape (|x|+1, |y|+1, b, 2*(|Σ|+1)) with a mask applied on each probability in the distribution which are not defined in the target probabilities cache. This is done according to the one-hots of the characters of interest in the target batch.
-
-        Args:
-            - sub_probs (Tensor): the logits or the targets for q_sub probs, with at the end the deletion prob
-                dim = (|x|+1, |y|+1, b, |Σ|+1) or (|x|+1, |y|+1, b, 2) 
-            - ins_probs (Tensor): the logits or the targets for q_ins probs, with at the end the insertion prob
-                dim = (|x|+1, |y|+1, b, |Σ|+1) or (|x|+1, |y|+1, b, 2)
-            - targetOneHotVectors (Tensor): dim = (1, |y|, b, |Σ|), the one hot vectors of the IPA characters in the modern forms mini batch.
-            It is assumed that the padding mask has already been applied on the probs in argument.
-        """
-        b, V = targetOneHotVectors.shape[-2:]
-        nextOneHots = torch.cat(
-            (targetOneHotVectors, torch.zeros((1, 1, b, V), device=device)), dim=1)
-        masked_sub_probs = torch.nan_to_num(
-            nextOneHots * sub_probs[:, :, :, :-1], nan=0.)
-        masked_ins_probs = torch.nan_to_num(
-            nextOneHots * ins_probs[:, :, :, :-1], nan=0.)
-        deletionProbs = sub_probs[:, :, :, -1:]
-        endingProbs = ins_probs[:, :, :, -1:]
-        return torch.cat((masked_sub_probs, deletionProbs, masked_ins_probs, endingProbs), dim=-1)
-
-    def get_targets(self, prob_targets_cache: ProbCache, samplesLengthData: tuple[Tensor, int], targetsLengthData: tuple[Tensor, int], targetOneHotVectors: Tensor):
-        """
-        This method computes the targets probs tensor with a good format and an applied padding mask, which is computed thanks to the samples' lengths IntTensor.
-
-        Targets distrib tensor shape = (|x|+1, |y|+1, b, 2*(|Σ|+1))
-
-        Args:
-            * prob_targets_cache (ProbCache) : the targets output probabilities computed from the backward dynamic program.
-            * samplesLengthData (IntTensor, int): the CPU IntTensor/LongTensor (shape = (b)) with the samples' sequence lengths (with boundaries, so |x|+2) and the integer with the maximum one. It is expected data for the whole batch to be given.
-            * targetsLengthData (IntTensor, int): the CPU IntTensor/LongTensor (shape = (b)) with the targets' sequence lengths (with boundaries, so |y|+2) and the integer with the maximum one. It is expected data for the whole batch to be given.
-            * targetOneHotVectors (Tensor): dim = (1, |y|, b, |Σ|), the one hot vectors of the IPA characters in the modern forms mini batch.
-
-            It is assumed that the padding mask has already been applied on the probs in argument.
-        """
-        with torch.no_grad():
-            paddingMask = self.__computePaddingMask(
-                samplesLengthData, targetsLengthData)
-
-            prob_targets = self.__computeMaskedProbDistribs(
-                torch.nan_to_num(paddingMask*torch.cat((
-                    prob_targets_cache.sub[:-1, :-1],
-                    prob_targets_cache.dlt[:-1, :-1]
-                ), dim=-1), nan=0.),
-                torch.nan_to_num(paddingMask*torch.cat((
-                    prob_targets_cache.ins[:-1, :-1],
-                    prob_targets_cache.end[:-1, :-1]
-                ), dim=-1), nan=0.),
-                targetOneHotVectors
-            )
-        return prob_targets
-
-    def get_logits(self, samples_: SourceInferenceData, targets_: TargetInferenceData, targetOneHotVectors: Tensor):
-        """
-        In training mode, computes the logits in a training step, from the specified samples and targets minibatch.
-        logits tensor shape: (|x|+1 , |y|+1 , b, 2*(|Σ|+1)).
-        """
-
-        flat: Callable[[Tensor], Tensor] = lambda t: t.squeeze(-2)
-        sub_outputs, ins_outputs = [flat(t) for t in self(samples_, targets_)]
-        paddingMask = self.__computePaddingMask((samples_[1].squeeze(-1), samples_[2]),
-                                                (targets_[1]+1, targets_[2]+1))
-        masked_outputs = self.__computeMaskedProbDistribs(
-            sub_outputs*paddingMask, ins_outputs*paddingMask, targetOneHotVectors)
-
-        return masked_outputs
+        return self.__cachedProbs['dlt'][i, j]

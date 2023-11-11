@@ -3,7 +3,7 @@ from torch import Tensor, tensor
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from Source.reconstructionModel import ReconstructionModel
-from data.vocab import computeInferenceData, vocabulary, PADDING_TOKEN
+from data.vocab import computeInferenceData_Samples, vocabulary, PADDING_TOKEN
 from lm.PriorLM import PriorLM
 
 INFTY_NEG = -1e9
@@ -30,7 +30,7 @@ def computeUnnormalizedProbs(models:ReconstructionModel, priorLM:PriorLM, propos
     """
     batch_size = len(proposalsSetsList)
     batch = pad_sequence([proposalsSetsList[n][int(selectionIndexes[n].item())] for n in range(batch_size)], batch_first=False, padding_value = vocabulary[PADDING_TOKEN]).to(dtype=torch.int32, device=device)
-    sourceInferenceData = computeInferenceData(batch)
+    sourceInferenceData = computeInferenceData_Samples(batch)
 
     probs = priorLM.inference(sourceInferenceData)
     mutationProbs = models.forward_dynProg(sourceInferenceData)

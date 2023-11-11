@@ -5,8 +5,8 @@ from torchtext.vocab import Vocab
 from torch.optim import Adam
 from tqdm.auto import tqdm
 
-from models.models import InferenceData, PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN
-from data.vocab import wordsToOneHots, computeInferenceData, vocabulary
+from models.types import InferenceData, PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN
+from data.vocab import wordsToOneHots, computeInferenceData_Samples, vocabulary
 from Source.packingEmbedding import PackingEmbedding
 
 from typing import Callable
@@ -207,7 +207,7 @@ class CharLM(nn.Module, PriorLM):
         return super().__call__(x, h)
 
     def forward(self, x: tuple[Tensor, Tensor], h: tuple[Tensor, Tensor]):
-        embedded = self.embedding(*x[:2], batch_first=False)
+        embedded = self.embedding((x[0], x[1], False))
         output, h = self.lstm(embedded, h)
         output, _ = torch.nn.utils.rnn.pad_packed_sequence(output)
         output = self.fc(output)
@@ -227,7 +227,7 @@ class CharLM(nn.Module, PriorLM):
         adjust_seq_lengths: Callable[[Tensor, Tensor, int],
                                      tuple[Tensor, Tensor]] = lambda x, l, _: (x, l+1)
         training_data = [adjust_seq_lengths(
-            *computeInferenceData(tData)) for tData in indices_tensor.split(mini_batch_size, dim=1)]
+            *computeInferenceData_Samples(tData)) for tData in indices_tensor.split(mini_batch_size, dim=1)]
 
         mini_batches_number = len(training_data)
 

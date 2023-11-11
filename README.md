@@ -1,3 +1,8 @@
+Lire en [Français](#lintelligence-artificielle-dans-la-linguistique-historique).\
+Read in [English](#artificial-intelligence-in-historical-linguistics).
+
+____
+
 # L'intelligence artificielle dans la linguistique historique
 
 Ce dépôt héberge le mémoire, l'article scientifique et les programmes éventuellement développés.
@@ -30,3 +35,38 @@ Pour pouvoir les utiliser, il est nécessaire d'installer les librairies Python 
 ### Unsupervised_reconstruction
 
 Ce sous-dossier contient notre implémentation du papier ["Neural Unsupervised Reconstruction of Protolanguage Word Forms"](https://arxiv.org/abs/2211.08684) de Andre He, Nicholas Tomlin, Dan Klein, ainsi que celle de nos expérimentations. La librairie Python `torch` a également été utilisée.
+
+___
+
+# Artificial intelligence in historical linguistics
+
+This repository hosts the dissertation, the scientific article and any programmes developed.
+
+## The dissertation
+
+This document answers the following question: **What is the potential of artificial intelligence in historical linguistics?**\
+It will follow the following plan:
+
+1. **Historical linguistics and artificial intelligence**.
+2. **AI's contributions to historical linguistics**.
+3. **The use of AI for the reconstruction of a proto-language**.
+
+## Scientific paper
+
+This paper focuses on the **reconstruction of a proto-language using a neural approach**, in particular, the reconstruction of proto-Latin from its descendant languages (French, Spanish, Portuguese, Italian, Romanian). Here, the impact of the properties of the language model useful in an unsupervised approach is studied.
+
+## Code
+
+In this folder, all the Python implementations discussed in the previous written documents are attached. (The aim was to put into practice the experiment established in the scientific article.)\
+It is divided into two sub-folders: **[Fine-tuned](Code/Fine-tuned/)** and **[Unsupervised_reconstruction](Code/Unsupervised_reconstruction/)**.
+
+*All training was carried out using the database posted by [Shauli-Ravfogel](https://github.com/shauli-ravfogel/Latin-Reconstruction-NAACL).*
+
+### Fine-tuned
+
+In this sub-folder, two pre-trained models ([mBART](https://huggingface.co/docs/transformers/model_doc/mbart) and [mT5](https://huggingface.co/docs/transformers/model_doc/mt5)) were fine-tuned for the reconstruction task.\
+To use them, install the Python libraries: `torch` and `transformers`.
+
+### Unsupervised_reconstruction
+
+This sub-folder contains our implementation of the paper ["Neural Unsupervised Reconstruction of Protolanguage Word Forms"](https://arxiv.org/abs/2211.08684) by Andre He, Nicholas Tomlin, Dan Klein, as well as that of our experiments. The `torch` Python library was also used.

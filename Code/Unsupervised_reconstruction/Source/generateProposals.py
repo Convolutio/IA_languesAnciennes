@@ -5,7 +5,7 @@ import numpy.typing as npt
 
 from models.models import *
 from models.articleModels import ModernLanguages
-from source.editsGraph import EditsGraph
+from Source.editsGraph import EditsGraph
 
 import torch
 from torch import Tensor

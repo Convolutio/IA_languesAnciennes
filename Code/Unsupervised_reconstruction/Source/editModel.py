@@ -11,8 +11,8 @@ from torch import Tensor
 from models.probcache import ProbCache
 from models.articleModels import *
 from models.models import InferenceData, SourceInferenceData, TargetInferenceData, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
-from source.packingEmbedding import PackingEmbedding
-from source.cachedModernData import CachedTargetsData, isElementOutOfRange
+from Source.packingEmbedding import PackingEmbedding
+from Source.cachedModernData import CachedTargetsData, isElementOutOfRange
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 

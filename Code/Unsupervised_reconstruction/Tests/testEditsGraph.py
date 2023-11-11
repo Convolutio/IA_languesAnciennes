@@ -1,4 +1,4 @@
-from source.generateProposals import getMinEditPaths, computeProposals, computeMinEditDistanceMatrix
+from Source.generateProposals import getMinEditPaths, computeProposals, computeMinEditDistanceMatrix
 import torch
 
 def bigDataTest():

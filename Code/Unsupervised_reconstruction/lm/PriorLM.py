@@ -194,7 +194,7 @@ class CharLM(nn.Module, PriorLM):
         return super().__call__(x, h)
 
     def forward(self, x: tuple[Tensor, Tensor], h: tuple[Tensor, Tensor]):
-        embedded = self.embedding(*x[:2], batch_first=False)
+        embedded = self.embedding((x[0], x[1], False))
         output, h = self.lstm(embedded, h)
         output, _ = torch.nn.utils.rnn.pad_packed_sequence(output)
         output = self.fc(output)

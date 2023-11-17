@@ -5,25 +5,24 @@ from torchtext.vocab import Vocab
 from torch.optim import Adam
 from tqdm.auto import tqdm
 
-from models.types import InferenceData, PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN
+from models.types import InferenceData_Samples, PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN
 from data.vocab import wordsToOneHots, computeInferenceData_Samples, vocabulary
-from data.ipa_tokenizer import tokenize_ipa
 from Source.packingEmbedding import PackingEmbedding
 
 from typing import Callable
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class PriorLM:
     def __init__(self):
         pass
 
-    def train(self, data: str) -> None: ...
+    def train_model(self, data: str) -> None: ...
 
-    def evaluation(self) -> float: ...
+    def evaluation(self, data: str) -> float: ...
 
-    def inference(self, reconstructions: InferenceData) -> Tensor: ...
+    def inference(self, reconstructions: InferenceData_Samples) -> Tensor: ...
 
 
 class NGramLM(PriorLM):
@@ -37,9 +36,9 @@ class NGramLM(PriorLM):
         self.smoothingValue = smoothingValue
 
         self.nGramCount = torch.zeros(
-            (self.vocabSize,) * self.n, dtype=torch.float64, device=device)
+            (self.vocabSize,) * self.n, dtype=torch.float64, device=DEVICE)
         self.nGramLogProbs = torch.log(
-            torch.zeros((self.vocabSize,) * self.n, dtype=torch.float64, device=device))
+            torch.zeros((self.vocabSize,) * self.n, dtype=torch.float64, device=DEVICE))
 
     def batch_ngram(self, data: str) -> Tensor:
         """
@@ -65,7 +64,7 @@ class NGramLM(PriorLM):
 
         return batch_ngram
 
-    def train(self, data: str) -> Tensor:
+    def train_model(self, data: str) -> Tensor:
         """
         Train the n-gram language model on the `data` (str) 
         """
@@ -125,10 +124,10 @@ class NGramLM(PriorLM):
         batchShape = reconstructions.shape[1:]
 
         first_padding = torch.full(
-            (self.n-2, *batchShape), self.vocab[SOS_TOKEN], device=device)
+            (self.n-2, *batchShape), self.vocab[SOS_TOKEN], device=DEVICE)
 
         end_padding = torch.full(
-            (self.n-2, *batchShape), self.vocab[PADDING_TOKEN], device=device)
+            (self.n-2, *batchShape), self.vocab[PADDING_TOKEN], device=DEVICE)
 
         # shape: (L+2*(self.n-2), *)
         padded_tensor = torch.cat(
@@ -138,7 +137,7 @@ class NGramLM(PriorLM):
         indices = torch.argmax(padded_tensor == self.vocab[PADDING_TOKEN],
                                dim=0)
 
-        t = torch.arange(padded_tensor.shape[0], device=device)
+        t = torch.arange(padded_tensor.shape[0], device=DEVICE)
         for _ in range(len(batchShape)): t.unsqueeze(-1)
         mask = (t >= indices) & (t < indices +      # TODO: Check mask (dim)
                                  self.n-2)
@@ -147,7 +146,7 @@ class NGramLM(PriorLM):
 
         return output
 
-    def inference(self, reconstructions: InferenceData) -> Tensor:
+    def inference(self, reconstructions: InferenceData_Samples) -> Tensor:
         data = self.padDataToNgram(reconstructions[0])
         
         """
@@ -201,23 +200,20 @@ class CharLM(nn.Module, PriorLM):
         # Detach to avoid backpropagation through time
         return output, (h[0].detach(), h[1].detach())
 
-    def init_hidden(self, batch_size: int, device=device):
-        return (torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device),
-                torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device))
+    def init_hidden(self, batch_size: int, device=DEVICE):
+        return (torch.zeros(self.num_layers, batch_size, self.hidden_size, device=DEVICE),
+                torch.zeros(self.num_layers, batch_size, self.hidden_size, device=DEVICE))
 
-    def training(self, data: str, mini_batch_size: int = 32, epochs: int = 10, save_path: str = "./out/CharLM", learning_rate: float = 1e-3):
+    def train_model(self, data: str, mini_batch_size: int = 32, epochs: int = 10, save_path: str = "./out/CharLM", learning_rate: float = 1e-3):
         criter = nn.NLLLoss(ignore_index=self.vocab[PADDING_TOKEN])
         optim = Adam(self.parameters(), lr=learning_rate)
 
         indices_tensor = wordsToOneHots(data.split(' '), self.vocab)
-
-        adjust_seq_lengths: Callable[[Tensor, Tensor, int], tuple[Tensor, Tensor]] = lambda x, l, _: (x, l+1)
-        training_data = [adjust_seq_lengths(
-            *computeInferenceData_Samples(tData)) for tData in indices_tensor.split(mini_batch_size, dim=1)]
+        training_data = [computeInferenceData_Samples(tData)[:2] for tData in indices_tensor.split(mini_batch_size, dim=1)]
 
         mini_batches_number = len(training_data)
 
-        self.to(device)
+        self.to(DEVICE)
         self.train()
 
         print('Training starts!')
@@ -253,21 +249,21 @@ class CharLM(nn.Module, PriorLM):
 
         print('Training ends!')
 
-    def evaluation(self) -> float:
+    def evaluation(self, data: str) -> float:
         # TODO: Perplexity
         # https://stackoverflow.com/questions/59209086/calculate-perplexity-in-pytorch
         return -1.0
 
-    def inference(self, reconstructions: InferenceData) -> Tensor:
+    def inference(self, reconstructions: InferenceData_Samples) -> Tensor:
         self.eval()
 
         with torch.no_grad():
             neutralizePaddingIndices: Callable[[Tensor], Tensor] = lambda t: t.where(t!=self.vocab[PADDING_TOKEN], self.output_dim)
             addNeutralProbsForPaddingIndices: Callable[[Tensor], Tensor] = lambda t: torch.cat(
-                (t, torch.zeros(t.size()[:-1]+(1,), dtype=t.dtype, device=device)),
+                (t, torch.zeros(t.size()[:-1]+(1,), dtype=t.dtype, device=DEVICE)),
                 dim = -1
                 )
-            eval_data = neutralizePaddingIndices(reconstructions[0].to(device))
+            eval_data = neutralizePaddingIndices(reconstructions[0].to(DEVICE))
             seq_length, batch_size = eval_data.shape
 
             hidden = self.init_hidden(batch_size)

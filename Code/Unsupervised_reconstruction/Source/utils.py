@@ -1,8 +1,9 @@
 import torch
+from torch.nn import Module
 from torch import Tensor
-from typing import TypeVar
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+from torch import device
+from torch.types import Device
+from typing import TypeVar, Union
 
 
 def pad2d_sequence(sequence: list[Tensor], padding_value: float):
@@ -23,7 +24,7 @@ def pad2d_sequence(sequence: list[Tensor], padding_value: float):
     return padded
 
 
-def computePaddingMask(sourceLengthData: tuple[Tensor, int], targetLengthData: tuple[Tensor, int]):
+def computePaddingMask(sourceLengthData: tuple[Tensor, int], targetLengthData: tuple[Tensor, int], device = None):
     """
     Computes a mask which equals False at the positions of padding tokens and True anywhere else.
 
@@ -62,11 +63,12 @@ def computePaddingMask(sourceLengthData: tuple[Tensor, int], targetLengthData: t
         * targetLengthData: if None, this data is not computed and got from the cache. Else, the tuple with the following elements must be given:
             - targetsLengths: a cpu tensor containing the wanted lengths of the modern forms (`L_y`) (shape = *)
             - maxTargetLength: the value of the maximum length
+        * device: device on which the returned tensor will be placed.
     """
     sourceLengths, maxSourceLength = sourceLengthData
     targetLengths, maxTargetLength = targetLengthData
 
-    unsqueezing_tuple = (...,) + (None,)*len(sourceLengths.size())
+    unsqueezing_tuple = (...,) + (None,)*sourceLengths.ndim
 
     A = torch.arange(maxSourceLength)[
         unsqueezing_tuple] < sourceLengths.unsqueeze(0)  # dim = (L_x, *)
@@ -75,6 +77,39 @@ def computePaddingMask(sourceLengthData: tuple[Tensor, int], targetLengthData: t
 
     # dim = (L_x, L_y, *)
     return torch.logical_and(A.unsqueeze(1), B.unsqueeze(0)).to(device)
+
+
+def _getDevice(obj) -> Union[device, None]:
+    if isinstance(obj, Tensor):
+        return obj.device
+
+    if isinstance(obj, device):
+        return obj
+
+    if isinstance(obj, Module) or issubclass(type(obj), Module):
+        # Return the device name for the first parameter of the nn module
+        return next(obj.parameters()).device
+
+    return None
+
+
+#TODO: Test this!
+def checkSameDevice(x, y, *args) -> Union[None, Device]:
+    """
+    If the device of `x` is the same as `y` (and `args` if they exist),
+    return the device name, otherwise return `None`.
+    """
+    if not (device := _getDevice(x)):
+        return None
+
+    if not (device == _getDevice(y)):
+        return None
+
+    for arg in args:
+        if not (device == _getDevice(arg)):
+            return None
+
+    return device
 
 
 __KeyType = TypeVar('__KeyType')

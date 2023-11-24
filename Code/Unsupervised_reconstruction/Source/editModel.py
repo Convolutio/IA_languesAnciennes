@@ -3,19 +3,17 @@
 import torch
 import torch.nn as nn
 
+from torch import Tensor, device
+from torch.types import Device
+
 from torch.nn.utils.rnn import pad_packed_sequence
 from torch.nn.functional import pad
 
 from torchtext.vocab import Vocab
-from torch import Tensor
 
 from models.types import (ModernLanguages, Operations,
                           InferenceData_SamplesEmbeddings, InferenceData_Cognates, PADDING_TOKEN)
 from Source.packingEmbedding import PackingEmbedding
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-BIG_NEG = -1e9
 
 
 class EditModel(nn.Module):
@@ -48,7 +46,7 @@ class EditModel(nn.Module):
     Expected input cognates' lengths tensor shape: (C)
     """
 
-    def __init__(self, language: ModernLanguages, shared_embedding_layer: PackingEmbedding, vocab: Vocab, lstm_hidden_dim: int):
+    def __init__(self, language: ModernLanguages, shared_embedding_layer: PackingEmbedding, vocab: Vocab, device: Device, lstm_hidden_dim: int):
         """
         Params:
             - embedding_layer (Embedding): the shared embedding layer between all of the EditModels. It hosts an input containing tokens in the vocabulary passed in the 'vocab' argument object.
@@ -61,6 +59,8 @@ class EditModel(nn.Module):
         assert (shared_embedding_layer.num_embeddings == len(vocab)
                 ), "The shared embedding layer has been wrongly set."
 
+        # To handle correctly the type of `device` (which is *Device*) is turn into a *str*, then convert by the function into a type of *device*
+        self.device = torch.device(device=f"{device}")
         self.language = language
 
         IPA_length = len(vocab)-3
@@ -71,23 +71,23 @@ class EditModel(nn.Module):
 
         self.encoder_prior = nn.Sequential(
             nn.LSTM(lstm_input_dim, lstm_hidden_dim//2, bidirectional=True)
-        ).to(device)
+        ).to(self.device)
         self.encoder_modern = nn.Sequential(
             shared_embedding_layer,
             nn.LSTM(lstm_input_dim, lstm_hidden_dim)
-        ).to(device)
+        ).to(self.device)
 
         self.sub_head = nn.Sequential(
             nn.Linear(lstm_hidden_dim, self.output_dim),
             nn.LogSoftmax(dim=-1)
-        ).to(device)
+        ).to(self.device)
         self.ins_head = nn.Sequential(
             nn.Linear(lstm_hidden_dim, self.output_dim),
             nn.LogSoftmax(dim=-1)
-        ).to(device)
+        ).to(self.device)
 
         self.__cachedProbs: dict[Operations, Tensor] = {}
-        
+
         super(EditModel, self).__init__()
 
     def __call__(self, sources_: InferenceData_SamplesEmbeddings, targets_: InferenceData_Cognates) -> tuple[Tensor, Tensor]:
@@ -139,15 +139,15 @@ class EditModel(nn.Module):
         Tensors shape = (|x|+1, |y|+1, c, b)
         """
         def convertForIndexing(t): return torch.cat(
-            (t, torch.zeros((*t.size()[:-1], 1), device=device)), dim=-1)
+            (t, torch.zeros((*t.size()[:-1], 1), device=self.device)), dim=-1)
 
         sub_results, ins_results = (convertForIndexing(t)
                                     for t in self(sources, targets))
         x_l, y_l, c, b = sub_results.shape[:-1]  # |x|+1, |y|+1, c, b
 
         # neutralizes results for the padding and eos tokens
-        not_padding_token_in_source = (torch.arange(sources[2]-1)[:, None, None] < (
-            sources[1]-1).unsqueeze(0)).unsqueeze(1).unsqueeze(-1).to(device)  # shape = (|x|+1, 1, c, b, 1)
+        not_padding_token_in_source = (torch.arange(sources[2]-1, device=self.device)[:, None, None] < (
+            sources[1]-1).unsqueeze(0)).unsqueeze(1).unsqueeze(-1) # shape = (|x|+1, 1, c, b, 1)
 
         cognates = targets[0].detach()  # shape = (|y|+1, c)
 
@@ -158,8 +158,9 @@ class EditModel(nn.Module):
         targetsCoords = torch.cat((targetsCoords,
                                    torch.where(cognates != self.padding_index, self.output_dim - 1, self.output_dim).unsqueeze(-1)),
                                   dim=-1)  # shape = (|y|+1, c, 2)
-        targetsCoords = targetsCoords.unsqueeze(0).unsqueeze(3)  # shape = (1, |y|+1, c, 1, 2)
-        targetsCoords = torch.where(not_padding_token_in_source, 
+        targetsCoords = targetsCoords.unsqueeze(
+            0).unsqueeze(3)  # shape = (1, |y|+1, c, 1, 2)
+        targetsCoords = torch.where(not_padding_token_in_source,
                                     targetsCoords, self.output_dim)
         targetsCoords = torch.meshgrid(torch.arange(x_l),
                                        torch.arange(y_l),
@@ -186,11 +187,8 @@ class EditModel(nn.Module):
         with torch.no_grad():
 
             def lengthen(t, padding_x, padding_y):
-                return torch.cat((
-                    torch.cat(
-                        (t, torch.zeros((padding_x, *t.size()[1:]), device=device)), dim=0),
-                    torch.zeros((t.size()[0]+1, padding_y, *t.size()[2:]), device=device)), dim=1
-                ).to(device)
+                return torch.cat((torch.cat((t, torch.zeros((padding_x, *t.size()[1:]), device=self.device)), dim=0),
+                                  torch.zeros((t.size()[0]+1, padding_y, *t.size()[2:]), device=self.device)), dim=1)
 
             # dim = (|x|+2, |y|+2, c, b)
             self.__cachedProbs = {op: lengthen(t, 1, 1)

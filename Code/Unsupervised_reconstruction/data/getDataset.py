@@ -19,18 +19,18 @@ def getCognatesSet() -> dict[ModernLanguages, list[str]]:
     return cognates
 
 
-def getTargetsReconstruction() -> list[Tensor]:
+def getTargetsReconstruction(device) -> list[Tensor]:
     """
     Returns a list of target reconstructions in padded IntTensors, formatted as one-hot indices (without boundaries).
     """
     with open(f"./recons_data/data/latin_ipa.txt", "r", encoding="utf-8") as f:
         # Eliminate the ' ' and the '\n', and the last line.
-        return [wordsToOneHots([line[1:-1]]).squeeze(1) for line in f.readline()[:-1]]
+        return [wordsToOneHots([line[1:-1]], device=device).squeeze(1) for line in f.readlines()[:-1]]
 
 
 def getIteration(i: Literal[1, 2, 3, 4]) -> list[str]:
     """
-    Returns the samples from the i-th Bouchard-Côte et al.'s model iteration in a padded IntTensor, formatted as one-hot indices (without boundaries).
+    Returns the samples from the i-th Bouchard-Côte et al.'s model iteration in a list of strings.
     """
     iteration: list[str]
     with open(f'./recons_data/iteration3_{str(i)}.txt', 'r', encoding='utf-8') as file:

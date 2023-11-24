@@ -25,12 +25,13 @@ def __training__collate_fn(batch: list[tuple[__RawSample, __RawCognates, __Cache
     """
     languages = tuple(batch[0][1].keys())
     operations = batch[0][2][languages[0]].keys()
+    device = batch[0][2][languages[0]]["sub"].device
 
     firstElement = computeInferenceData_Samples(
-        wordsToOneHots([t[0] for t in batch]))
+        wordsToOneHots([t[0] for t in batch], device))
 
     cognates_batch: __TensorCognates = {
-        lang: wordsToOneHots([t[1][lang] for t in batch]) for lang in languages}
+        lang: wordsToOneHots([t[1][lang] for t in batch], device) for lang in languages}
     secondElement = computeInferenceData_Cognates(cognates_batch)
 
     maxSourceLength = firstElement[2] - 1

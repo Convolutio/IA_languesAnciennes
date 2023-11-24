@@ -2,14 +2,15 @@
 
 import torch
 from torch import Tensor
+
 from models.probcache import ProbCache
 from Source.editModel import EditModel
+from Source.utils import checkSameDevice
 from models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates
+
 from typing import Union
 
 BIG_NEG = -1e9
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 def compute_mutation_prob(model: EditModel, sources_: InferenceData_SamplesEmbeddings, targets_: InferenceData_Cognates, return_posteriors: bool = False) -> Union[Tensor, ProbCache]:
@@ -21,6 +22,9 @@ def compute_mutation_prob(model: EditModel, sources_: InferenceData_SamplesEmbed
         return_posteriors (bool): if False, the function returns log(p(y|x)). Else, the backward dynamic program runs to compute the target probs, stocked in a ProbCache object (so it is expected B to equal 1).
     Computes log(p(y|x)) for each reconstruction or the targets probabilities for each sample.
     """
+    if not (device := checkSameDevice(model, sources_[0].data, targets_[0])):
+        raise Exception("Some arguments are not on the same device.")
+
     rawSources_lengths, max_rawSource_sequenceLength = sources_[1]-2, sources_[2]-2
     rawTargets_lengths, max_rawTarget_sequenceLength = targets_[1]-1, targets_[2]-1
     # (C, B), with C the number of cognates pairs and B the number of samples linked to the same cognate pair
@@ -77,7 +81,7 @@ def compute_mutation_prob(model: EditModel, sources_: InferenceData_SamplesEmbed
     f_sub_post[source_final_idx, target_final_idx.unsqueeze(1),
                torch.arange(batch_shape[0]).unsqueeze(1), torch.arange(batch_shape[1]).unsqueeze(0)] = 0.0
 
-    posterior_cache = ProbCache(sources_, targets_, (batch_shape[0], 1))
+    posterior_cache = ProbCache(sources_, targets_, (batch_shape[0], 1), device)
 
     for i in range(max_source_sequenceLength-1, -1, -1):
         for j in range(max_target_sequenceLength-1, -1, -1):

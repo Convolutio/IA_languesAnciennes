@@ -1,8 +1,9 @@
 import torch
+
+from torch import Tensor, device
 from torch.nn import Module
-from torch import Tensor
-from torch import device
 from torch.types import Device
+
 from typing import TypeVar, Union
 
 

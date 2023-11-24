@@ -1,13 +1,14 @@
-from torch import Tensor
-import torch.optim as optim
-from torch.utils.data import DataLoader
-import torch.nn as nn
-import torch
-from torchtext.vocab import Vocab
-
 import numpy as np
-
 import matplotlib.pyplot as plt
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+from torch import Tensor
+from torch.types import Device
+from torch.utils.data import DataLoader
+from torchtext.vocab import Vocab
 
 from models.types import (ModernLanguages, Operations, InferenceData_Samples,
                           InferenceData_Cognates, InferenceData_SamplesEmbeddings,
@@ -54,7 +55,7 @@ class ReconstructionModel(nn.Module):
     Input samples' lengths tensor shape: (C, 1)
     """
 
-    def __init__(self, languages: tuple[ModernLanguages, ...], vocab: Vocab, lstm_input_dim: int, lstm_hidden_dim: int):
+    def __init__(self, languages: tuple[ModernLanguages, ...], vocab: Vocab, lstm_input_dim: int, lstm_hidden_dim: int, device: Device = device):
         super().__init__()
         self.__languages = languages
         self.IPA_length = len(vocab)-3
@@ -66,6 +67,7 @@ class ReconstructionModel(nn.Module):
                 lang,
                 self.shared_embedding_layer,
                 vocab,
+                device,
                 lstm_hidden_dim
             ) for lang in languages
         })

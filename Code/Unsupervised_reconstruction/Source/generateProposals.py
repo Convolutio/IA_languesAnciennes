@@ -123,7 +123,7 @@ def __computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) ->
         currentReconstruction (ByteTensor): the current sampled proto-form
         cognates (list[ByteTensor]): its cognates\\
     """
-    proposalsSet = torch.ByteTensor(size=(0, 0)).to(device)
+    proposalsSet = torch.ByteTensor(size=(0, 0)).to(device)     #TODO: Check device (maybe `torch.tensor(...)`)
 
     for cognate in cognates:
         editsTree = __getMinEditPaths(currentReconstruction, cognate)

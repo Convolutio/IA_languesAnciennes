@@ -7,7 +7,6 @@ from data.vocab import computeInferenceData_Samples, vocabulary, PADDING_TOKEN
 from lm.PriorLM import PriorLM
 
 INFTY_NEG = -1e9
-device = "cuda" if torch.cuda.is_available() else 'cpu'
 
 
 def computeLaw(probs: np.ndarray) -> np.ndarray:
@@ -31,7 +30,7 @@ def computeUnnormalizedProbs(models: ReconstructionModel, priorLM: PriorLM, prop
     """
     batch_size = len(proposalsSetsList)
     batch = pad_sequence([proposalsSetsList[n][int(selectionIndexes[n].item())] for n in range(
-        batch_size)], batch_first=False, padding_value=vocabulary[PADDING_TOKEN]).to(dtype=torch.int32, device=device)
+        batch_size)], batch_first=False, padding_value=vocabulary[PADDING_TOKEN])
     sourceInferenceData = computeInferenceData_Samples(batch)
 
     probs = priorLM.inference(sourceInferenceData)

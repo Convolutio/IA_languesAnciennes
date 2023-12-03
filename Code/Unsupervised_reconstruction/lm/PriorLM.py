@@ -268,7 +268,7 @@ class CharLM(nn.Module, PriorLM):
 
             hidden = self.init_hidden(batch_size)
 
-            output = addNeutralProbsForPaddingIndices(self((reconstructions[0], reconstructions[1]+2), hidden)[0])  # shape (L, B, output_dim + 1)
+            output = addNeutralProbsForPaddingIndices(self((reconstructions[0], reconstructions[1]), hidden)[0])  # shape (L, B, output_dim + 1)
 
             output = output[torch.arange(seq_length-1).unsqueeze(1), torch.arange(
                 batch_size).unsqueeze(0), eval_data[1:]]  # shape (L-1, B)

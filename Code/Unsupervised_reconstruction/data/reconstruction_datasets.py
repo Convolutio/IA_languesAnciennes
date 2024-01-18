@@ -25,12 +25,13 @@ def __training__collate_fn(batch: list[tuple[RawSample, RawCognates, CachedTarge
     """
     languages = tuple(batch[0][1].keys())
     operations = batch[0][2][languages[0]].keys()
+    device = batch[0][2][languages[0]]["sub"].device
 
     firstElement = computeInferenceData_Samples(
-        wordsToOneHots([t[0] for t in batch]))
+        wordsToOneHots([t[0] for t in batch], device))
 
     cognates_batch: TensorCognates = {
-        lang: wordsToOneHots([t[1][lang] for t in batch]) for lang in languages}
+        lang: wordsToOneHots([t[1][lang] for t in batch], device) for lang in languages}
     secondElement = computeInferenceData_Cognates(cognates_batch)
 
     maxSourceLength = firstElement[2] - 1
@@ -148,5 +149,5 @@ def generateSamplingDataset(proposals: list[Tensor], cognates: list[TensorCognat
 def samplingDataLoader(proposals: list[Tensor], cognates: list[TensorCognates], batch_shape: AbsoluteCoords, num_workers: int = 0):
     # it is expected that this result is true for each element in the `proposals` and `cognates` list
     assert(len(proposals) == len(cognates) <= batch_shape[0] and proposals[0].shape[0] <= batch_shape[1]), "The given batch shape is incorrect"
-    #TODO: Rework the data structure the 'collate_fn' expected a list of elements but instead gave a tuple where the lists are contained inside.
+    # TODO: Rework the data structure the 'collate_fn' expected a list of elements but instead gave a tuple where the lists are contained inside.
     return DataLoader(dataset=generateSamplingDataset(proposals, cognates, batch_shape), batch_size=None, collate_fn=__sampling__collate_fn, num_workers=num_workers)

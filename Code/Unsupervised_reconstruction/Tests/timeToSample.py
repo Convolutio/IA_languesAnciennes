@@ -1,6 +1,5 @@
 from Source.generateProposals import computeProposals, computeMinEditDistanceMatrix
 from data.getDataset import getCognatesSet, getIteration
-from data.vocab import make_oneHotTensor
 
 
 def generateProposalsOverDataset():

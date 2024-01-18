@@ -1,10 +1,9 @@
-from torch import Tensor
-from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
-import torch.nn as nn
 import torch
+import torch.nn as nn
+from torch import Tensor
 from torchtext.vocab import Vocab
 
-from models.models import InferenceData, TargetInferenceData, EOS_TOKEN, PADDING_TOKEN
+from models.types import InferenceData, InferenceData_Cognates, EOS_TOKEN, PADDING_TOKEN
 
 
 def isElementOutOfRange(sequencesLengths: Tensor, maxSequenceLength: int) -> Tensor:
@@ -35,7 +34,7 @@ def isElementOutOfRange(sequencesLengths: Tensor, maxSequenceLength: int) -> Ten
     return torch.arange(maxSequenceLength-1).unsqueeze(0) < (sequencesLengths-1).unsqueeze(1)
 
 
-def nextOneHots(targets_: TargetInferenceData, vocab: Vocab):
+def nextOneHots(targets_: InferenceData_Cognates, vocab: Vocab):
     IPA_length = len(vocab)-3
     vocSize = len(vocab)
     targets = targets_[0]

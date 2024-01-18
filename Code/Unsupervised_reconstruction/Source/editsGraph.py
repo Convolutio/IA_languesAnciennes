@@ -1,15 +1,20 @@
+import torch
+from torch import Tensor, ByteTensor
+
 from typing import Optional
 from collections import deque
 
 from models.types import *
+from Source.utils import checkSameDevice
 from data.vocab import vocabulary, oneHotsToWords
 
-import torch
-from torch import Tensor, ByteTensor
-
-import graphviz
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# --- Optional dependencies --
+import warnings
+try:
+    import graphviz
+except ImportError:
+    warnings.warn("Failed to import graphviz. Can't use `displayGraph`.", ImportWarning)
+# --- END ---
 
 
 class Node:
@@ -52,23 +57,31 @@ class EditsGraph:
     """
 
     def __init__(self, x: Tensor, y: Tensor, editDistance: int) -> None:
+        if not (device := checkSameDevice(x, y)):
+            raise Exception("Tensors x and y are not on the same device.")
+
+        self.device = device
         self.__editIds: dict[Edit, int] = {}
         self.__edits: list[Edit] = [(0, 0, 0)]
-        self.__insertionInfos: list[list[int]] = [
-            [0, len(y)] for i in range(len(x)+1)]
+
+        self.__insertionInfos: list[list[int]] = [[0, len(y)] 
+                                                  for _ in range(len(x)+1)]
         """
         The matrix above contains for each i position in x the following information:\\
         [the max number of inserted characters, the minimal j index in y of the inserted characters]
         """
+
         self.__deletionInfos: list[bool] = [False for i in range(len(x))]
         """
         This list save if there is an edit path where x[i] is deleted.
         """
+
         # The dict below saves the graph's vertecies and their connexions.
         # Empty beginning node with 0 index
         self.__nodes: list[Node] = [Node(0)]
         self.__nodesDepth: list[int] = [0]  # list of depth of each node
         self.__editDistance = editDistance
+
         # For debugging
         self.__x = x
         self.__y = y
@@ -79,11 +92,12 @@ class EditsGraph:
         self.__nodes.append(Node(newNodeId))
         self.__nodesDepth.append(self.__nodesDepth[fromNodeId]+1)
         self.__editIds[edit] = newNodeId
+
         if edit[0] == 2:
             _, i, j = edit
             self.__insertionInfos[i+1][0] += 1
-            self.__insertionInfos[i +
-                                  1][1] = min(self.__insertionInfos[i+1][1], j)
+            self.__insertionInfos[i + 1][1] = min(self.__insertionInfos[i+1][1], j)
+
         elif edit[0] == 1:
             i = edit[1]
             self.__deletionInfos[i] = True
@@ -143,7 +157,7 @@ class EditsGraph:
         return edit in self.__editIds
 
     def getEdit(self, nodeId: int) -> ByteTensor:
-        return ByteTensor(self.__edits[nodeId], device=device)
+        return ByteTensor(self.__edits[nodeId], device=self.device)     #TODO: Test device (maybe change into `torch.tensor(...)`)
 
     @property
     def initialNode(self):
@@ -184,8 +198,10 @@ class EditsGraph:
         #                 raise Exception("The algorithm is wrong.")
         #         break
 
-        j_max = torch.max(torch.argmax(t==vocabulary[PADDING_TOKEN], 1)).item()
-        return t[:,:j_max-1]
+        j_max = torch.max(torch.argmax(
+            t == vocabulary[PADDING_TOKEN], 1)).item()
+
+        return t[:, :j_max-1]
 
     def __addCombinations(self, combinationsList: list[Tensor], fromNode_id: int, toNode_id: int):
         combinationsList[toNode_id] = torch.cat(
@@ -218,10 +234,10 @@ class EditsGraph:
             nonConcatenatedProposalLength += 1+self.__insertionInfos[i][0]
 
         combinationsByAlreadySeenNodes = [torch.empty(
-            (0, nonConcatenatedProposalLength), dtype=torch.uint8, device=device) for _ in range(numberOfNodes)]
+            (0, nonConcatenatedProposalLength), dtype=torch.uint8, device=self.device) for _ in range(numberOfNodes)]   #type:ignore (None != _int)
 
         emptyCombination = torch.full(
-            (1, nonConcatenatedProposalLength), vocabulary[PADDING_TOKEN], dtype=torch.uint8, device=device)
+            (1, nonConcatenatedProposalLength), vocabulary[PADDING_TOKEN], dtype=torch.uint8, device=self.device)
 
         for i in range(1, len(self.__x)+1):
             emptyCombination[0, f_i[i]] = oneHotX[i-1]
@@ -265,11 +281,11 @@ class EditsGraph:
                 indexWhereApplyingEdit += self.__computeInsertionIndex(edit)
 
             combinationsByAlreadySeenNodes[currentNodeId][:, indexWhereApplyingEdit] = torch.full(
-                (combinationsByAlreadySeenNodes[currentNodeId].shape[0],), newChar, dtype=torch.uint8, device=device)
+                (combinationsByAlreadySeenNodes[currentNodeId].shape[0],), newChar, dtype=torch.uint8, device=self.device)
 
         # Gather all the computed combinations and translate all the sparsed zeros to the right of the proposals matrix
         proposals = torch.empty(
-            (0, nonConcatenatedProposalLength), dtype=torch.uint8, device=device)
+            (0, nonConcatenatedProposalLength), dtype=torch.uint8, device=self.device) #type:ignore (None != _int)
 
         for _ in range(numberOfNodes):
             proposals = torch.cat(

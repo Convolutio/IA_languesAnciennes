@@ -59,6 +59,8 @@ class EditModel(nn.Module):
         assert (shared_embedding_layer.num_embeddings == len(vocab)
                 ), "The shared embedding layer has been wrongly set."
 
+        super(EditModel, self).__init__()
+        
         # To handle correctly the type of `device` (which is *Device*) is turn into a *str*, then convert by the function into a type of *device*
         self.device = torch.device(device=f"{device}")
         self.language = language
@@ -87,8 +89,6 @@ class EditModel(nn.Module):
         ).to(self.device)
 
         self.__cachedProbs: dict[Operations, Tensor] = {}
-
-        super(EditModel, self).__init__()
 
     def __call__(self, sources_: InferenceData_SamplesEmbeddings, targets_: InferenceData_Cognates) -> tuple[Tensor, Tensor]:
         return super().__call__(sources_, targets_)
@@ -146,8 +146,8 @@ class EditModel(nn.Module):
         x_l, y_l, c, b = sub_results.shape[:-1]  # |x|+1, |y|+1, c, b
 
         # neutralizes results for the padding and eos tokens
-        not_padding_token_in_source = (torch.arange(sources[2]-1, device=self.device)[:, None, None] < (
-            sources[1]-1).unsqueeze(0)).unsqueeze(1).unsqueeze(-1) # shape = (|x|+1, 1, c, b, 1)
+        not_padding_token_in_source = (torch.arange(sources[2]-1)[:, None, None] < (
+            sources[1]-1).unsqueeze(0)).unsqueeze(1).unsqueeze(-1).to(self.device) # shape = (|x|+1, 1, c, b, 1)
 
         cognates = targets[0].detach()  # shape = (|y|+1, c)
 

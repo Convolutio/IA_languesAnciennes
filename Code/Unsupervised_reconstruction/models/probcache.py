@@ -1,10 +1,12 @@
-from torch import zeros, cuda, Tensor, where
-from typing import Literal
-from source.utils import computePaddingMask
+import torch
+
+from torch import zeros, Tensor, where
+from torch.types import Device
+
+from Source.utils import computePaddingMask
 from models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates, Operations, OPERATIONS
 
-device = 'cuda' if cuda.is_available() else 'cpu'
-
+from typing import Literal
 
 class ProbCache:
     """
@@ -17,10 +19,11 @@ class ProbCache:
         * end : (|x|+1, |y|+1)
     Padding value : 0
     """
+
     def __init__(self,
                  sourcesData: InferenceData_SamplesEmbeddings,
                  targetsData: InferenceData_Cognates,
-                 batch_size: tuple[int, Literal[1]]):
+                 batch_size: tuple[int, Literal[1]], device: Device):
         """
         Arguments:
             - sourcesData : needed to get length data
@@ -28,21 +31,31 @@ class ProbCache:
         """
         maxSourceLength = sourcesData[2]
         maxTargetLength = targetsData[2] + 1
+        self.device = torch.device(f"{device}")
         self.sourceLengthData = (sourcesData[1]-1, sourcesData[2]-1)
         self.targetLengthData = (targetsData[1].unsqueeze(-1), targetsData[2])
-        self.sub = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
-        self.ins = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
-        self.dlt = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
-        self.end = zeros((maxSourceLength, maxTargetLength, *batch_size), device=device).detach()
+        self.sub = zeros((maxSourceLength, maxTargetLength,
+                         *batch_size), device=self.device).detach()
+        self.ins = zeros((maxSourceLength, maxTargetLength,
+                         *batch_size), device=self.device).detach()
+        self.dlt = zeros((maxSourceLength, maxTargetLength,
+                         *batch_size), device=self.device).detach()
+        self.end = zeros((maxSourceLength, maxTargetLength,
+                         *batch_size), device=self.device).detach()
 
     def toTargetsProbs(self) -> list[dict[Operations, Tensor]]:
         """
         Return, for each sample, its target edit probabilities. The undefined probabilities are neutralized to 0 in log space.
         Tensors shape = (|x|+1, |y|+1, 1, 1)
         """
-        paddingMask = computePaddingMask(self.sourceLengthData, self.targetLengthData)
+        paddingMask = computePaddingMask(
+            self.sourceLengthData, self.targetLengthData, self.device)
+
         for op in OPERATIONS:
-            setattr(self, op, where(paddingMask, getattr(self, op)[:-1, :-1], 0))
-        
-        d: dict[Operations, list[Tensor]] = {op:getattr(self, op).split(1,2) for op in OPERATIONS}
-        return [{op:d[op][i] for op in d} for i in range(len(d['dlt']))]
+            setattr(self, op, where(paddingMask,
+                    getattr(self, op)[:-1, :-1], 0))
+
+        d: dict[Operations, list[Tensor]] = {
+            op: getattr(self, op).split(1, 2) for op in OPERATIONS}
+
+        return [{op: d[op][i] for op in d} for i in range(len(d['dlt']))]

@@ -3,10 +3,9 @@
 import torch
 from torch import Tensor
 
-from models.probcache import ProbCache
-from Source.editModel import EditModel
-from Source.utils import checkSameDevice
-from models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates
+from ..models.probcache import ProbCache
+from .editModel import EditModel
+from ..models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates
 
 from typing import Union
 

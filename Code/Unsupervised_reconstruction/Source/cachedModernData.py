@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch import Tensor
 from torchtext.vocab import Vocab
 
-from models.types import InferenceData, InferenceData_Cognates, EOS_TOKEN, PADDING_TOKEN
+from ..models.types import InferenceData, InferenceData_Cognates, EOS_TOKEN, PADDING_TOKEN
 
 
 def isElementOutOfRange(sequencesLengths: Tensor, maxSequenceLength: int) -> Tensor:

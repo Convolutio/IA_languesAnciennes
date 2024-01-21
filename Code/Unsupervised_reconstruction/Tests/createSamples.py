@@ -1,6 +1,6 @@
 import torch
-from data.vocab import vocabulary
-from models.types import PADDING_TOKEN
+from ..data.vocab import vocabulary
+from ..models.types import PADDING_TOKEN
 
 MAX_WORD_LENGTH = 20
 

@@ -11,9 +11,9 @@ from torch.nn.functional import pad
 
 from torchtext.vocab import Vocab
 
-from models.types import (ModernLanguages, Operations,
+from ..models.types import (ModernLanguages, Operations,
                           InferenceData_SamplesEmbeddings, InferenceData_Cognates, PADDING_TOKEN)
-from Source.packingEmbedding import PackingEmbedding
+from .packingEmbedding import PackingEmbedding
 
 
 class EditModel(nn.Module):

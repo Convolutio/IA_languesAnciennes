@@ -4,9 +4,9 @@ from torch import Tensor, ByteTensor
 from typing import Optional
 from collections import deque
 
-from models.types import *
-from Source.utils import checkSameDevice
-from data.vocab import vocabulary, oneHotsToWords
+from ..models.types import *
+from .utils import checkSameDevice
+from ..data.vocab import vocabulary, oneHotsToWords
 
 # --- Optional dependencies --
 import warnings

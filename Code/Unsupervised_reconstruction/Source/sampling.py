@@ -2,9 +2,10 @@ import numpy as np
 from torch import Tensor, tensor
 import torch
 from torch.nn.utils.rnn import pad_sequence
-from Source.reconstructionModel import ReconstructionModel
-from data.vocab import computeInferenceData_Samples, vocabulary, PADDING_TOKEN
-from lm.PriorLM import PriorLM
+from .reconstructionModel import ReconstructionModel
+from ..data.vocab import computeInferenceData_Samples, vocabulary
+from ..models.types import PADDING_TOKEN
+from ..lm.PriorLM import PriorLM
 
 INFTY_NEG = -1e9
 

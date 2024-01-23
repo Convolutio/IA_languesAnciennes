@@ -1,11 +1,11 @@
 import time
 from time import time
 from torch import tensor
-from Tests.createSamples import createSamplesBatch
-from data.reconstruction_datasets import samplingDataLoader
-from data.vocab import vocabulary
-from data.getDataset import getCognatesSet
-from Source.utils import dl_to_ld
+from uneurecon.Tests.createSamples import createSamplesBatch
+from uneurecon.data.reconstruction_datasets import samplingDataLoader
+from uneurecon.data.vocab import vocabulary
+from uneurecon.data.getDataset import getCognatesSet
+from uneurecon.Source.utils import dl_to_ld
 
 def functionToRun():
     """

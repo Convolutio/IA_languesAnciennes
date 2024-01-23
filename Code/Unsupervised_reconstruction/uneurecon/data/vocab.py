@@ -9,11 +9,11 @@ from torch import Tensor
 from torchtext.vocab import Vocab, build_vocab_from_iterator
 from torch.nn.utils.rnn import pad_sequence, unpad_sequence
 
-from models.types import ModernLanguages, InferenceData, InferenceData_Cognates, InferenceData_Samples, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
+from ..models.types import ModernLanguages, InferenceData, InferenceData_Cognates, InferenceData_Samples, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
 
 
 vocabulary: Vocab
-with open('./data/IPA_vocabulary.txt', 'r', encoding='utf-8') as vocFile:
+with open('./IPA_vocabulary.txt', 'r', encoding='utf-8') as vocFile:
     vocabulary = build_vocab_from_iterator(vocFile.read().split(", "),
                                            specials=[SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN], special_first=False)
 

@@ -7,9 +7,9 @@ from torchtext.vocab import Vocab
 from torch.optim import Adam
 from tqdm.auto import tqdm
 
-from models.types import InferenceData_Samples, PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN
-from data.vocab import wordsToOneHots, computeInferenceData_Samples, vocabulary
-from Source.packingEmbedding import PackingEmbedding
+from ..models.types import InferenceData_Samples, PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN
+from ..data.vocab import wordsToOneHots, computeInferenceData_Samples, vocabulary
+from ..Source.packingEmbedding import PackingEmbedding
 
 from typing import Callable
 

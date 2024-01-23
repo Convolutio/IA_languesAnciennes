@@ -1,12 +1,11 @@
 import torch
+from torch.types import Device
 from ..data.vocab import vocabulary
 from ..models.types import PADDING_TOKEN
 
 MAX_WORD_LENGTH = 20
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-def createSamplesBatch(cognates_groups_number: int, samples_number_per_cognates_group: int) -> list[torch.Tensor]:
+def createSamplesBatch(cognates_groups_number: int, samples_number_per_cognates_group: int, device: Device) -> list[torch.Tensor]:
     recons_lengths = torch.randint(low=3, high=MAX_WORD_LENGTH+1, size=(cognates_groups_number,))
     lengths = [torch.randint(low = int(recons_lengths[i].item()-2), high = int(recons_lengths[i].item()+3), size = (samples_number_per_cognates_group,)) for i in range(cognates_groups_number)]
     batch = []

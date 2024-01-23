@@ -3,8 +3,8 @@ import torch
 from torch import zeros, Tensor, where
 from torch.types import Device
 
-from Source.utils import computePaddingMask
-from models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates, Operations, OPERATIONS
+from ..Source.utils import computePaddingMask
+from .types import InferenceData_SamplesEmbeddings, InferenceData_Cognates, Operations, OPERATIONS
 
 from typing import Literal
 

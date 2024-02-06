@@ -1,17 +1,17 @@
+from typing import Callable
+
 import torch
 import torch.nn as nn
-
 from torch import Tensor
+from torch.optim import Adam
 from torch.types import Device
 from torchtext.vocab import Vocab
-from torch.optim import Adam
 from tqdm.auto import tqdm
 
-from ..models.types import InferenceData_Samples, PADDING_TOKEN, SOS_TOKEN, EOS_TOKEN
-from ..data.vocab import wordsToOneHots, computeInferenceData_Samples, vocabulary
+from ..data.vocab import computeInferenceData_Samples, wordsToOneHots
+from ..models.types import (EOS_TOKEN, PADDING_TOKEN, SOS_TOKEN,
+                            InferenceData_Samples)
 from ..Source.packingEmbedding import PackingEmbedding
-
-from typing import Callable
 
 
 class PriorLM:
@@ -36,9 +36,9 @@ class NGramLM(PriorLM):
                                 Defaults value: -1e5.
     """
 
-    def __init__(self, n: int, device: Device, vocab: Vocab = vocabulary, smoothingValue: float = -1e5):
+    def __init__(self, n: int, device: Device, vocab: Vocab, smoothingValue: float = -1e5):
         self.device = torch.device(f"{device}")
-        
+
         self.n = n
         self.vocab = vocab
         self.vocabSize = len(vocab)
@@ -69,8 +69,9 @@ class NGramLM(PriorLM):
 
         # Before converting the string of words into a padded tensor,
         # it is necessary to convert it into a list and add the SOS token and the EOS token to each word.
-        addBoundaries = lambda w: SOS_TOKEN*(self.n-1) + w + EOS_TOKEN*(self.n-1)
-        batch = wordsToOneHots(list(map(addBoundaries, data.split(' '))), 
+        def addBoundaries(w): return SOS_TOKEN*(self.n-1) + \
+            w + EOS_TOKEN*(self.n-1)
+        batch = wordsToOneHots(list(map(addBoundaries, data.split(' '))),
                                self.device, self.vocab)
 
         # shape: ( T:=((L-self.n)/1)+1, B, self.n)
@@ -92,7 +93,7 @@ class NGramLM(PriorLM):
         # so that the other dimensions are kept in their original state.
         batchShape = reconstructions.shape[1:]
 
-        #TODO: Boundaries or not?
+        # TODO: Boundaries or not?
         # if torch.any(reconstructions == self.vocab[SOS_TOKEN]) or torch.any(reconstructions == self.vocab[EOS_TOKEN]):
         #     raise Exception("There are SOS and/or EOS tokens in the reconstruction tensor.")
 
@@ -161,7 +162,7 @@ class NGramLM(PriorLM):
     def evaluation(self, data: str) -> float:
         """Perplexity evaluation"""
         batch_ngram = self.batch_ngram(data)
-        #TODO
+        # TODO
         return -1.0
 
     def inference(self, reconstructions: InferenceData_Samples) -> Tensor:
@@ -189,7 +190,7 @@ class CharLM(nn.Module, PriorLM):
         vocab (Vocab, optional) : number of character in the vocabulary. Default value: `vocabulary`.
     """
 
-    def __init__(self, embedding_size: int, hidden_size: int, num_layers: int, dropout_rate: float, device, vocab: Vocab = vocabulary):
+    def __init__(self, embedding_size: int, hidden_size: int, num_layers: int, dropout_rate: float, device, vocab: Vocab):
         super(CharLM, self).__init__()
         self.device = device
         self.vocab = vocab
@@ -225,17 +226,19 @@ class CharLM(nn.Module, PriorLM):
                 torch.zeros(self.num_layers, batch_size, self.hidden_size, device=self.device))
 
     def train_model(self, data: str, mini_batch_size: int = 32, epochs: int = 10, save_path: str = "./out/CharLM", learning_rate: float = 1e-3):
-        self.to(self.device) # TODO: Check if necessary
+        self.to(self.device)  # TODO: Check if necessary
         self.train()
-        
+
         criter = nn.NLLLoss(ignore_index=self.vocab[PADDING_TOKEN])
         optim = Adam(self.parameters(), lr=learning_rate)
 
-        indices_tensor = wordsToOneHots(data.split(' '), self.device, self.vocab)
-        training_data = [computeInferenceData_Samples(tData)[:2] for tData in indices_tensor.split(mini_batch_size, dim=1)]
+        indices_tensor = wordsToOneHots(
+            data.split(' '), self.device, self.vocab)
+        training_data = [computeInferenceData_Samples(
+            tData)[:2] for tData in indices_tensor.split(mini_batch_size, dim=1)]
 
         mini_batches_number = len(training_data)
-        
+
         print('Training starts!')
 
         for epoch in tqdm(range(epochs)):
@@ -290,7 +293,8 @@ class CharLM(nn.Module, PriorLM):
 
             hidden = self.init_hidden(batch_size)
 
-            output = addNeutralProbsForPaddingIndices(self((reconstructions[0], reconstructions[1]), hidden)[0])  # shape (L, B, output_dim + 1)
+            output = addNeutralProbsForPaddingIndices(self(
+                (reconstructions[0], reconstructions[1]), hidden)[0])  # shape (L, B, output_dim + 1)
 
             output = output[torch.arange(seq_length-1).unsqueeze(1), torch.arange(
                 batch_size).unsqueeze(0), eval_data[1:]]  # shape (L-1, B)

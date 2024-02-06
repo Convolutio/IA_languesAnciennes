@@ -1,10 +1,11 @@
-from typing import Generator, Any
+from typing import Generator, Any, Callable
 
 from torch import Tensor
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, IterableDataset, DataLoader, TensorDataset, ChainDataset, get_worker_info
+from torchtext.vocab import Vocab
 
-from .vocab import computeInferenceData_Samples, computeInferenceData_Cognates, wordsToOneHots, vocabulary
+from .vocab import computeInferenceData_Samples, computeInferenceData_Cognates, wordsToOneHots
 from ..Source.utils import pad2d_sequence
 from ..models.types import ModernLanguages, Operations, InferenceData_Samples, InferenceData_Cognates, PADDING_TOKEN
 
@@ -117,19 +118,24 @@ class __SamplingDataset(IterableDataset[RawMiniBatch]):
             samples_batch_index += num_workers
 
 
-def __sampling__collate_fn(batch: RawMiniBatch) \
-        -> tuple[tuple[InferenceData_Samples, dict[ModernLanguages, InferenceData_Cognates]], AbsoluteCoords]:
+def __sampling__collate_fn(vocabulary: Vocab) \
+        -> Callable[[RawMiniBatch], tuple[tuple[InferenceData_Samples, dict[ModernLanguages,
+                                                                            InferenceData_Cognates]],
+                                          AbsoluteCoords]]:
+    def f(batch:RawMiniBatch) -> tuple[tuple[InferenceData_Samples, dict[ModernLanguages,
+                                                                            InferenceData_Cognates]],
+                                       AbsoluteCoords]:
+        collated_samples = computeInferenceData_Samples(pad_sequence(
+            sequences=[t.T for t in batch[0][0]], padding_value=vocabulary[PADDING_TOKEN]), vocabulary)
 
-    collated_samples = computeInferenceData_Samples(pad_sequence(
-        sequences=[t.T for t in batch[0][0]], padding_value=vocabulary[PADDING_TOKEN]))
+        collated_cognates: TensorCognates = {}
+        c = len(batch[0][0])
+        for language in batch[0][1][0]:
+            collated_cognates[language] = pad_sequence(
+                [batch[0][1][n][language] for n in range(c)], padding_value=vocabulary[PADDING_TOKEN])
 
-    collated_cognates: TensorCognates = {}
-    c = len(batch[0][0])
-    for language in batch[0][1][0]:
-        collated_cognates[language] = pad_sequence(
-            [batch[0][1][n][language] for n in range(c)], padding_value=vocabulary[PADDING_TOKEN])
-
-    return ((collated_samples, computeInferenceData_Cognates(collated_cognates)), batch[1])
+        return ((collated_samples, computeInferenceData_Cognates(collated_cognates, vocabulary)), batch[1])
+    return f
 
 
 def generateSamplingDataset(proposals: list[Tensor], cognates: list[TensorCognates], batch_shape: AbsoluteCoords):
@@ -146,8 +152,10 @@ def generateSamplingDataset(proposals: list[Tensor], cognates: list[TensorCognat
     return ChainDataset(datasets)
 
 
-def samplingDataLoader(proposals: list[Tensor], cognates: list[TensorCognates], batch_shape: AbsoluteCoords, num_workers: int = 0):
+def samplingDataLoader(proposals: list[Tensor], cognates: list[TensorCognates], vocabulary: Vocab, batch_shape: AbsoluteCoords, num_workers: int = 0):
     # it is expected that this result is true for each element in the `proposals` and `cognates` list
     assert(len(proposals) == len(cognates) >= batch_shape[0] and proposals[0].shape[0] >= batch_shape[1]), "The given batch shape is incorrect"
+    collate_fn_ = __sampling__collate_fn(vocabulary)
     # TODO: Rework the data structure the 'collate_fn' expected a list of elements but instead gave a tuple where the lists are contained inside.
-    return DataLoader(dataset=generateSamplingDataset(proposals, cognates, batch_shape), batch_size=None, collate_fn=__sampling__collate_fn, num_workers=num_workers)
+    return DataLoader(dataset=generateSamplingDataset(proposals, cognates, batch_shape),
+                      batch_size=None, collate_fn=collate_fn_, num_workers=num_workers)

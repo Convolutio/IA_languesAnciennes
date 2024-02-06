@@ -68,7 +68,9 @@ class EditModel(nn.Module):
         IPA_length = len(vocab)-3
         # must equals |Σ|+1 for the <end>/<del> special output tokens
         self.output_dim = IPA_length + 1
+        self.hidden_dim = lstm_hidden_dim
         self.padding_index = vocab[PADDING_TOKEN]
+        assert(self.output_dim == self.padding_index), "Definition Error: the indexing will be wrong."
         lstm_input_dim = shared_embedding_layer.embedding_dim
 
         self.encoder_prior = nn.Sequential(
@@ -106,24 +108,19 @@ class EditModel(nn.Module):
             targets_ : if not specified (with None, in inference stage), the context will be got from the cached data.
         """
         # shape = (1, |y|+1, C, 1, hidden_dim)
-        modernContext = self.encoder_modern(
-            (targets_[0], targets_[1], False))[0]
-        modernContext = pad_packed_sequence(
-            modernContext)[0].unsqueeze(-2).unsqueeze(0)
-
-        cognatePairsNumber = modernContext.size()[2]
-
-        priorContext = pad_packed_sequence(self.encoder_prior(sources_[0])[0])[
-            0][:-1]  # shape = (|x|+1, C*B, hidden_dim)
-        currentShape = priorContext.size()
-        priorContext = priorContext.view(currentShape[0],
-                                         cognatePairsNumber, currentShape[1]//cognatePairsNumber,
-                                         currentShape[2]
-                                         ).unsqueeze(1)  # dim = (|x|+1, 1, C, B, hidden_dim)
+        modernContext = self.encoder_modern((targets_[0], targets_[1], False))[0]
+        modernContext = pad_packed_sequence(modernContext)[0].unsqueeze_(-2).unsqueeze_(0)
+        
+        # shape = (|x|+1, C*B, hidden_dim)
+        priorContext = pad_packed_sequence(self.encoder_prior(sources_[0])[0])[0][:-1]
+        priorContext = priorContext.view(sources_[2]-1,
+                                         *sources_[1].size(),
+                                         self.hidden_dim
+                                         ).unsqueeze_(1)  # dim = (|x|+1, 1, C, B, hidden_dim)
 
         # dim = (|x|+1, |y|+1, C, B, hidden_dim)
         ctx = priorContext + modernContext
-
+        
         # dim = (|x|+1, |y|+1, C, B, |Σ|+1)
         sub_results: Tensor = self.sub_head(ctx)
         # dim = (|x|+1, |y|+1, C, B, |Σ|+1)
@@ -131,52 +128,74 @@ class EditModel(nn.Module):
 
         return sub_results, ins_results
 
-    def forward_and_select(self, sources: InferenceData_SamplesEmbeddings, targets: InferenceData_Cognates) -> dict[Operations, Tensor]:
+    def forward_and_select(self, sources: InferenceData_SamplesEmbeddings,
+                           targets: InferenceData_Cognates,
+                           neutralize_probs_in_padding_coords:bool = False)\
+                                   -> dict[Operations, Tensor]:
         """
-        Run the forward method of the model and select the probabilities of interest for the cognates provided in input. During the selection, the probabilities for undefined (x[i],y[:j]) input couples (i.e. with one of the two input containing at least one padding token) are neutralized.
+        Arguments:
+            - sources: the samples in the source language. shape = (|x|+2, c, b)
+            - targets: the cognates in the given modern language. shape = (|y|+1, c)
+            - model_output 
+        Run the forward method of the model and select the probabilities of interest for the
+        cognates provided in input.
+        During the selection, the probabilities for undefined (x[i],y[:j]) input couples
+        (i.e. with one of the two input containing at least one padding token) are neutralized.
         Returns a dictionnary of the probabilities for each operations (ins, sub, end, dlt).
 
-        Tensors shape = (|x|+1, |y|+1, c, b)
+        NB: the data at (|x|+1, |y|+1) position (or beyond) is undefined and random. Set
+        `neutralize_probs_in_padding_coords` to True to neutralize the outputs at these positions.
+        Tensors shape = (|x|+2, |y|+2, c, b)
         """
-        def convertForIndexing(t): return torch.cat(
-            (t, torch.zeros((*t.size()[:-1], 1), device=self.device)), dim=-1)
+        x_l, c, b = sources[2]-1, *sources[1].size() # |x|+1, c, b
+        y_l = targets[2] # |y|+1
+        sub_results = torch.empty((x_l, y_l, c, b, self.output_dim+1),
+                                               dtype=torch.float32, device=self.device)
+        ins_results = torch.empty((x_l, y_l, c, b, self.output_dim+1),
+                                               dtype=torch.float32, device=self.device)
 
-        sub_results, ins_results = (convertForIndexing(t)
-                                    for t in self(sources, targets))
-        x_l, y_l, c, b = sub_results.shape[:-1]  # |x|+1, |y|+1, c, b
+        # {sub,ins}_results current shape: (|x|+1, |y|+1, c, b, |Σ|+2)
+        sub_results[..., :-1], ins_results[..., :-1] = self(sources, targets)
+        
+        # reduce the results by selecting the correct probabilities in each distributions
+        # targetsCoords shape: (1, |y|, c, 1)
+        targetsCoords = targets[0].detach()[1:].unsqueeze(0).unsqueeze_(-1)
+        probs = { key: torch.empty((x_l+1, y_l+1, c, b), device=self.device)
+                 for key in ("sub", "ins", "dlt", "end") }
+        range_coords = torch.meshgrid(torch.arange(x_l, device=self.device),
+                                      torch.arange(y_l-1, device=self.device),
+                                      torch.arange(c, device=self.device),
+                                      torch.arange(b, device=self.device), indexing='ij')
+        probs["sub"][:x_l, :y_l-1] = sub_results[range_coords + (targetsCoords,)];
+        probs["ins"][:x_l, :y_l-1] = ins_results[range_coords + (targetsCoords,)];
+        probs["dlt"][:x_l, :y_l] = sub_results[..., self.output_dim-1];
+        probs["end"][:x_l, :y_l] = ins_results[..., self.output_dim-1];
 
-        # neutralizes results for the padding and eos tokens
-        not_padding_token_in_source = (torch.arange(sources[2]-1)[:, None, None] < (
-            sources[1]-1).unsqueeze(0)).unsqueeze(1).unsqueeze(-1).to(self.device) # shape = (|x|+1, 1, c, b, 1)
+        if neutralize_probs_in_padding_coords:
+            # neutralizes results for the padding and eos tokens
+            padding_token_in_source = (torch.arange(sources[2])[:, None, None] >= (sources[1]-1)\
+                .unsqueeze_(0)).unsqueeze_(1).to(self.device) # shape = (|x|+2, 1, c, b)
+            # padding_mask from padding tokens in cognates
+            padding_mask = torch.empty((y_l+1, c), dtype = torch.bool,
+                                                        device = self.device) # shape =(|y|+2, c)
+            padding_mask[1:-1] = (targetsCoords == self.padding_index).squeeze_(0).squeeze_(-1)
+            padding_mask[0] = False
+            padding_mask[-1] = True
+            # shape = (1, |y|+2, c, 1)
+            padding_mask.unsqueeze_(0).unsqueeze_(-1)
+            # tensor shape : (|x|+2, |y|+2, c, b)
+            # also exclude padding tokens in source
+            padding_mask = padding_mask.logical_or(padding_token_in_source)
+            probs["dlt"][padding_mask] = 0;
+            probs["end"][padding_mask] = 0;
+            probs["sub"][:, :-1][padding_mask[:, 1:]] = 0
+            probs["sub"][:, -1] = 0
+            probs["ins"][:, :-1][padding_mask[:, 1:]] = 0
+            probs["ins"][:, -1] = 0
 
-        cognates = targets[0].detach()  # shape = (|y|+1, c)
+            
+        return probs
 
-        targetsCoords = pad(cognates[1:], (0, 0, 0, 1), "constant",
-                            self.output_dim).unsqueeze(-1)  # shape = (|y|+1, c, 1)
-        targetsCoords = targetsCoords.where(
-            targetsCoords != self.padding_index, self.output_dim)
-        targetsCoords = torch.cat((targetsCoords,
-                                   torch.where(cognates != self.padding_index, self.output_dim - 1, self.output_dim).unsqueeze(-1)),
-                                  dim=-1)  # shape = (|y|+1, c, 2)
-        targetsCoords = targetsCoords.unsqueeze(
-            0).unsqueeze(3)  # shape = (1, |y|+1, c, 1, 2)
-        targetsCoords = torch.where(not_padding_token_in_source,
-                                    targetsCoords, self.output_dim)
-        targetsCoords = torch.meshgrid(torch.arange(x_l),
-                                       torch.arange(y_l),
-                                       torch.arange(c),
-                                       torch.arange(b),
-                                       torch.arange(2),
-                                       indexing='ij'
-                                       )[:-1] + (targetsCoords,)
-
-        # shape (|x|+1, |y|+1, c, b, 2)
-        sub_results = sub_results[targetsCoords]
-        # shape (|x|+1, |y|+1, c, b, 2)
-        ins_results = ins_results[targetsCoords]
-
-        return {'sub': sub_results[..., 0], 'dlt': sub_results[..., 1],
-                'ins': ins_results[..., 0], 'end': sub_results[..., 1]}
 
     def cache_probs(self, sources: InferenceData_SamplesEmbeddings, targets: InferenceData_Cognates):
         """
@@ -185,14 +204,8 @@ class EditModel(nn.Module):
         """
         self.eval()
         with torch.no_grad():
-
-            def lengthen(t, padding_x, padding_y):
-                return torch.cat((torch.cat((t, torch.zeros((padding_x, *t.size()[1:]), device=self.device)), dim=0),
-                                  torch.zeros((t.size()[0]+1, padding_y, *t.size()[2:]), device=self.device)), dim=1)
-
             # dim = (|x|+2, |y|+2, c, b)
-            self.__cachedProbs = {op: lengthen(t, 1, 1)
-                                  for (op, t) in self.forward_and_select(sources, targets).items()}
+            self.__cachedProbs = self.forward_and_select(sources, targets)
 
     def clear_cache(self):
         self.__cachedProbs = {}

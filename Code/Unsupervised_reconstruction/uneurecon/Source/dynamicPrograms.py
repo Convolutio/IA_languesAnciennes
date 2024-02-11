@@ -3,10 +3,9 @@
 import torch
 from torch import Tensor
 
-from models.probcache import ProbCache
-from Source.editModel import EditModel
-from Source.utils import checkSameDevice
-from models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates
+from ..models.probcache import ProbCache
+from .editModel import EditModel
+from ..models.types import InferenceData_SamplesEmbeddings, InferenceData_Cognates
 
 from typing import Union
 
@@ -22,8 +21,10 @@ def compute_mutation_prob(model: EditModel, sources_: InferenceData_SamplesEmbed
         return_posteriors (bool): if False, the function returns log(p(y|x)). Else, the backward dynamic program runs to compute the target probs, stocked in a ProbCache object (so it is expected B to equal 1).
     Computes log(p(y|x)) for each reconstruction or the targets probabilities for each sample.
     """
-    if not (device := checkSameDevice(model, sources_[0].data, targets_[0])):
-        raise Exception("Some arguments are not on the same device.")
+    
+    device = model.device
+    #if not (device := checkSameDevice(model.device, sources_[0].data, targets_[0])):
+    #    raise Exception("Some arguments are not on the same device.")
 
     rawSources_lengths, max_rawSource_sequenceLength = sources_[1]-2, sources_[2]-2
     rawTargets_lengths, max_rawTarget_sequenceLength = targets_[1]-1, targets_[2]-1

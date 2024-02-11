@@ -10,15 +10,15 @@ from torch.types import Device
 from torch.utils.data import DataLoader
 from torchtext.vocab import Vocab
 
-from models.types import (ModernLanguages, Operations, InferenceData_Samples,
+from ..models.types import (ModernLanguages, Operations, InferenceData_Samples,
                           InferenceData_Cognates, InferenceData_SamplesEmbeddings,
                           PADDING_TOKEN)
 
 
-from Source.editModel import EditModel
-from Source.packingEmbedding import PackingEmbedding
-from Source.dynamicPrograms import compute_mutation_prob, compute_posteriors
-from models.probcache import ProbCache
+from .editModel import EditModel
+from .packingEmbedding import PackingEmbedding
+from .dynamicPrograms import compute_mutation_prob, compute_posteriors
+from ..models.probcache import ProbCache
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

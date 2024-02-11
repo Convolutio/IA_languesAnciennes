@@ -2,14 +2,13 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-
-from models.types import *
-from Source.editsGraph import EditsGraph
-
 import torch
 from torch import Tensor
+from torch.types import Device
+from torchtext.vocab import Vocab
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+from ..models.types import Edit, ModernLanguages
+from .editsGraph import EditsGraph
 
 # calculating the minimum edit distance between the current reconstruction
 # and each of its associated cognates, we add all the strings on its minimum
@@ -36,77 +35,80 @@ def __computeMinEditDistanceMatrix(x: Tensor, y: Tensor) -> npt.NDArray[np.int_]
     return D
 
 
-def __getMinEditPaths(x: Tensor, y: Tensor, recursivityArgs: Optional[tuple[
-                        npt.NDArray[np.int_], int, int, EditsGraph, Optional[Edit]]] = None) -> EditsGraph:
-    """
-    This is all the minimal edit paths with distinct editions set. A path is modeled by a recursive
-    list of edits (type Edit), which modelize an arbor.
+def __getMinEditPaths(x_: Tensor, y_: Tensor, vocabulary: Vocab, device: Device):
+    def __getMinEditPaths_aux(x: Tensor, y: Tensor, recursivityArgs: Optional[tuple[
+            npt.NDArray[np.int_], int, int, EditsGraph, Optional[Edit]]] = None) -> EditsGraph:
+        """
+        This is all the minimal edit paths with distinct editions set. A path is modeled by a recursive
+        list of edits (type Edit), which modelize an arbor.
 
-    Args:
-        x (ByteTensor): the first string to be compared (in one-hot indexes format)
-        y (ByteTensor): the second one (in one-hot indexes format)
-        recursivityArgs (tuple[IntMatrix, int, int, EditsGraph, Edit] | None) : (minEditDistanceMatrix, i_start, j_start, editsTree, parentEdit)
-    If mentionned, this recursive function figures out the minimal edit paths between x[:i_start]
-    and y[:j_start] thanks to the minEditDistanceMatrix. Else, this is the minimal edit paths\
-    between x and y.
-    """
-    (minEditDistanceMatrix, i_start, j_start,
-     editsTree, parentEdit) = None, -1, -1, None, None
+        Args:
+            x (ByteTensor): the first string to be compared (in one-hot indexes format)
+            y (ByteTensor): the second one (in one-hot indexes format)
+            recursivityArgs (tuple[IntMatrix, int, int, EditsGraph, Edit] | None) : (minEditDistanceMatrix, i_start, j_start, editsTree, parentEdit)
+        If mentionned, this recursive function figures out the minimal edit paths between x[:i_start]
+        and y[:j_start] thanks to the minEditDistanceMatrix. Else, this is the minimal edit paths\
+        between x and y.
+        """
+        (minEditDistanceMatrix, i_start, j_start,
+         editsTree, parentEdit) = None, -1, -1, None, None
 
-    if recursivityArgs is not None:
-        minEditDistanceMatrix, i_start, j_start, editsTree, parentEdit = recursivityArgs
-    else:
-        minEditDistanceMatrix = __computeMinEditDistanceMatrix(x, y)
-        i_start = minEditDistanceMatrix.shape[0]-1
-        j_start = minEditDistanceMatrix.shape[1]-1
-        editsTree = EditsGraph(x, y, minEditDistanceMatrix[len(x), len(y)])
+        if recursivityArgs is not None:
+            minEditDistanceMatrix, i_start, j_start, editsTree, parentEdit = recursivityArgs
+        else:
+            minEditDistanceMatrix = __computeMinEditDistanceMatrix(x, y)
+            i_start = minEditDistanceMatrix.shape[0]-1
+            j_start = minEditDistanceMatrix.shape[1]-1
+            editsTree = EditsGraph(
+                x, y, minEditDistanceMatrix[len(x), len(y)], vocabulary, device)
 
-    currentPathLength = minEditDistanceMatrix[i_start, j_start]
+        currentPathLength = minEditDistanceMatrix[i_start, j_start]
 
-    if currentPathLength == 0:
-        return editsTree
+        if currentPathLength == 0:
+            return editsTree
 
-    possiblePriorCoords: list[tuple[int, int]] = []
+        possiblePriorCoords: list[tuple[int, int]] = []
 
-    if i_start > 0:
-        possiblePriorCoords.append((i_start-1, j_start))
-    if j_start > 0:
-        possiblePriorCoords.append((i_start, j_start-1))
         if i_start > 0:
-            possiblePriorCoords.append((i_start-1, j_start-1))
+            possiblePriorCoords.append((i_start-1, j_start))
+        if j_start > 0:
+            possiblePriorCoords.append((i_start, j_start-1))
+            if i_start > 0:
+                possiblePriorCoords.append((i_start-1, j_start-1))
 
-    minPriorPathLength = min(
-        int(minEditDistanceMatrix[c[0], c[1]]) for c in possiblePriorCoords)
+        minPriorPathLength = min(
+            int(minEditDistanceMatrix[c[0], c[1]]) for c in possiblePriorCoords)
 
-    possiblePriorCoords = [c for c in possiblePriorCoords
-                           if int(minEditDistanceMatrix[c[0], c[1]]) == minPriorPathLength]
+        possiblePriorCoords = [c for c in possiblePriorCoords
+                               if int(minEditDistanceMatrix[c[0], c[1]]) == minPriorPathLength]
 
-    if currentPathLength == minPriorPathLength:
-        # reclimb the matrix with a neutral substitution
-        return __getMinEditPaths(x, y, (minEditDistanceMatrix, i_start-1, j_start-1, editsTree, parentEdit))
+        if currentPathLength == minPriorPathLength:
+            # reclimb the matrix with a neutral substitution
+            return __getMinEditPaths(x, y, (minEditDistanceMatrix, i_start-1, j_start-1, editsTree, parentEdit))
 
-    for c in possiblePriorCoords:
-        i, j = c
-        deltaCoord = (i-i_start, j-j_start)
-        edit: Edit
+        for c in possiblePriorCoords:
+            i, j = c
+            deltaCoord = (i-i_start, j-j_start)
+            edit: Edit
 
-        if deltaCoord == (-1, -1):
-            # substitution
-            edit = (0, i_start-1, j_start-1)
-        elif deltaCoord == (0, -1):
-            # insertion
-            edit = (2, i_start-1, j_start-1)
-        else:
-            # deletion
-            edit = (1, i_start-1, j_start-1)
-        if not editsTree.include(edit):
-            editsTree.connect(edit, parentEdit)
-            __getMinEditPaths(
-                x, y, (minEditDistanceMatrix, i, j, editsTree, edit))
-        else:
-            editsTree.connect(edit, parentEdit)
+            if deltaCoord == (-1, -1):
+                # substitution
+                edit = (0, i_start-1, j_start-1)
+            elif deltaCoord == (0, -1):
+                # insertion
+                edit = (2, i_start-1, j_start-1)
+            else:
+                # deletion
+                edit = (1, i_start-1, j_start-1)
+            if not editsTree.include(edit):
+                editsTree.connect(edit, parentEdit)
+                __getMinEditPaths(
+                    x, y, (minEditDistanceMatrix, i, j, editsTree, edit))
+            else:
+                editsTree.connect(edit, parentEdit)
 
-    return editsTree
+        return editsTree
+    return __getMinEditPaths_aux(x_, y_)
 
 
 class IncorrectResultsException(Exception):
@@ -114,7 +116,8 @@ class IncorrectResultsException(Exception):
         super().__init__(*args)
 
 
-def __computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) -> Tensor:
+def __computeProposals(currentReconstruction: Tensor, cognates: list[Tensor], vocabulary: Vocab,
+                       device: Device) -> Tensor:
     """
     Returns a list of the proposals (shape = (B, L~)) in one-hot indexes representation (sequences
     of indexes in the vocabulary)
@@ -123,10 +126,12 @@ def __computeProposals(currentReconstruction: Tensor, cognates: list[Tensor]) ->
         currentReconstruction (ByteTensor): the current sampled proto-form
         cognates (list[ByteTensor]): its cognates\\
     """
-    proposalsSet = torch.ByteTensor(size=(0, 0)).to(device)     #TODO: Check device (maybe `torch.tensor(...)`)
+    # TODO: Check device (maybe `torch.tensor(...)`)
+    proposalsSet = torch.ByteTensor(size=(0, 0)).to(device)
 
     for cognate in cognates:
-        editsTree = __getMinEditPaths(currentReconstruction, cognate)
+        editsTree = __getMinEditPaths(
+            currentReconstruction, cognate, vocabulary, device)
         newComputedProposals = editsTree.computeEditsCombinations()
 
         if newComputedProposals.shape[1] > proposalsSet.shape[1]:
@@ -171,7 +176,9 @@ def __sampleFromProposals(proposalsSet: Tensor, samplesNumber: int) -> Tensor:
     return proposalsSet[j.unsqueeze(1), torch.arange(proposalsSet.size()[2]).unsqueeze(0)]
 
 
-def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates: list[dict[ModernLanguages, Tensor]], samplesNumber: int) -> list[Tensor]:
+def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Tensor], cognates:
+                                                list[dict[ModernLanguages, Tensor]], samplesNumber:
+                                                int, vocabulary: Vocab, device: Device) -> list[Tensor]:
     """
     For each cognate pair, generate a list of proposals from the current chosen sample and its corresponding cognates in each languages. The list of proposals processed by the MH algorithms
     is then established with a uniform random drawing of `samplesNumber` items.
@@ -185,8 +192,7 @@ def generateProposalsFromCurrentReconstructions(currentReconstructions: list[Ten
         x = currentReconstructions[i]
         Y = list(cognates[i].values())
         p.append(__sampleFromProposals(
-            __computeProposals(x, Y), samplesNumber))
-
+            __computeProposals(x, Y), samplesNumber, vocabulary, device), device)
         if (i+1) % (numberOfCognatePairs//100) == 0:
             print("Proposals generation:", 1+100*(i+1) //
                   numberOfCognatePairs, '%'+' '*10, end='\r')

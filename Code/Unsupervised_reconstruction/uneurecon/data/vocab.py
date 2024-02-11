@@ -1,23 +1,39 @@
-import re
-import torch
 import random
-
+import re
 from typing import Optional
-from torch.types import Device
+
+import torch
 from torch import Tensor
-
-from torchtext.vocab import Vocab, build_vocab_from_iterator
 from torch.nn.utils.rnn import pad_sequence, unpad_sequence
+from torch.types import Device
+from torchtext.vocab import Vocab, build_vocab_from_iterator
 
-from models.types import ModernLanguages, InferenceData, InferenceData_Cognates, InferenceData_Samples, SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN
+from ..models.types import (EOS_TOKEN, PADDING_TOKEN, SOS_TOKEN, InferenceData,
+                            InferenceData_Cognates, InferenceData_Samples,
+                            ModernLanguages)
 
 
-vocabulary: Vocab
-with open('./data/IPA_vocabulary.txt', 'r', encoding='utf-8') as vocFile:
-    vocabulary = build_vocab_from_iterator(vocFile.read().split(", "),
-                                           specials=[SOS_TOKEN, EOS_TOKEN, PADDING_TOKEN], special_first=False)
-
-NUMBER_IPA_CHARS = len(vocabulary)-3  # |Σ| = len(vocab)-3
+def get_vocabulary() -> tuple[Vocab, int]:
+    """Returns the Σ vocabulary and the number of characters of its real alphabet.
+    The number of real characters equals len(vocabulary) - 3, as three specials characters are added
+    in the following order:
+        - EOS_TOKEN
+        - PADDING_TOKEN
+        - SOS_TOKEN
+    This order is useful for selecting output probabilities in the EditModel's output distribution
+    which is defined in Σ∪{<end>} or Σ∪{<dlt>}
+    Args:
+        debug: if true, returns a small fake vocabulary with elementary characters.
+    """
+    alphabet: list[str]
+    with open('./IPA_vocabulary.txt', 'r', encoding='utf-8') as vocFile:
+        alphabet = vocFile.read().split(", ")
+    vocabulary = build_vocab_from_iterator(alphabet,
+                                           specials=[EOS_TOKEN,
+                                                     PADDING_TOKEN, SOS_TOKEN],
+                                           special_first=False)
+    ipa_char_number = len(vocabulary)-3  # = len(vocab)-3
+    return (vocabulary, ipa_char_number)
 
 
 def keepWordsInVoc(words: list[str], ipaVocab: str, nbSamples: int, filename: Optional[str]) -> str:
@@ -46,12 +62,12 @@ def keepWordsInVoc(words: list[str], ipaVocab: str, nbSamples: int, filename: Op
     return " ".join(validSampledWords)
 
 
-def wordsToOneHots(words: list[str], device: Device, inventory: Vocab = vocabulary) -> Tensor:
+def wordsToOneHots(words: list[str], device: Device, inventory: Vocab) -> Tensor:
     """
     Args:
         words: list of words to convert.
         device: device for the returned tensor.
-        inventory (Optional): vocabulary (object) for mapping characters into integers. Default value: `vocabulary`.
+        inventory (Optional): vocabulary (object) for mapping characters into integers.
 
     Returns:
         IntTensor, dim=(L, B): a padded tensor containing the B words of the list as sequences of L tokens in one-hot indices format.
@@ -75,12 +91,12 @@ def paddedOneHotsToRawSequencesList(batch: InferenceData) -> list[Tensor]:
     return unpad_sequence(batch[0][1:], batch[1], batch_first=False)
 
 
-def oneHotsToWords(batch: Tensor, removeSpecialTokens: bool = False, inventory: Vocab = vocabulary) -> list[str]:
+def oneHotsToWords(batch: Tensor, inventory: Vocab, removeSpecialTokens: bool = False) -> list[str]:
     """
     Args:
         batch (dim=(L, B)): IntTensor/LongTensor representing padded words in sequences of one hot indices.
         removeSpecialTokens (Optional): argument to remove or not the special tokens. Default value: `False`.
-        inventory (Optional): vocabulary (object) for mapping indices into characters. Default value: `vocabulary`.
+        inventory (Optional): vocabulary (object) for mapping indices into characters.
 
     Returns:
         list[str]: a list of B words in string format.
@@ -107,7 +123,7 @@ def oneHotsToWords(batch: Tensor, removeSpecialTokens: bool = False, inventory: 
     return specialTokensPattern.sub("", " ".join(wordList)).split(" ")
 
 
-def __computeInferenceData(wordsTensor: Tensor, vocab: Vocab = vocabulary) -> InferenceData:
+def __computeInferenceData(wordsTensor: Tensor, vocab: Vocab) -> InferenceData:
     """
     Computes data for the inference from an IntTensor containing words in one-hot indices format.
     The CPU IntTensor is reduced, then the lengths of the sequences are computed and finally
@@ -143,7 +159,7 @@ def __computeInferenceData(wordsTensor: Tensor, vocab: Vocab = vocabulary) -> In
     return (withBoundariesTensor[:maxLength], lengths.cpu(), maxLength)
 
 
-def computeInferenceData_Samples(wordsTensor: Tensor, vocab: Vocab = vocabulary) -> InferenceData_Samples:
+def computeInferenceData_Samples(wordsTensor: Tensor, vocab: Vocab) -> InferenceData_Samples:
     """
     Computes samples' input data for the ReconstructionModel from an IntTensor containing words in one-hot indices format.
     The CPU IntTensor is reduced, then the lengths of the sequences are computed and finally the encoding is performed.
@@ -161,17 +177,18 @@ def computeInferenceData_Samples(wordsTensor: Tensor, vocab: Vocab = vocabulary)
     if dimensions_number == 2:
         wordsTensor = wordsTensor.unsqueeze(-1)
     elif dimensions_number != 3:
-        raise Exception("Your tensor with samples' tokens must be of shape (|x|, c) or (|x|, c, b)")
+        raise Exception(
+            "Your tensor with samples' tokens must be of shape (|x|, c) or (|x|, c, b)")
 
     return __computeInferenceData(wordsTensor, vocab)
 
 
-def computeInferenceData_Cognates(wordsTensors: dict[ModernLanguages, Tensor], vocab: Vocab = vocabulary) -> dict[ModernLanguages, InferenceData_Cognates]:
+def computeInferenceData_Cognates(wordsTensors: dict[ModernLanguages, Tensor], vocab: Vocab) -> dict[ModernLanguages, InferenceData_Cognates]:
     """
     Computes cognates' input data for the ReconstructionModel from IntTensors containing words in one-hot indices format.
     The CPU IntTensors are reduced, then the lengths of the sequences are computed and finally the encoding is performed.
     The EOS token is removed and so the lengths Tensor equals (|y|+1). See the `InferenceData_Cognates` type's documentation for more details.
-    
+
     Args:
         words_intTensor: a dictionnary of IntTensor of shape (|y_l|, c).
         vocab (Optional): vocabulary containing the mapping between characters and indices. Default value: `vocabulary`.
@@ -179,11 +196,12 @@ def computeInferenceData_Cognates(wordsTensors: dict[ModernLanguages, Tensor], v
     Returns:
         InferenceData_Samples: computed cognates for inference.
     """
-    d:dict[ModernLanguages, InferenceData_Cognates] = {}
+    d: dict[ModernLanguages, InferenceData_Cognates] = {}
 
     for lang in wordsTensors:
-        targets, rawLengths, maxLength = __computeInferenceData(wordsTensors[lang], vocab)
+        targets, rawLengths, maxLength = __computeInferenceData(
+            wordsTensors[lang], vocab)
         d[lang] = (targets.where(targets != vocab[EOS_TOKEN], vocab[PADDING_TOKEN])[:-1],
-            rawLengths-1, maxLength-1)
+                   rawLengths-1, maxLength-1)
 
     return d

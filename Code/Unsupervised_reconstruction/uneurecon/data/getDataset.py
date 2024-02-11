@@ -1,8 +1,8 @@
 from torch import Tensor
 from typing import Literal
 
-from data.vocab import keepWordsInVoc, wordsToOneHots
-from models.types import ModernLanguages
+from .vocab import keepWordsInVoc, wordsToOneHots
+from ..models.types import ModernLanguages
 
 
 def getCognatesSet() -> dict[ModernLanguages, list[str]]:
